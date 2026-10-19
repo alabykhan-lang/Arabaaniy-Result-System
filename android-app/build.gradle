@@ -1,0 +1,16 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "com.firstchoice.standard.results"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.firstchoice.standard.results"
+        minSdk 23
+        targetSdk 35
+        versionCode 4
+        versionName "1.1.2"
+    }
+}
