@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded',function(){
 document.addEventListener('DOMContentLoaded',function(){
   try{
     var sch=typeof getSchool==='function'?getSchool():null;
-    var name=(sch&&sch.name)?sch.name:'School Result Portal';
+    var name=(sch&&sch.name)?sch.name:'Arrabaaniy Standard School';
     document.title=name+' · Results';
   }catch(e){}
 });
@@ -829,8 +829,8 @@ body.result-context-read-only .results-history-readable{display:flex}
     <div style="max-width:720px;margin:0 auto">
       <div style="background:var(--g1);border-radius:16px;padding:24px;text-align:center;margin-bottom:24px;box-shadow:var(--shadow2)">
         <img id="home-logo" src="" style="width:110px;height:110px;object-fit:contain;margin:0 auto 10px;display:block;filter:drop-shadow(0 2px 8px rgba(0,0,0,.25))"/>
-        <h1 id="home-sch-name" style="font-family:'Playfair Display',serif;color:var(--gold2);font-size:1.3rem;margin-bottom:4px">School Name</h1>
-        <p id="home-sch-addr" style="color:rgba(255,255,255,.6);font-size:.8rem"></p>
+        <h1 id="home-sch-name" style="font-family:'Playfair Display',serif;color:var(--gold2);font-size:1.3rem;margin-bottom:4px">Arrabaaniy Standard School</h1>
+        <p id="home-sch-addr" style="color:rgba(255,255,255,.6);font-size:.8rem">Off Isoko Road, Oko Oba, Oke Oyo, Ejigbo, Osun State</p>
         <div id="home-session" style="display:inline-block;background:var(--gold);color:var(--g1);font-size:.72rem;font-weight:700;padding:3px 14px;border-radius:20px;margin-top:10px">2026/2027 Session</div>
       </div>
       <div class="academic-context-hero" id="home-academic-context">
@@ -1278,11 +1278,21 @@ body.result-context-read-only .results-history-readable{display:flex}
                 <option value="jss1">JS 1</option><option value="jss2">JS 2</option>
                 <option value="jss3">JS 3</option>
               </optgroup>
-              <optgroup label="Senior Secondary">
+              <optgroup label="Senior Secondary - SS1">
                 <option value="ss1-general">SS1 General</option>
                 <option value="ss1-science">SS1 Science</option>
                 <option value="ss1-arts">SS1 Arts</option>
                 <option value="ss1-business">SS1 Commercial / Business</option>
+              </optgroup>
+              <optgroup label="Senior Secondary - SS2">
+                <option value="ss2-science">SS2 Science</option>
+                <option value="ss2-arts">SS2 Arts</option>
+                <option value="ss2-business">SS2 Commercial / Business</option>
+              </optgroup>
+              <optgroup label="Senior Secondary - SS3">
+                <option value="ss3-science">SS3 Science</option>
+                <option value="ss3-arts">SS3 Arts</option>
+                <option value="ss3-business">SS3 Commercial / Business</option>
               </optgroup>
             </select>
           </div>
@@ -1529,7 +1539,9 @@ var FEE_CATS={
   primary1:'primary',primary2:'primary',primary3:'primary',
   primary4:'primary',primary5:'primary',
   jss1:'junior_secondary',jss2:'junior_secondary',jss3:'junior_secondary',
-  'ss1-general':'senior_secondary','ss1-science':'senior_secondary','ss1-arts':'senior_secondary','ss1-business':'senior_secondary'
+  'ss1-general':'senior_secondary','ss1-science':'senior_secondary','ss1-arts':'senior_secondary','ss1-business':'senior_secondary',
+  'ss2-science':'senior_secondary','ss2-arts':'senior_secondary','ss2-business':'senior_secondary',
+  'ss3-science':'senior_secondary','ss3-arts':'senior_secondary','ss3-business':'senior_secondary'
 };
 function getSessionCfg(){
   var cfg=getCfg();
@@ -2127,7 +2139,13 @@ function getCfg(){
   }
   // Use remote config if available (loaded from Supabase on login)
   if(window._remoteCfg){
-    if(!window._remoteCfg.school){window._remoteCfg.school=Object.assign({},DEFAULT_SCHOOL);}
+    if(!window._remoteCfg.school){
+      window._remoteCfg.school=Object.assign({},DEFAULT_SCHOOL);
+    } else {
+      if(!window._remoteCfg.school.name || window._remoteCfg.school.name === 'School Name') window._remoteCfg.school.name = DEFAULT_SCHOOL.name;
+      if(!window._remoteCfg.school.addr) window._remoteCfg.school.addr = DEFAULT_SCHOOL.addr;
+      if(!window._remoteCfg.school.email) window._remoteCfg.school.email = DEFAULT_SCHOOL.email;
+    }
     if(!window._remoteCfg.signature){window._remoteCfg.signature={image:DEFAULT_SIGNATURE_IMAGE,title:'School Proprietor',version:DEFAULT_SIGNATURE_VERSION};}
     return hydrateGradeScale(window._remoteCfg);
   }
@@ -2202,9 +2220,14 @@ function loadRemoteSettings(options){
         remoteCfg.term=serverTerm;
         window._remoteCfg=remoteCfg;
         if(!CONTEXT_EXPLICIT&&!IN_CLASS&&previousSession!==serverSession)clearSessionCaches();
+        var sch=getSchool();
         var labels=[
           ['sb-session-lbl',serverSession+' Session'],
-          ['home-session',serverSession+' Session']
+          ['home-session',serverSession+' Session'],
+          ['home-sch-name',sch.name],
+          ['home-sch-addr',sch.addr],
+          ['sb-sch-name',sch.name],
+          ['tb-sub',sch.name]
         ];
         labels.forEach(function(item){
           var el=document.getElementById(item[0]);
@@ -2300,7 +2323,15 @@ function refreshPortalState(options){
   return PORTAL_REFRESH_PROMISE;
 }
 
-function getSchool(){return getCfg().school||DEFAULT_SCHOOL;}
+function getSchool(){
+  var s=(getCfg()&&getCfg().school)||DEFAULT_SCHOOL;
+  return {
+    name: (s.name && s.name !== 'School Name') ? s.name : DEFAULT_SCHOOL.name,
+    addr: s.addr || DEFAULT_SCHOOL.addr,
+    phone: s.phone || DEFAULT_SCHOOL.phone,
+    email: s.email || DEFAULT_SCHOOL.email
+  };
+}
 function getAutoRemark(avg){
   if(avg===''||avg===null)return '--';
   var r=getCfg().remarks||DEFAULT_REMARKS;
@@ -2381,20 +2412,22 @@ var DEPTS={
   'ss1-business':{label:'SS1 - Commercial', subjects:CORE.concat(['Financial Accounting','Commerce','Government'])},
   'ss2-science': {label:'SS2 - Science', subjects:CORE.concat(['Biology','Physics','Chemistry','Agricultural Science','Livestock Farming','Geography'])},
   'ss2-arts':    {label:'SS2 - Arts',    subjects:CORE.concat(['Literature','Government','I.R.S','Yoruba'])},
-  'ss2-business':{label:'SS2 - Business',subjects:CORE.concat(['Financial Accounting','Commerce','Government'])},
+  'ss2-business':{label:'SS2 - Commercial',subjects:CORE.concat(['Financial Accounting','Commerce','Government'])},
   'ss3-science': {label:'SS3 - Science', subjects:CORE.concat(['Biology','Physics','Chemistry','Agricultural Science','Livestock Farming','Geography'])},
   'ss3-arts':    {label:'SS3 - Arts',    subjects:CORE.concat(['Literature','Government','I.R.S','Yoruba'])},
   'ss3-business':{label:'SS3 - Commercial',subjects:CORE.concat(['Financial Accounting','Commerce','Government'])}
 };
-var ALL_CLASSES=['kg1','kg2','nursery1','nursery2','primary1','primary2','primary3','primary4','primary5','jss1','jss2','jss3','ss1-science','ss1-arts','ss1-business'];
-var SECONDARY_CLASSES=['jss1','jss2','jss3','ss1-science','ss1-arts','ss1-business'];
-var PROMOTION_THRESHOLD_CLASSES=['jss1','jss2','ss1-science'];
+var ALL_CLASSES=['kg1','kg2','nursery1','nursery2','primary1','primary2','primary3','primary4','primary5','jss1','jss2','jss3','ss1-science','ss1-arts','ss1-business','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts','ss3-business'];
+var SECONDARY_CLASSES=['jss1','jss2','jss3','ss1-science','ss1-arts','ss1-business','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts','ss3-business'];
+var PROMOTION_THRESHOLD_CLASSES=['jss1','jss2','ss1-science','ss2-science'];
 var DEFAULT_PROMOTION_TARGETS={
   kg1:'kg2',kg2:'nursery1',nursery1:'nursery2',nursery2:'primary1',
   primary1:'primary2',primary2:'primary3',primary3:'primary4',primary4:'primary5',primary5:'jss1',
   jss1:'jss2',jss2:'jss3',jss3:'ss1-general',
-  'ss1-general':'',
-  'ss1-science':'','ss1-arts':'','ss1-business':''
+  'ss1-general':'ss2-science',
+  'ss1-science':'ss2-science','ss1-arts':'ss2-arts','ss1-business':'ss2-business',
+  'ss2-science':'ss3-science','ss2-arts':'ss3-arts','ss2-business':'ss3-business',
+  'ss3-science':'','ss3-arts':'','ss3-business':''
 };
 function escapeHtml(v){
   return String(v==null?'':v).replace(/[&<>"']/g,function(c){
@@ -2829,7 +2862,7 @@ function navTo(id,el){
     scores:'Score Entry', broadsheet:'Class Broadsheet', progress:'Class Progress',
     card:'Result Cards', analytics:'Analytics', settings:'Settings', admin:'Management Access'
   };
-  var schName=(getSchool()&&getSchool().name)?getSchool().name:'Result Portal';
+  var schName=(getSchool()&&getSchool().name)?getSchool().name:'Arrabaaniy Standard School';
   var sub=id==='home'?schName:
           id==='history'?schName+' · Read-only archive':
           id==='settings'?'System Configuration':
@@ -2998,11 +3031,16 @@ var HOME_GROUPS=[
   {grid:'hg-early',keys:['kg1','kg2','nursery1','nursery2']},
   {grid:'hg-primary',keys:['primary1','primary2','primary3','primary4','primary5']},
   {grid:'hg-jss',keys:['jss1','jss2','jss3']},
-  {grid:'hg-ss',keys:['ss1']}
+  {grid:'hg-ss',keys:['ss1','ss2','ss3']}
 ];
 
 function renderHome(){
   var cfg=getCfg();
+  var sch=getSchool();
+  var hsn=document.getElementById('home-sch-name');
+  if(hsn)hsn.textContent=sch.name||DEFAULT_SCHOOL.name;
+  var hsa=document.getElementById('home-sch-addr');
+  if(hsa)hsa.textContent=sch.addr||DEFAULT_SCHOOL.addr;
   var badge=document.getElementById('home-session');
   if(badge)badge.textContent=(cfg.session||DEFAULT_SESSION)+' Session';
   var official=officialAcademicContext();
@@ -4901,11 +4939,11 @@ function renderSettings(targetTab){
   if(el('cfg-fee-pri'))el('cfg-fee-pri').value=fees.primary||'';
   if(el('cfg-fee-jss'))el('cfg-fee-jss').value=fees.junior_secondary||'';
   if(el('cfg-fee-ss'))el('cfg-fee-ss').value=fees.senior_secondary||'';
-  var cfg=getCfg();var sch=cfg.school||DEFAULT_SCHOOL;var sig=cfg.signature||{};var secs=getSections();
+  var cfg=getCfg();var sch=getSchool();var sig=cfg.signature||{};var secs=getSections();
   var basis=document.getElementById('promotion-basis');if(basis)basis.value=getPromotionBasis();
   var gate=getPromotionGate(),gateEl=document.getElementById('promotion-gate-enabled'),gatePct=document.getElementById('promotion-gate-pct');if(gateEl)gateEl.checked=gate.enabled;if(gatePct)gatePct.value=gate.pct;
-  if(el('cfg-name'))el('cfg-name').value=sch.name||'';
-  if(el('cfg-addr'))el('cfg-addr').value=sch.addr||'';
+  if(el('cfg-name'))el('cfg-name').value=sch.name||DEFAULT_SCHOOL.name;
+  if(el('cfg-addr'))el('cfg-addr').value=sch.addr||DEFAULT_SCHOOL.addr;
   if(el('cfg-phone'))el('cfg-phone').value=sch.phone||'';
   if(el('cfg-email'))el('cfg-email').value=sch.email||'';
   if(el('cfg-session'))el('cfg-session').value=cfg.session||DEFAULT_SESSION;
@@ -5116,6 +5154,10 @@ function saveSettings(){
   cfg.promotionCfg=readPromotionCfgFromForm();
   saveCfg(cfg);
   applyOfficialAcademicConfig(cfg.session,cfg.term,'open');
+  var hsn=document.getElementById('home-sch-name');if(hsn)hsn.textContent=cfg.school.name;
+  var hsa=document.getElementById('home-sch-addr');if(hsa)hsa.textContent=cfg.school.addr;
+  var sbn=document.getElementById('sb-sch-name');if(sbn)sbn.textContent=cfg.school.name;
+  var tbs=document.getElementById('tb-sub');if(tbs)tbs.textContent=cfg.school.name;
   var sb=document.getElementById('sb-session-lbl');if(sb)sb.textContent=cfg.session+' Session';
   var hs=document.getElementById('home-session');if(hs)hs.textContent=cfg.session+' Session';
   var rcs=document.getElementById('rc-session');if(rcs)rcs.value=CONTEXT_EXPLICIT?getActiveSession():cfg.session;
