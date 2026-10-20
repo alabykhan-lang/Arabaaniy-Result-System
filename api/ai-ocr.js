@@ -37,7 +37,7 @@ module.exports = async function aiOcr(req, res) {
     if (String(body.image_base64).length > 8_000_000) fail('AI_IMAGE_TOO_LARGE', 'Image is too large.');
     const idempotency = String(body.idempotency_key || '').trim();
     if (!idempotency || idempotency.length > 120) fail('AI_IDEMPOTENCY_REQUIRED', 'A request id is required.');
-    const reserve = await supabaseRpc('ai_reserve_credits', { p_operation: operation, p_model: MODEL, p_idempotency_key: idempotency, p_estimated_credits: 1 }, token);
+    const reserve = await supabaseRpc('ai_reserve_credits', { p_operation: operation, p_model: MODEL, p_idempotency_key: idempotency, p_estimated_credits: 2 }, token);
     if (!reserve?.ok) return sendJson(res, reserve?.code === 'AI_CREDITS_EXHAUSTED' ? 402 : 400, reserve);
     if (reserve.replayed) return sendJson(res, 200, { ok: true, replayed: true, ledger_id: reserve.ledger_id });
     reservedLedger = reserve.ledger_id;
@@ -58,7 +58,7 @@ module.exports = async function aiOcr(req, res) {
       await supabaseRpc('ai_settle_credits', { p_ledger_id: reserve.ledger_id, p_status: 'failed', p_input_tokens: inputTokens, p_output_tokens: outputTokens, p_billable_tokens: total, p_credits_charged: 0, p_error_code: 'GEMINI_REQUEST_FAILED' }, token);
       return sendJson(res, 502, { ok: false, code: 'AI_PROVIDER_REQUEST_FAILED', message: data.error?.message || 'AI provider request failed.' });
     }
-    const credits = 1;
+    const credits = 2;
     const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || '';
     return sendJson(res, 200, { ok: true, text, ledger_id: reserve.ledger_id, usage: { input_tokens: inputTokens, output_tokens: outputTokens, billable_tokens: total, credits_pending: credits } });
   } catch (error) {

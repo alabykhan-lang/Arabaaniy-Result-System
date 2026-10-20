@@ -635,9 +635,17 @@ body.result-context-read-only .results-history-readable{display:flex}
 }
 
 /* Settings navigation: segmented, focused and presentation-ready. */
-.settings-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:22px;align-items:start}.settings-dashboard-tabs{display:grid;gap:9px;overflow:visible;padding:12px;position:sticky;top:84px;align-self:start;border:1px solid rgba(125,212,176,.45);border-radius:18px;background:linear-gradient(180deg,#f4fff8,#fff);box-shadow:0 12px 28px rgba(5,105,65,.08)}.settings-dashboard-tabs button{display:flex;align-items:center;width:100%;border:1px solid transparent;border-radius:12px;padding:13px 14px;text-align:left;white-space:normal;background:transparent;color:var(--g1);font-weight:800;cursor:pointer;transition:.2s}.settings-dashboard-tabs button:hover{background:#eaf9f0;border-color:#b7e7ca;transform:translateX(2px)}.settings-dashboard-tabs button.active{background:linear-gradient(135deg,var(--g1),var(--g3));color:#fff;box-shadow:0 8px 16px rgba(5,105,65,.18)}
+.settings-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:22px;align-items:start}
+.settings-dashboard-tabs{display:flex;flex-direction:column;gap:8px;position:sticky;top:84px;align-self:start;border:1px solid rgba(125,212,176,.45);border-radius:18px;background:linear-gradient(180deg,#f4fff8,#fff);box-shadow:0 12px 28px rgba(5,105,65,.08);padding:12px;z-index:2}
+.settings-dashboard-tabs button{display:flex;align-items:center;width:100%;border:1px solid transparent;border-radius:12px;padding:12px 14px;text-align:left;white-space:normal;background:transparent;color:var(--g1);font-weight:700;font-size:.8rem;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s ease}
+.settings-dashboard-tabs button:hover{background:#eaf9f0;border-color:#b7e7ca;transform:translateX(2px)}
+.settings-dashboard-tabs button.active{background:linear-gradient(135deg,var(--g1),var(--g3));color:#fff;box-shadow:0 8px 16px rgba(5,105,65,.18)}
 .settings-grid{align-items:start}.settings-grid>.tbl-wrap{border:1px solid rgba(125,212,176,.35);border-radius:18px;overflow:hidden;box-shadow:0 10px 24px rgba(5,105,65,.06);background:#fff}.settings-grid>.tbl-wrap .tbl-head{background:linear-gradient(135deg,#f0fcf4,#fff);border-bottom:1px solid #d7eee0;padding:15px 18px}.settings-grid>.tbl-wrap .tbl-head h3{color:var(--g1);font-size:.9rem}.settings-grid>.tbl-wrap[style*="display: none"]{display:none!important}
-@media(max-width:900px){.settings-layout{grid-template-columns:1fr}.settings-dashboard-tabs{position:static;grid-template-columns:1fr 1fr}}
+@media(max-width:900px){
+  .settings-layout{display:block;width:100%}
+  .settings-dashboard-tabs{display:flex!important;flex-direction:row!important;position:static!important;gap:8px;margin:0 0 14px;padding:8px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;border-radius:14px;box-shadow:none}
+  .settings-dashboard-tabs button{flex:0 0 auto!important;width:auto!important;min-height:40px;padding:9px 14px!important;white-space:nowrap!important;text-align:center!important}
+}
 </style>
 </head>
 <body>
@@ -1087,13 +1095,21 @@ body.result-context-read-only .results-history-readable{display:flex}
   <div class="page" id="page-settings">
     <div class="settings-hero"><div><span class="settings-kicker">PORTAL CONTROL CENTER</span><h2>Settings dashboard</h2><p>Manage identity, academic cycles, bills, report cards and subjects from focused sections.</p></div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end"><div class="settings-hero-badge"><span class="dot"></span> Continuous academic system</div><button class="btn btn-gold btn-sm" type="button" onclick="openDemoTools()">&#9881; Demo testing</button></div></div>
     <div class="settings-layout">
-    <aside id="settings-dashboard-tabs" class="settings-dashboard-tabs" aria-label="Settings sections"></aside>
+    <aside id="settings-dashboard-tabs" class="settings-dashboard-tabs" aria-label="Settings sections">
+      <button type="button" class="active" data-settings-tab="identity" onclick="showSettingsTab('identity')">School identity</button>
+      <button type="button" data-settings-tab="billing" onclick="showSettingsTab('billing')">Bills &amp; payments</button>
+      <button type="button" data-settings-tab="academic" onclick="showSettingsTab('academic')">Academic rules</button>
+      <button type="button" data-settings-tab="cards" onclick="showSettingsTab('cards')">Report cards</button>
+      <button type="button" data-settings-tab="ai" onclick="showSettingsTab('ai')">AI usage</button>
+      <button type="button" data-settings-tab="subjects" onclick="showSettingsTab('subjects')">Subjects</button>
+      <button type="button" data-settings-tab="management" onclick="showSettingsTab('management')">Management access</button>
+    </aside>
     <div class="settings-grid">
-      <div class="tbl-wrap" id="ai-usage-settings-card" style="margin-bottom:0">
+      <div class="tbl-wrap" id="ai-usage-settings-card" data-settings-group="ai" style="margin-bottom:0;display:none">
         <div class="tbl-head"><h3>AI Score Scanner &amp; Usage</h3><button class="btn btn-outline btn-sm" type="button" onclick="refreshAIUsage()">Refresh</button></div>
-        <div style="padding:16px"><p id="ai-usage-summary" style="font-size:.82rem;color:var(--gray);margin:0">AI usage is shared by this school account across all authorised staff.</p><div id="ai-usage-progress" style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.74rem;font-weight:800;color:var(--g1)"><span>AI credits remaining</span><strong id="ai-usage-percent">0%</strong></div><div style="height:14px;background:#e9f1eb;border-radius:999px;overflow:hidden;margin-top:6px;border:1px solid #d7e6da"><div id="ai-usage-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#087f5b,#55c98b);border-radius:999px;transition:width .35s ease"></div></div><div id="ai-usage-remaining" style="font-size:.72rem;color:var(--gray);margin-top:5px">0 credits remaining</div></div><div style="margin-top:14px;padding:12px;border:1px solid #d7e6da;border-radius:10px;background:#f7fbf8"><h4 style="font-size:.82rem;color:var(--g1);margin:0 0 5px">AI credit plans</h4><p style="font-size:.72rem;color:var(--gray);margin:0 0 10px">Plans are shown for reference only. To request a top-up, contact the developer on WhatsApp.</p><div id="ai-credit-pack-options" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div></div><div id="ai-usage-staff" style="margin-top:14px"></div><p style="font-size:.72rem;color:var(--gray);margin:12px 0 0">Only a successfully applied OCR job uses one AI credit. Failed, cancelled, or unapplied scans use none.</p><button class="btn btn-outline btn-sm" type="button" onclick="contactDeveloperForAI()" style="margin-top:10px">Contact developer on WhatsApp</button><div id="ai-wallet-management-card" hidden aria-hidden="true" style="display:none;margin-top:14px;border:1px solid #f0d36a;border-radius:12px;overflow:hidden;background:#fffdf2"><div class="tbl-head"><h3>AI Wallet Management</h3></div><div style="padding:16px"><p style="font-size:.78rem;color:var(--gray);margin:0 0 10px">Developer-only control. Reset the school allowance directly; this clears the used counters but preserves the audit ledger.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label style="font-size:.7rem;color:var(--gray)">Free allowance<input class="inp" id="ai-reset-free" type="number" min="0" max="1000000" value="50" style="margin-top:4px"/></label><label style="font-size:.7rem;color:var(--gray)">Paid allowance<input class="inp" id="ai-reset-paid" type="number" min="0" max="1000000" value="0" style="margin-top:4px"/></label></div><button class="btn btn-gold btn-sm" type="button" onclick="resetAIWallet()" style="margin-top:10px">Reset wallet counters</button></div></div></div>
+        <div style="padding:16px"><p id="ai-usage-summary" style="font-size:.82rem;color:var(--gray);margin:0">AI usage is shared by this school account across all authorised staff.</p><div id="ai-usage-progress" style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.74rem;font-weight:800;color:var(--g1)"><span>AI credits remaining</span><strong id="ai-usage-percent">0%</strong></div><div style="height:14px;background:#e9f1eb;border-radius:999px;overflow:hidden;margin-top:6px;border:1px solid #d7e6da"><div id="ai-usage-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#087f5b,#55c98b);border-radius:999px;transition:width .35s ease"></div></div><div id="ai-usage-remaining" style="font-size:.72rem;color:var(--gray);margin-top:5px">0 credits remaining</div></div><div style="margin-top:14px;padding:12px;border:1px solid #d7e6da;border-radius:10px;background:#f7fbf8"><h4 style="font-size:.82rem;color:var(--g1);margin:0 0 5px">AI credit plans</h4><p style="font-size:.72rem;color:var(--gray);margin:0 0 10px">Plans are shown for reference only. To request a top-up, contact the developer on WhatsApp.</p><div id="ai-credit-pack-options" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div></div><div id="ai-usage-staff" style="margin-top:14px"></div><p style="font-size:.72rem;color:var(--gray);margin:12px 0 0">Only a successfully applied OCR job uses 2 AI credits. Failed, cancelled, or unapplied scans use none.</p><button class="btn btn-outline btn-sm" type="button" onclick="contactDeveloperForAI()" style="margin-top:10px">Contact developer on WhatsApp</button><div id="ai-wallet-management-card" hidden aria-hidden="true" style="display:none;margin-top:14px;border:1px solid #f0d36a;border-radius:12px;overflow:hidden;background:#fffdf2"><div class="tbl-head"><h3>AI Wallet Management</h3></div><div style="padding:16px"><p style="font-size:.78rem;color:var(--gray);margin:0 0 10px">Developer-only control. Reset the school allowance directly; this clears the used counters but preserves the audit ledger.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label style="font-size:.7rem;color:var(--gray)">Free allowance<input class="inp" id="ai-reset-free" type="number" min="0" max="1000000" value="50" style="margin-top:4px"/></label><label style="font-size:.7rem;color:var(--gray)">Paid allowance<input class="inp" id="ai-reset-paid" type="number" min="0" max="1000000" value="0" style="margin-top:4px"/></label></div><button class="btn btn-gold btn-sm" type="button" onclick="resetAIWallet()" style="margin-top:10px">Reset wallet counters</button></div></div></div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0">
+      <div class="tbl-wrap" data-settings-group="identity" style="margin-bottom:0">
         <div class="tbl-head"><h3>School Information</h3></div>
         <div style="padding:16px">
           <div class="fg"><label>School Name</label><input class="inp" id="cfg-name"/></div>
@@ -1107,7 +1123,7 @@ body.result-context-read-only .results-history-readable{display:flex}
           <div class="context-manager-row"><small id="context-manager-status">The active session and term are used throughout the portal.</small><button class="btn btn-primary btn-sm" type="button" onclick="activateNextAcademicTerm()">Activate Next Term</button></div>
         </div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0">
+      <div class="tbl-wrap" data-settings-group="billing" style="margin-bottom:0;display:none">
         <div class="tbl-head"><h3>Session Configuration</h3></div>
         <div style="padding:16px">
           <div class="fg"><label>Next Term Resumption Date</label><input class="inp" type="date" id="cfg-resumption"/></div>
@@ -1126,7 +1142,7 @@ body.result-context-read-only .results-history-readable{display:flex}
           <button class="btn btn-primary btn-sm" type="button" onclick="saveBillSettings()" style="margin-top:12px">Save bills</button>
         </div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0;grid-column:1/-1">
+      <div class="tbl-wrap" data-settings-group="academic" style="margin-bottom:0;grid-column:1/-1;display:none">
         <div class="tbl-head"><h3>Promotion thresholds</h3></div>
         <div style="padding:16px">
           <div class="promotion-note">
@@ -1210,7 +1226,7 @@ body.result-context-read-only .results-history-readable{display:flex}
           <small id="demo-data-status" style="display:block;color:var(--gray);font-size:.72rem;margin-top:10px">No demo data loaded by this tool yet.</small>
         </div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0">
+      <div class="tbl-wrap" data-settings-group="cards" style="margin-bottom:0;display:none">
         <div class="tbl-head"><h3>Proprietor Signature</h3></div>
         <div style="padding:16px">
           <div class="sig-preview-wrap" id="sig-preview-wrap" onclick="document.getElementById('sig-upload').click()">
@@ -1222,29 +1238,29 @@ body.result-context-read-only .results-history-readable{display:flex}
           <button class="btn btn-outline btn-sm" onclick="clearSig()">Clear Signature</button>
         </div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0">
+      <div class="tbl-wrap" data-settings-group="cards" style="margin-bottom:0;display:none">
         <div class="tbl-head"><h3>Card Section Toggles</h3></div>
         <div style="padding:16px" id="card-toggles"></div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0">
+      <div class="tbl-wrap" data-settings-group="cards" style="margin-bottom:0;display:none">
         <div class="tbl-head"><h3>Report Card Templates</h3></div>
         <div style="padding:16px">
           <div class="template-picker" id="theme-picker"></div>
           <p style="font-size:.78rem;color:var(--gray);margin-top:10px">Choose the report-card layout management prefers. All templates use the same live school data, scores, assessment settings, attendance, traits, fees schedule, remarks and signature. Selected: <strong id="theme-name">Alternative 1 · Modern &amp; Clean</strong></p>
         </div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0;grid-column:1/-1">
+      <div class="tbl-wrap" data-settings-group="cards" style="margin-bottom:0;grid-column:1/-1;display:none">
         <div class="tbl-head"><h3>Automated General Remarks</h3></div>
         <div style="padding:16px" id="remarks-cfg" class="remarks-cfg"></div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0;grid-column:1/-1">
+      <div class="tbl-wrap" data-settings-group="cards" style="margin-bottom:0;grid-column:1/-1;display:none">
         <div class="tbl-head"><h3>Grade Scale</h3></div>
         <div style="padding:16px"><table class="data-table" style="font-size:.82rem">
           <thead><tr><th>Grade</th><th>Min</th><th>Max</th><th>Remark</th></tr></thead>
           <tbody id="grade-cfg-tbody"></tbody>
         </table></div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0;grid-column:1/-1">
+      <div class="tbl-wrap" data-settings-group="subjects" style="margin-bottom:0;grid-column:1/-1;display:none">
         <div class="tbl-head"><h3>Class Subject Configuration</h3></div>
         <div style="padding:16px">
           <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">

@@ -15,7 +15,7 @@ module.exports = async function aiSettle(req, res) {
       p_input_tokens: 0,
       p_output_tokens: 0,
       p_billable_tokens: 0,
-      p_credits_charged: body.status === 'succeeded' ? 1 : 0,
+      p_credits_charged: body.status === 'succeeded' ? 2 : 0,
       p_error_code: body.status === 'failed' ? 'AI_RESULT_NOT_APPLIED' : null,
     }, token);
     return sendJson(res, result?.ok === false ? 400 : 200, result);
