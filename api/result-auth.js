@@ -135,7 +135,12 @@ module.exports = async function resultAuth(req, res) {
     }
     if (body.action === 'register') {
       if (!(await inviteIsValid(body.invite_code))) return sendJson(res, 403, { ok: false, code: 'INVITE_CODE_INVALID' });
-      const payload = await supabaseAuthRequest('signup', { email: body.email, password: body.password, data: { portal: 'first_choice_result' } });
+      let payload = await supabaseAuthRequest('signup', { email: body.email, password: body.password, data: { portal: 'arabaaniy_result' } });
+      if (!payload.access_token) {
+        try {
+          payload = await supabaseAuthRequest('token?grant_type=password', { email: body.email, password: body.password });
+        } catch {}
+      }
       const enriched = payload.access_token ? await enrichUser(payload.user, payload.access_token) : { profile: fallbackProfile(payload.user) };
       if (payload.access_token) setSessionCookie(res, payload.access_token, payload.refresh_token);
       return sendJson(res, 200, { ok: true, auth_mode: 'local', session_created: Boolean(payload.access_token), user: payload.user || null, staff_profile: enriched.profile });
