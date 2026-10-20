@@ -3,8 +3,8 @@
   "short_name": "Arrabaaniy",
   "start_url": "/portal_core.html",
   "display": "standalone",
-  "background_color": "#f4faf5",
-  "theme_color": "#075b38",
+  "background_color": "#f7f4ec",
+  "theme_color": "#13254a",
   "description": "School academic result management portal.",
   "icons": [
     { "src": "/school-logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" }
