@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }catch(e){}
 });
 </script>
-<title>School Result Portal</title>
+<title>Arrabaaniy Standard School</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -656,7 +656,7 @@ body.result-context-read-only .results-history-readable{display:flex}
   <div class="auth-box">
     <div class="auth-header">
        <img id="auth-logo" src="" alt="School Logo"/>
-       <h2 id="auth-sch-name">School Result Portal</h2>
+       <h2 id="auth-sch-name">Arrabaaniy Standard School</h2>
       <p>Result Management System</p>
     </div>
     <div class="auth-body">
@@ -674,14 +674,14 @@ body.result-context-read-only .results-history-readable{display:flex}
       <div style="text-align:center;margin-top:14px" id="forgot-wrap"><a class="auth-link" onclick="showForgotPassword()">Forgot password?</a></div>
       <div id="forgot-form" style="display:none"><div class="auth-field"><label for="forgot-email">Email address</label><input id="forgot-email" type="email" autocomplete="email" required placeholder="you@example.com"/></div><button class="auth-btn" type="button" onclick="sendPasswordReset()">Send reset link</button><div style="text-align:center;margin-top:12px"><a class="auth-link" onclick="setAuthMode('login')">Back to sign in</a></div></div>
     </div>
-    <div class="auth-footer" id="auth-footer">&copy; 2026 Result Portal</div>
+    <div class="auth-footer" id="auth-footer">&copy; 2026 Arrabaaniy Standard School</div>
   </div>
 </div>
 
 <div id="sidebar">
   <div class="sb-logo" style="display:flex;align-items:center;gap:10px">
     <img id="sb-logo" src="" style="width:42px;height:42px;object-fit:contain;border-radius:6px;background:#fff;padding:3px;flex-shrink:0"/>
-    <div><h1 style="font-size:.78rem;line-height:1.3">Results</h1><p style="font-size:.62rem;margin-top:2px;opacity:.8" id="sb-sch-name">Result Portal</p></div>
+    <div><h1 style="font-size:.78rem;line-height:1.3">Results</h1><p style="font-size:.62rem;margin-top:2px;opacity:.8" id="sb-sch-name">Arrabaaniy Standard School</p></div>
   </div>
   <div class="sb-class-lbl" id="sb-class-lbl">
     <span>Current Class</span>
@@ -807,7 +807,7 @@ body.result-context-read-only .results-history-readable{display:flex}
       </button>
       <div>
         <div class="tb-title" id="tb-title">Home</div>
-        <div class="tb-sub" id="tb-sub">Result Portal</div>
+        <div class="tb-sub" id="tb-sub">Arrabaaniy Standard School</div>
       </div>
       <div class="class-chip" id="class-chip" onclick="goHome()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
@@ -1266,7 +1266,6 @@ body.result-context-read-only .results-history-readable{display:flex}
           <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
             <select class="sel" id="dept-sel" onchange="renderSubjCfg()" style="min-width:200px">
               <optgroup label="Early Years">
-                <option value="creche">Creche</option>
                 <option value="kg1">KG 1</option><option value="kg2">KG 2</option>
                 <option value="nursery1">Nursery 1</option><option value="nursery2">Nursery 2</option>
               </optgroup>
@@ -1276,14 +1275,14 @@ body.result-context-read-only .results-history-readable{display:flex}
                 <option value="primary5">Primary 5</option>
               </optgroup>
               <optgroup label="Junior Secondary">
-                <option value="jss1">JSS 1</option><option value="jss2">JSS 2</option>
-                <option value="jss3">JSS 3</option>
+                <option value="jss1">JS 1</option><option value="jss2">JS 2</option>
+                <option value="jss3">JS 3</option>
               </optgroup>
               <optgroup label="Senior Secondary">
                 <option value="ss1-general">SS1 General</option>
-                <option value="ss2-science">SS2 Science</option><option value="ss2-arts">SS2 Arts</option>
-                <option value="ss2-business">SS2 Business</option>
-                <option value="ss3-science">SS3 Science</option><option value="ss3-arts">SS3 Arts</option>
+                <option value="ss1-science">SS1 Science</option>
+                <option value="ss1-arts">SS1 Arts</option>
+                <option value="ss1-business">SS1 Commercial / Business</option>
               </optgroup>
             </select>
           </div>
@@ -1525,14 +1524,12 @@ body.result-context-read-only .results-history-readable{display:flex}
 <script>
 // ── Session Config ──────────────────────────────────────
 var FEE_CATS={
-  creche:'early_childhood',kg1:'early_childhood',kg2:'early_childhood',
+  kg1:'early_childhood',kg2:'early_childhood',
   nursery1:'early_childhood',nursery2:'early_childhood',
   primary1:'primary',primary2:'primary',primary3:'primary',
   primary4:'primary',primary5:'primary',
   jss1:'junior_secondary',jss2:'junior_secondary',jss3:'junior_secondary',
-  'ss1-general':'senior_secondary',
-  'ss2-science':'senior_secondary','ss2-arts':'senior_secondary','ss2-business':'senior_secondary',
-  'ss3-science':'senior_secondary','ss3-arts':'senior_secondary','ss3-business':'senior_secondary'
+  'ss1-general':'senior_secondary','ss1-science':'senior_secondary','ss1-arts':'senior_secondary','ss1-business':'senior_secondary'
 };
 function getSessionCfg(){
   var cfg=getCfg();
@@ -2001,7 +1998,7 @@ function dbUpsertConflict(tbl,cols,body){
 // ============================================================
 // CONFIG
 // ============================================================
-var DEFAULT_SCHOOL={name:'',addr:'',phone:'',email:''};
+var DEFAULT_SCHOOL={name:'Arrabaaniy Standard School',addr:'Off Isoko Road, Oko Oba, Oke Oyo, Ejigbo, Osun State',phone:'',email:'waliyusodiq31@gmail.com'};
 var DEFAULT_REMARKS=[
   {min:0,max:39,text:'Needs serious improvement. Must work harder next term.'},
   {min:40,max:49,text:'Fair performance, but can do better with more effort.'},
@@ -2366,7 +2363,6 @@ var CORE=['English Language','Mathematics','Digital Technology','Economics','Cit
 var SIMPLE=['English Language','Mathematics','Phonics','Handwriting','Quantitative Reasoning','Verbal Reasoning','Basic Science','Social Studies','Cultural & Creative Arts','Computer Studies','Religious & National Values'];
 var JSS_CORE=['English Language','Mathematics','Basic Science','Basic Technology','Social Studies','Civic Education','Cultural & Creative Arts','Agricultural Science','Computer Studies','French','Yoruba','Christian Religious Studies','Home Economics','Physical & Health Education','Business Studies'];
 var DEPTS={
-  'creche':      {label:'Creche',        subjects:['English Language','Numeracy','Phonics','Handwriting','Creative Play','Social Skills']},
   'kg1':         {label:'KG 1',          subjects:SIMPLE.slice()},
   'kg2':         {label:'KG 2',          subjects:SIMPLE.slice()},
   'nursery1':    {label:'Nursery 1',     subjects:SIMPLE.slice()},
@@ -2376,9 +2372,9 @@ var DEPTS={
   'primary3':    {label:'Primary 3',     subjects:SIMPLE.slice()},
   'primary4':    {label:'Primary 4',     subjects:SIMPLE.slice()},
   'primary5':    {label:'Primary 5',     subjects:SIMPLE.slice()},
-  'jss1':        {label:'JSS 1',         subjects:JSS_CORE.slice()},
-  'jss2':        {label:'JSS 2',         subjects:JSS_CORE.slice()},
-  'jss3':        {label:'JSS 3',         subjects:JSS_CORE.slice()},
+  'jss1':        {label:'JS 1',          subjects:JSS_CORE.slice()},
+  'jss2':        {label:'JS 2',          subjects:JSS_CORE.slice()},
+  'jss3':        {label:'JS 3',          subjects:JSS_CORE.slice()},
   'ss1-general': {label:'SS1 - General', subjects:CORE.concat(['Biology','Physics','Chemistry','Literature','Government','I.R.S','Financial Accounting','Commerce','Geography','Agricultural Science'])},
   'ss1-science': {label:'SS1 - Science', subjects:CORE.concat(['Biology','Physics','Chemistry','Agricultural Science','Geography'])},
   'ss1-arts':    {label:'SS1 - Arts', subjects:CORE.concat(['Literature','Government','I.R.S','Yoruba'])},
@@ -2390,16 +2386,15 @@ var DEPTS={
   'ss3-arts':    {label:'SS3 - Arts',    subjects:CORE.concat(['Literature','Government','I.R.S','Yoruba'])},
   'ss3-business':{label:'SS3 - Commercial',subjects:CORE.concat(['Financial Accounting','Commerce','Government'])}
 };
-var ALL_CLASSES=['creche','kg1','kg2','nursery1','nursery2','primary1','primary2','primary3','primary4','primary5','jss1','jss2','jss3','ss1-science','ss1-arts','ss1-business','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts','ss3-business'];
-var SECONDARY_CLASSES=['jss1','jss2','jss3','ss1-science','ss1-arts','ss1-business','ss2-science','ss2-arts','ss2-business','ss3-science','ss3-arts','ss3-business'];
+var ALL_CLASSES=['kg1','kg2','nursery1','nursery2','primary1','primary2','primary3','primary4','primary5','jss1','jss2','jss3','ss1-science','ss1-arts','ss1-business'];
+var SECONDARY_CLASSES=['jss1','jss2','jss3','ss1-science','ss1-arts','ss1-business'];
 var PROMOTION_THRESHOLD_CLASSES=['jss1','jss2','ss1-science'];
 var DEFAULT_PROMOTION_TARGETS={
-  creche:'kg1',kg1:'kg2',kg2:'nursery1',nursery1:'nursery2',nursery2:'primary1',
+  kg1:'kg2',kg2:'nursery1',nursery1:'nursery2',nursery2:'primary1',
   primary1:'primary2',primary2:'primary3',primary3:'primary4',primary4:'primary5',primary5:'jss1',
   jss1:'jss2',jss2:'jss3',jss3:'ss1-general',
-  'ss1-general':'ss2-science',
-  'ss2-science':'ss3-science','ss2-arts':'ss3-arts','ss2-business':'ss3-arts',
-  'ss3-science':'','ss3-arts':''
+  'ss1-general':'',
+  'ss1-science':'','ss1-arts':'','ss1-business':''
 };
 function escapeHtml(v){
   return String(v==null?'':v).replace(/[&<>"']/g,function(c){
@@ -3000,10 +2995,10 @@ function changeTerm(newTerm){
 // HOME PAGE
 // ============================================================
 var HOME_GROUPS=[
-  {grid:'hg-early',keys:['creche','kg1','kg2','nursery1','nursery2']},
+  {grid:'hg-early',keys:['kg1','kg2','nursery1','nursery2']},
   {grid:'hg-primary',keys:['primary1','primary2','primary3','primary4','primary5']},
   {grid:'hg-jss',keys:['jss1','jss2','jss3']},
-  {grid:'hg-ss',keys:['ss1','ss2','ss3']}
+  {grid:'hg-ss',keys:['ss1']}
 ];
 
 function renderHome(){

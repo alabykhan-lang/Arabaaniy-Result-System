@@ -1,6 +1,6 @@
 {
-  "name": "School Results Portal",
-  "short_name": "Results",
+  "name": "Arrabaaniy Standard School",
+  "short_name": "Arrabaaniy",
   "start_url": "/portal_core.html",
   "display": "standalone",
   "background_color": "#f4faf5",

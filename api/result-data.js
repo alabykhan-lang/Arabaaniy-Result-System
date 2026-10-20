@@ -19,7 +19,7 @@ const NON_PERSISTENT_ACTIONS = new Set([
   'results.export',
 ]);
 const DEVELOPER_EMAIL = String(process.env.DEVELOPER_EMAIL || 'alabykhan@gmail.com').trim().toLowerCase();
-const SCHOOL_ADMIN_EMAIL = String(process.env.SCHOOL_ADMIN_EMAIL || '').trim().toLowerCase();
+const SCHOOL_ADMIN_EMAIL = String(process.env.SCHOOL_ADMIN_EMAIL || 'waliyusodiq31@gmail.com').trim().toLowerCase();
 
 function inviteHash(value) {
   return crypto.createHash('sha256').update(String(value || '').replace(/[\s,]+/g, '').toUpperCase()).digest('hex');

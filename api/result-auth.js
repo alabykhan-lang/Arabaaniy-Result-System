@@ -14,7 +14,7 @@ const {
 const crypto = require('node:crypto');
 
 const DEVELOPER_EMAIL = String(process.env.DEVELOPER_EMAIL || 'alabykhan@gmail.com').trim().toLowerCase();
-const SCHOOL_ADMIN_EMAIL = String(process.env.SCHOOL_ADMIN_EMAIL || '').trim().toLowerCase();
+const SCHOOL_ADMIN_EMAIL = String(process.env.SCHOOL_ADMIN_EMAIL || 'waliyusodiq31@gmail.com').trim().toLowerCase();
 const INITIAL_INVITE_CODE = String(process.env.INITIAL_INVITE_CODE || 'PORTAL2026').trim().toUpperCase();
 
 function inviteHash(value) {
