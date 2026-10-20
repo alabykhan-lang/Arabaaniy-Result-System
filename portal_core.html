@@ -1280,7 +1280,7 @@ body.result-context-read-only .results-history-readable{display:flex}
       </div>
     </div>
     </div>
-    <div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap">
+    <div id="settings-global-actions" style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
       <button class="btn btn-outline btn-sm" onclick="forceSyncSettings()" style="margin-left:8px">&#9729; Sync to All Devices</button>
       <button class="btn btn-outline" onclick="resetSettings()">Reset to Defaults</button>
@@ -2849,10 +2849,7 @@ function navTo(id,el){
     renderAnalytics();
   }
   if(id==='settings'){
-    var activeTag = document.activeElement ? document.activeElement.tagName : '';
-    if(activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT'){
-      renderSettings();
-    }
+    renderSettings();
   }
   closeSidebar();
 }
@@ -4883,34 +4880,37 @@ function renderSettings(targetTab){
   hideDeveloperAIWalletManagement();
   refreshAIUsage();
   renderBillConfig();
-  var sc=getSessionCfg();
+  var sc=getSessionCfg() || {};
+  var fees=(sc && sc.fees) || {};
   var el=function(id){return document.getElementById(id);};
   if(el('cfg-resumption'))el('cfg-resumption').value=sc.resumption||'';
   if(el('cfg-show-fees'))el('cfg-show-fees').checked=sc.showFees!==false;
   if(el('cfg-show-resumption'))el('cfg-show-resumption').checked=sc.showResumption!==false;
-  if(el('cfg-fee-ec'))el('cfg-fee-ec').value=sc.fees.early_childhood||'';
-  if(el('cfg-fee-pri'))el('cfg-fee-pri').value=sc.fees.primary||'';
-  if(el('cfg-fee-jss'))el('cfg-fee-jss').value=sc.fees.junior_secondary||'';
-  if(el('cfg-fee-ss'))el('cfg-fee-ss').value=sc.fees.senior_secondary||'';
+  if(el('cfg-fee-ec'))el('cfg-fee-ec').value=fees.early_childhood||'';
+  if(el('cfg-fee-pri'))el('cfg-fee-pri').value=fees.primary||'';
+  if(el('cfg-fee-jss'))el('cfg-fee-jss').value=fees.junior_secondary||'';
+  if(el('cfg-fee-ss'))el('cfg-fee-ss').value=fees.senior_secondary||'';
   var cfg=getCfg();var sch=cfg.school||DEFAULT_SCHOOL;var sig=cfg.signature||{};var secs=getSections();
   var basis=document.getElementById('promotion-basis');if(basis)basis.value=getPromotionBasis();
   var gate=getPromotionGate(),gateEl=document.getElementById('promotion-gate-enabled'),gatePct=document.getElementById('promotion-gate-pct');if(gateEl)gateEl.checked=gate.enabled;if(gatePct)gatePct.value=gate.pct;
-  document.getElementById('cfg-name').value=sch.name||'';
-  document.getElementById('cfg-addr').value=sch.addr||'';
-  document.getElementById('cfg-phone').value=sch.phone||'';
-  document.getElementById('cfg-email').value=sch.email||'';
-  document.getElementById('cfg-session').value=cfg.session||DEFAULT_SESSION;
+  if(el('cfg-name'))el('cfg-name').value=sch.name||'';
+  if(el('cfg-addr'))el('cfg-addr').value=sch.addr||'';
+  if(el('cfg-phone'))el('cfg-phone').value=sch.phone||'';
+  if(el('cfg-email'))el('cfg-email').value=sch.email||'';
+  if(el('cfg-session'))el('cfg-session').value=cfg.session||DEFAULT_SESSION;
   var termEl=document.getElementById('cfg-term');if(termEl)termEl.value=cfg.term||DEFAULT_TERM;
   var assessmentScope=document.getElementById('assessment-scope');if(assessmentScope)assessmentScope.value=cfg.assessmentScope||'full_class';
-  document.getElementById('cfg-sig-name').value=sig.name||'';
-  document.getElementById('cfg-sig-title').value=sig.title||'';
+  if(el('cfg-sig-name'))el('cfg-sig-name').value=sig.name||'';
+  if(el('cfg-sig-title'))el('cfg-sig-title').value=sig.title||'';
   previewSig();
-  document.getElementById('card-toggles').innerHTML=CARD_SECTIONS.map(function(s){
+  var cardTog=document.getElementById('card-toggles');
+  if(cardTog) cardTog.innerHTML=CARD_SECTIONS.map(function(s){
     return'<div class="toggle-row"><div><div style="font-size:.85rem;font-weight:600">'+s.label+'</div></div>'
       +'<label class="toggle"><input type="checkbox" id="tog-'+s.key+'" '+(secs[s.key]?'checked':'')+' onchange="saveSectionToggle(\''+s.key+'\',this.checked)"/><span class="toggle-slider"></span></label></div>';
   }).join('');
   var remarks=cfg.remarks||DEFAULT_REMARKS;
-  document.getElementById('remarks-cfg').innerHTML=remarks.map(function(r,i){
+  var remCfg=document.getElementById('remarks-cfg');
+  if(remCfg) remCfg.innerHTML=remarks.map(function(r,i){
     return'<div class="remark-range"><span style="font-size:.75rem;font-weight:600;color:var(--g1);min-width:55px">'+r.min+'-'+r.max+'%</span>'
       +'<input type="number" value="'+r.min+'" onchange="updateRemark('+i+',\'min\',this.value)"/>'
       +'<span style="color:#aaa">-</span>'
@@ -4918,7 +4918,8 @@ function renderSettings(targetTab){
       +'<input type="text" value="'+r.text+'" onchange="updateRemark('+i+',\'text\',this.value)" placeholder="Remark text..."/>'
       +'</div>';
   }).join('');
-  document.getElementById('grade-cfg-tbody').innerHTML=GRADE_SCALE.map(function(g,i){
+  var gradeTbody=document.getElementById('grade-cfg-tbody');
+  if(gradeTbody) gradeTbody.innerHTML=GRADE_SCALE.map(function(g,i){
     return'<tr><td><strong style="color:var(--g1)">'+g.g+'</strong></td>'
       +'<td><input class="inp" type="number" value="'+g.min+'" onchange="GRADE_SCALE['+i+'].min=Number(this.value)" style="width:70px;padding:5px 8px"/></td>'
       +'<td><input class="inp" type="number" value="'+g.max+'" onchange="GRADE_SCALE['+i+'].max=Number(this.value)" style="width:70px;padding:5px 8px"/></td>'
@@ -4962,7 +4963,7 @@ function renderSettingsDashboard(targetTab){
   cards.forEach(function(card){
     var h=(card.querySelector('h3')||{}).textContent||'';
     if(card.classList.contains('obsolete-setting')){card.remove();return;}
-    var g=card.id==='ai-wallet-management-card'||/AI Score|Admin Command/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';
+    var g=card.id==='ai-wallet-management-card'||/AI Score|Admin Command/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment|Senior Secondary/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';
     card.setAttribute('data-settings-group',g);
   });
   showSettingsTab(currentActive);
