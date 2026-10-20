@@ -1089,13 +1089,9 @@ body.result-context-read-only .results-history-readable{display:flex}
     <div class="settings-layout">
     <aside id="settings-dashboard-tabs" class="settings-dashboard-tabs" aria-label="Settings sections"></aside>
     <div class="settings-grid">
-      <div class="tbl-wrap developer-only-setting" id="gemini-settings-card" style="margin-bottom:0">
-        <div class="tbl-head"><h3>AI Score Scanner (OCR)</h3></div>
-        <div style="padding:16px">
-          <div class="fg"><label>Gemini API Key</label><input class="inp" type="password" id="gemini-key-input" placeholder="AIza..."/></div>
-          <div style="font-size:.75rem;color:var(--gray);margin-top:4px">Required for scanning record books. Get free key at aistudio.google.com</div>
-          <button class="btn btn-primary btn-sm" onclick="saveGeminiKey()" style="margin-top:10px">Save API Key</button>
-        </div>
+      <div class="tbl-wrap" id="ai-usage-settings-card" style="margin-bottom:0">
+        <div class="tbl-head"><h3>AI Score Scanner &amp; Usage</h3><button class="btn btn-outline btn-sm" type="button" onclick="refreshAIUsage()">Refresh</button></div>
+        <div style="padding:16px"><p id="ai-usage-summary" style="font-size:.82rem;color:var(--gray);margin:0">AI usage is shared by this school account across all authorised staff.</p><div id="ai-usage-progress" style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.74rem;font-weight:800;color:var(--g1)"><span>AI credits remaining</span><strong id="ai-usage-percent">0%</strong></div><div style="height:14px;background:#e9f1eb;border-radius:999px;overflow:hidden;margin-top:6px;border:1px solid #d7e6da"><div id="ai-usage-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#087f5b,#55c98b);border-radius:999px;transition:width .35s ease"></div></div><div id="ai-usage-remaining" style="font-size:.72rem;color:var(--gray);margin-top:5px">0 credits remaining</div></div><div style="margin-top:14px;padding:12px;border:1px solid #d7e6da;border-radius:10px;background:#f7fbf8"><h4 style="font-size:.82rem;color:var(--g1);margin:0 0 5px">AI credit plans</h4><p style="font-size:.72rem;color:var(--gray);margin:0 0 10px">Plans are shown for reference only. To request a top-up, contact the developer on WhatsApp.</p><div id="ai-credit-pack-options" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div></div><div id="ai-usage-staff" style="margin-top:14px"></div><p style="font-size:.72rem;color:var(--gray);margin:12px 0 0">Only a successfully applied OCR job uses one AI credit. Failed, cancelled, or unapplied scans use none.</p><button class="btn btn-outline btn-sm" type="button" onclick="contactDeveloperForAI()" style="margin-top:10px">Contact developer on WhatsApp</button><div id="ai-wallet-management-card" hidden aria-hidden="true" style="display:none;margin-top:14px;border:1px solid #f0d36a;border-radius:12px;overflow:hidden;background:#fffdf2"><div class="tbl-head"><h3>AI Wallet Management</h3></div><div style="padding:16px"><p style="font-size:.78rem;color:var(--gray);margin:0 0 10px">Developer-only control. Reset the school allowance directly; this clears the used counters but preserves the audit ledger.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label style="font-size:.7rem;color:var(--gray)">Free allowance<input class="inp" id="ai-reset-free" type="number" min="0" max="1000000" value="50" style="margin-top:4px"/></label><label style="font-size:.7rem;color:var(--gray)">Paid allowance<input class="inp" id="ai-reset-paid" type="number" min="0" max="1000000" value="0" style="margin-top:4px"/></label></div><button class="btn btn-gold btn-sm" type="button" onclick="resetAIWallet()" style="margin-top:10px">Reset wallet counters</button></div></div></div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0">
         <div class="tbl-head"><h3>School Information</h3></div>
@@ -3534,7 +3530,7 @@ function deleteStu(id){
   hideLoad();
   showToast('Management access is required for student administration.','error');
 }
-function closeModal(id){document.getElementById(id).style.display='none';}
+function closeModal(id){if((id==='modal-ocr'||id==='modal-bulk-students')&&AI_PENDING_LEDGER_ID)settleAIUsage('failed');document.getElementById(id).style.display='none';}
 
 // ============================================================
 // SCORE ENTRY - SUBJECT CENTRIC
@@ -4859,10 +4855,9 @@ function renderAnalytics(){
 // ============================================================
 function renderSettings(){
   renderSettingsDashboard();
-  var geminiCard=document.getElementById('gemini-settings-card');
-  if(geminiCard)geminiCard.style.display=(CURRENT_USER&&CURRENT_USER._role==='developer')?'':'none';
+  hideDeveloperAIWalletManagement();
+  refreshAIUsage();
   renderBillConfig();
-  var ki=document.getElementById('gemini-key-input');if(ki){var gk=getGeminiKey();if(gk){ki.value='';ki.placeholder='Saved API key loaded';ki.dataset.keyLoaded='true';}}
   var sc=getSessionCfg();
   var el=function(id){return document.getElementById(id);};
   if(el('cfg-resumption'))el('cfg-resumption').value=sc.resumption||'';
@@ -4935,11 +4930,11 @@ function saveSecondaryDepartments(){
 }
 function renderSettingsDashboard(){
   var root=document.getElementById('settings-dashboard-tabs');if(!root)return;
-  var tabs=[['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['subjects','Subjects'],['management','Management access']];
+  var tabs=[['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['ai','AI usage'],['subjects','Subjects'],['management','Management access']];
   root.innerHTML=tabs.map(function(t){return '<button type="button" data-settings-tab="'+t[0]+'" onclick="showSettingsTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
-  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';if(card.classList.contains('obsolete-setting')){card.remove();return;}var g=/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/AI Score|Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';card.setAttribute('data-settings-group',g);});showSettingsTab('identity');
+  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';if(card.classList.contains('obsolete-setting')){card.remove();return;}var g=card.id==='ai-wallet-management-card'||/AI Score|Admin Command/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';card.setAttribute('data-settings-group',g);});showSettingsTab('identity');
 }
-function showSettingsTab(tab){document.querySelectorAll('[data-settings-tab]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-settings-tab')===tab);});document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap').forEach(function(c){var developerOnly=c.id==='gemini-settings-card';c.style.display=(c.getAttribute('data-settings-group')===tab&&(!developerOnly||CURRENT_USER&&CURRENT_USER._role==='developer'))?'':'none';});}
+function showSettingsTab(tab){document.querySelectorAll('[data-settings-tab]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-settings-tab')===tab);});document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap').forEach(function(c){c.style.display=(c.getAttribute('data-settings-group')===tab)?'':'none';});var actions=document.getElementById('settings-global-actions');if(actions)actions.style.display=tab==='ai'?'none':'flex';}
 function saveSectionToggle(key,val){var cfg=getCfg();if(!cfg.sections)cfg.sections={};cfg.sections[key]=val;saveCfg(cfg);}
 function previewSig(){
   var name=document.getElementById('cfg-sig-name').value;
@@ -5220,9 +5215,131 @@ function getGeminiKey(){
   return window._geminiKey||'';
 }
 
+var AI_PENDING_LEDGER_ID = '';
+var AI_CREDIT_PACKS = [[5000, 50], [10000, 120], [15000, 200], [20000, 300]];
+
+function renderAICreditPacks(){
+  var root=document.getElementById('ai-credit-pack-options');if(!root||root.childElementCount)return;
+  root.innerHTML=AI_CREDIT_PACKS.map(function(pack){return '<div aria-label="AI credit plan" style="padding:10px;border:1px solid #d7e6da;border-radius:8px;background:#fff"><strong style="color:var(--g1)">₦'+pack[0].toLocaleString()+'</strong><br><small style="color:var(--gray)">'+pack[1].toLocaleString()+' AI credits</small></div>';}).join('');
+}
+function hideDeveloperAIWalletManagement(){
+  var management=document.getElementById('ai-wallet-management-card');
+  if(!management)return;
+  management.style.display='none';
+  management.hidden=true;
+  management.setAttribute('aria-hidden','true');
+}
+function showDeveloperAIWalletManagement(){
+  var management=document.getElementById('ai-wallet-management-card');
+  if(!management)return;
+  if(!CURRENT_USER||CURRENT_USER._role!=='developer'){
+    hideDeveloperAIWalletManagement();
+    return;
+  }
+  management.hidden=false;
+  management.removeAttribute('aria-hidden');
+  management.style.display='';
+}
+function refreshAIUsage(){
+  if(!isCentralAuth())return;
+  hideDeveloperAIWalletManagement();
+  renderAICreditPacks();
+  fetch('/api/ai-usage',{credentials:'same-origin',headers:getAuthHeaders(),cache:'no-store'}).then(function(r){return r.json();}).then(function(data){
+    if(!data||!data.ok)return;
+    var w=data.wallet||{},remaining=Math.max(0,Number(w.free_credits)-Number(w.free_credits_used)+Number(w.paid_credits)-Number(w.paid_credits_used));
+    var used=Number(w.free_credits_used)+Number(w.paid_credits_used),total=Number(w.free_credits)+Number(w.paid_credits);
+    var summary=document.getElementById('ai-usage-summary');
+    if(summary)summary.textContent='School AI balance: '+remaining+' credits remaining ('+used+' used of '+total+'). '+(remaining?'All authorised teachers share this balance.':'AI scanning is paused; contact the developer to renew.');
+    var percent=total>0?Math.max(0,Math.min(100,Math.round((remaining/total)*100))):0;
+    var bar=document.getElementById('ai-usage-bar');
+    var pct=document.getElementById('ai-usage-percent');
+    var rem=document.getElementById('ai-usage-remaining');
+    if(bar){bar.style.width=percent+'%';bar.style.background=percent<=10?'#dc2626':percent<=25?'#d97706':'linear-gradient(90deg,#087f5b,#55c98b)';}
+    if(pct)pct.textContent=percent+'%';
+    if(rem)rem.textContent=remaining+' credits remaining of '+total;
+    var allowed=CURRENT_USER&&CURRENT_USER._role==='developer';
+    if(allowed)showDeveloperAIWalletManagement();
+    var freeInput=document.getElementById('ai-reset-free');
+    var paidInput=document.getElementById('ai-reset-paid');
+    if(allowed&&freeInput&&document.activeElement!==freeInput)freeInput.value=Number(w.free_credits||0);
+    if(allowed&&paidInput&&document.activeElement!==paidInput)paidInput.value=Number(w.paid_credits||0);
+    var requestStatus=document.getElementById('ai-credit-request-status');
+    var latest=(data.requests||[])[0];
+    if(requestStatus&&latest){
+      var label=latest.status==='approved'?'Approved — credits will appear after confirmation is completed':latest.status==='rejected'?'Declined — contact the developer for help':'Waiting for developer confirmation';
+      requestStatus.innerHTML='<div style="padding:9px 10px;border-radius:9px;background:'+(latest.status==='approved'?'#effcf3':latest.status==='rejected'?'#fff5f5':'#fff9e8')+';font-size:.74rem"><strong>'+label+'</strong><br><span style="color:var(--gray)">₦'+Number(latest.amount_naira).toLocaleString()+' · '+Number(latest.credits_requested).toLocaleString()+' credits requested</span></div>';
+    } else if(requestStatus)requestStatus.innerHTML='';
+    var staff=document.getElementById('ai-usage-staff');
+    if(staff)staff.innerHTML='<small style="color:var(--gray);font-weight:700">Usage by staff</small><div style="margin-top:6px">'+(data.summary&&data.summary.by_staff||[]).map(function(row){return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:.76rem;padding:5px 0;border-bottom:1px solid var(--border)"><span>'+escapeHtml(row.name)+'</span><span>'+row.scans+' scans · '+row.failed+' failed</span></div>';}).join('')+'</div>';
+  }).catch(function(){});
+}
+function resetAIWallet(){
+  if(!CURRENT_USER||CURRENT_USER._role!=='developer'){showToast('Only the developer can reset the AI wallet.','error');return;}
+  var free=Math.max(0,Math.floor(Number((document.getElementById('ai-reset-free')||{}).value||0)));
+  var paid=Math.max(0,Math.floor(Number((document.getElementById('ai-reset-paid')||{}).value||0)));
+  if(!confirm('Reset the shared AI wallet to '+(free+paid)+' total credits and clear its used counters?'))return;
+  fetch('/api/ai-credit-reset',{
+    method:'POST',
+    credentials:'same-origin',
+    headers:Object.assign({'Accept':'application/json','Content-Type':'application/json'},getAuthHeaders()),
+    body:JSON.stringify({free_credits:free,paid_credits:paid}),
+    cache:'no-store'
+  }).then(function(res){
+    return res.json().then(function(data){if(!res.ok||data.ok===false)throw data;return data;});
+  }).then(function(){
+    showToast('AI wallet reset and synced for all authorised staff.');
+    refreshAIUsage();
+  }).catch(function(error){
+    showToast((error&&error.message)||'Could not reset the AI wallet.','error');
+  });
+}
+function contactDeveloperForAI(){
+  var school=((getCfg()||{}).school||{}).name||'our school';
+  var message='Hello, I need help with AI credits for '+school+'.';
+  window.location.href='https://wa.me/2348165701129?text='+encodeURIComponent(message);
+}
+function requestAIScan(payload){
+  payload.idempotency_key='ai-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+  return fetch('/api/ai-ocr',{
+    method:'POST',
+    credentials:'same-origin',
+    headers:Object.assign({'Accept':'application/json','Content-Type':'application/json'},getAuthHeaders()),
+    body:JSON.stringify(payload),
+    cache:'no-store'
+  }).then(function(res){
+    return res.text().then(function(raw){
+      var data={};try{data=raw?JSON.parse(raw):{};}catch(e){data={};}
+      if(!res.ok||data.ok===false){throw data;}
+      return data;
+    });
+  }).then(function(data){
+    if(data.ledger_id)AI_PENDING_LEDGER_ID=data.ledger_id;
+    refreshAIUsage();
+    return data;
+  }).catch(function(error){
+    if(error&&error.code==='AI_CREDITS_EXHAUSTED')throw new Error('School AI credits are finished. Contact the developer to renew.');
+    throw new Error((error&&error.message)||'AI scanner is unavailable.');
+  });
+}
+function settleAIUsage(status){
+  var ledger=AI_PENDING_LEDGER_ID;
+  if(!ledger)return Promise.resolve();
+  return fetch('/api/ai-settle',{
+    method:'POST',
+    credentials:'same-origin',
+    headers:Object.assign({'Accept':'application/json','Content-Type':'application/json'},getAuthHeaders()),
+    body:JSON.stringify({ledger_id:ledger,status:status}),
+    cache:'no-store'
+  }).then(function(res){
+    return res.json().then(function(data){if(!res.ok||data.ok===false)throw data;return data;});
+  }).then(function(){
+    if(AI_PENDING_LEDGER_ID===ledger)AI_PENDING_LEDGER_ID='';
+    refreshAIUsage();
+  });
+}
+
 function openOCRScanner(){
-  var key=getGeminiKey();
-  if(!key){showToast('Add Gemini API key in Settings first','error');return;}
+  if(!CURRENT_USER){showToast('Sign in before using the AI scanner.','error');return;}
   OCR_IDX=currentSheetIdx;
   var subjs=subjects();
   var el=document.getElementById('ocr-subject-name');
@@ -5232,6 +5349,7 @@ function openOCRScanner(){
 }
 
 function resetOCR(){
+  if(AI_PENDING_LEDGER_ID)settleAIUsage('failed');
   document.getElementById('ocr-step1').style.display='block';
   document.getElementById('ocr-step2').style.display='none';
   document.getElementById('ocr-preview-wrap').style.display='none';
@@ -5276,8 +5394,7 @@ function handleOCRImage(evt){
 }
 
 function runOCR(){
-  var key=getGeminiKey();
-  if(!key||!OCR_IMG_B64)return;
+  if(!OCR_IMG_B64)return;
   document.getElementById('ocr-preview-wrap').style.display='none';
   document.getElementById('ocr-loading').style.display='block';
   var students=DB_STUDENTS[CLS]||[];var assessment=getAssessmentConfig();var caDescription=assessment.caMarks.slice(0,assessment.caCount).map(function(mark,i){return 'CA'+(i+1)+' (out of '+mark+')';}).join(', ');
@@ -5290,45 +5407,26 @@ function runOCR(){
     +'Each item must be: {"name":"STUDENT FULL NAME AS WRITTEN",'+assessment.caMarks.slice(0,assessment.caCount).map(function(_,i){return '"ca'+(i+1)+'":number_or_null';}).join(',')+',"exam":number_or_null} '
     +'If a score cell is empty, crossed out, or unreadable use null. '
     +'Include every student row visible. Start your response with [ and end with ].';
-  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key='+key,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      contents:[{parts:[{text:prompt},{inline_data:{mime_type:OCR_IMG_MIME,data:OCR_IMG_B64}}]}],
-      generationConfig:{temperature:0.1,maxOutputTokens:2048}
-    })
-  })
-  .then(function(r){
-    if(!r.ok){return r.json().then(function(e){throw new Error(e.error?e.error.message:'HTTP '+r.status);});}
-    return r.json();
-  })
+  requestAIScan({operation:'ocr_scores',image_base64:OCR_IMG_B64,mime_type:OCR_IMG_MIME,prompt:prompt})
   .then(function(data){
     document.getElementById('ocr-loading').style.display='none';
-    if(data.error){
-      showToast('Gemini error: '+data.error.message,'error');
-      document.getElementById('ocr-preview-wrap').style.display='block';
-      return;
-    }
     var txt='';
-    try{txt=data.candidates[0].content.parts[0].text;}
+    try{txt=data.text||data.candidates[0].content.parts[0].text;}
     catch(e){
-      showToast('No response from Gemini. Check API key.','error');
+      showToast('No response from the AI scanner.','error');
+      settleAIUsage('failed');
       document.getElementById('ocr-preview-wrap').style.display='block';
       return;
     }
-    // Try to extract JSON array from response - multiple strategies
     var jsonStr=null;
-    // Strategy 1: code fence with json
     var m1=txt.match(/```json([\s\S]*?)```/);
     if(m1)jsonStr=m1[1].trim();
-    // Strategy 2: any code fence
     if(!jsonStr){var m2=txt.match(/```([\s\S]*?)```/);if(m2)jsonStr=m2[1].trim();}
-    // Strategy 3: raw JSON array
     if(!jsonStr){var m3=txt.match(/\[[\s\S]*?\]/);if(m3)jsonStr=m3[0];}
-    // Strategy 4: entire response if it starts with [
     if(!jsonStr&&txt.trim().startsWith('['))jsonStr=txt.trim();
     if(!jsonStr){
       showToast('AI responded but could not find scores in image. Ensure photo shows names and score columns clearly.','error');
+      settleAIUsage('failed');
       document.getElementById('ocr-preview-wrap').style.display='block';
       return;
     }
@@ -5336,11 +5434,13 @@ function runOCR(){
     try{rows=JSON.parse(jsonStr);}
     catch(e){
       showToast('Could not read the data. Try a clearer photo.','error');
+      settleAIUsage('failed');
       document.getElementById('ocr-preview-wrap').style.display='block';
       return;
     }
     if(!rows.length){
       showToast('No scores found in image. Try a clearer photo.','error');
+      settleAIUsage('failed');
       document.getElementById('ocr-preview-wrap').style.display='block';
       return;
     }
@@ -5348,8 +5448,9 @@ function runOCR(){
   })
   .catch(function(err){
     document.getElementById('ocr-loading').style.display='none';
+    settleAIUsage('failed');
+    showToast(err.message||'OCR scan failed. Try a clearer photo.','error');
     document.getElementById('ocr-preview-wrap').style.display='block';
-    showToast('Error: '+(err.message||'Network error. Check connection.'),'error');
   });
 }
 
@@ -5422,10 +5523,13 @@ function applyOCRScores(){
     if(sc.ca1===''&&sc.ca2===''&&sc.ca3===''&&sc.exam==='')return Promise.resolve();
     return dbUpsertScore(s.id,idx,sc.ca1,sc.ca2,sc.ca3,sc.exam);
   })).then(function(){
+    return settleAIUsage('succeeded');
+  }).then(function(){
     hideLoad();closeModal('modal-ocr');
     openSheet(idx);
     showToast(applied+' students scored via OCR scan');
   }).catch(function(){
+    settleAIUsage('failed');
     hideLoad();closeModal('modal-ocr');
     openSheet(idx);
     showToast('Scores applied. Tap Save Draft to sync.','error');
