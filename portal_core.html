@@ -1844,7 +1844,7 @@ function handleAuthSubmit(event){
   var email=document.getElementById('auth-email').value.trim();
   var password=document.getElementById('auth-password').value;
   var invite=document.getElementById('auth-invite').value.trim();
-  if(AUTH_MODE==='register'&&invite.replace(/[\s,]+/g,'').toUpperCase()!=='AMBADIGUN'){authErr('auth-err','That invite code is not valid.');return;}
+  if(AUTH_MODE==='register'&&!invite.trim()){authErr('auth-err','Please enter an invite code.');return;}
   var submit=document.getElementById('auth-submit');submit.disabled=true;submit.textContent=AUTH_MODE==='register'?'Creating account…':'Signing in…';authErrClear('auth-err');
   resultAuthRequest('POST',{action:AUTH_MODE,email:email,password:password,invite_code:invite}).then(function(payload){
     if(AUTH_MODE==='register'&&!payload.session_created){

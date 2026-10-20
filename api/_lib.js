@@ -156,7 +156,7 @@ async function supabaseAuthRequest(path, body, accessToken) {
     'Content-Type': 'application/json',
     apikey: SUPABASE_KEY,
   };
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  headers.Authorization = `Bearer ${accessToken || SUPABASE_KEY}`;
   const response = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
     method: body === undefined ? 'GET' : 'POST',
     headers,
