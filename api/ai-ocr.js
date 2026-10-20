@@ -1,9 +1,19 @@
 'use strict';
 
-const { bearerTokenFromRequest, readJsonBody, requestOriginAllowed, sendJson, supabaseRpc } = require('./_lib');
+
+
+const { bearerTokenFromRequest, readJsonBody, requestOriginAllowed, sendJson, supabaseRpc, supabaseRest } = require('./_lib');
 
 const MODEL = process.env.GEMINI_MODEL || process.env.FIRST_CHOICE_GEMINI_MODEL || 'gemini-2.5-flash';
-const API_KEY = process.env.GEMINI_API_KEY || process.env.FIRST_CHOICE_GEMINI_API_KEY;
+
+async function resolveApiKey(token) {
+  if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
+  if (process.env.FIRST_CHOICE_GEMINI_API_KEY) return process.env.FIRST_CHOICE_GEMINI_API_KEY;
+  const rows = await supabaseRest('app_config?select=config&limit=1', {}, token).catch(() => []);
+  const cfg = rows?.[0]?.config;
+  const parsed = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
+  return parsed?.gemini_key || parsed?.geminiKey || '';
+}
 
 function fail(code, message, status = 400) {
   const error = new Error(message);
@@ -19,7 +29,8 @@ module.exports = async function aiOcr(req, res) {
   if (!token) return sendJson(res, 401, { ok: false, code: 'RESULT_SESSION_REQUIRED' });
   let reservedLedger = null;
   try {
-    if (!API_KEY) fail('AI_PROVIDER_NOT_CONFIGURED', 'AI scanning is not configured on the server.', 503);
+    const apiKey = await resolveApiKey(token);
+    if (!apiKey) fail('AI_PROVIDER_NOT_CONFIGURED', 'AI scanning is not configured on the server. Please set GEMINI_API_KEY on Vercel or in Settings.', 503);
     const body = await readJsonBody(req);
     const operation = body.operation === 'ocr_student_names' ? 'ocr_student_names' : 'ocr_scores';
     if (!body.image_base64 || !body.mime_type || !body.prompt) fail('AI_REQUEST_INVALID', 'Image and prompt are required.');
@@ -30,7 +41,7 @@ module.exports = async function aiOcr(req, res) {
     if (!reserve?.ok) return sendJson(res, reserve?.code === 'AI_CREDITS_EXHAUSTED' ? 402 : 400, reserve);
     if (reserve.replayed) return sendJson(res, 200, { ok: true, replayed: true, ledger_id: reserve.ledger_id });
     reservedLedger = reserve.ledger_id;
-    const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent?key=${encodeURIComponent(API_KEY)}`, {
+    const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

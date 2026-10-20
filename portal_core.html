@@ -1196,10 +1196,10 @@ body.result-context-read-only .results-history-readable{display:flex}
         <div style="padding:16px">
           <p style="font-size:.75rem;color:var(--gray);line-height:1.45;margin-bottom:12px">Control whether new staff can register and change the invitation code used on the registration screen.</p>
           <div class="settings-grid" style="gap:12px">
-            <div class="fg"><label for="invite-code-setting">Invite code</label><input class="inp" id="invite-code-setting" type="text" autocomplete="off" placeholder="Enter a new invite code"/><small style="display:block;color:var(--gray);font-size:.72rem;margin-top:5px">Current default: <strong>AMB ADIGUN</strong> (spaces are optional).</small></div>
+            <div class="fg"><label for="invite-code-setting">Invite code</label><input class="inp" id="invite-code-setting" type="text" autocomplete="off" placeholder="Enter a new invite code"/><small style="display:block;color:var(--gray);font-size:.72rem;margin-top:5px">Current default: <strong>PORTAL2026</strong> (spaces are optional).</small></div>
             <div class="fg"><label for="invite-enabled-setting">Registration access</label><select class="sel" id="invite-enabled-setting"><option value="true">Enabled</option><option value="false">Paused</option></select></div>
           </div>
-          <div class="context-manager-row"><small id="invite-link-preview">Current invite code: AMB ADIGUN · Registration is enabled.</small><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline btn-sm" type="button" onclick="resetInviteCode()">Reset to AMB ADIGUN</button><button class="btn btn-primary btn-sm" type="button" onclick="saveInviteSettings()">Save invite settings</button></div></div>
+          <div class="context-manager-row"><small id="invite-link-preview">Current invite code: PORTAL2026 · Registration is enabled.</small><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline btn-sm" type="button" onclick="resetInviteCode()">Reset to PORTAL2026</button><button class="btn btn-primary btn-sm" type="button" onclick="saveInviteSettings()">Save invite settings</button></div></div>
         </div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:0" data-settings-group="management" id="demo-tools-card">
@@ -1606,7 +1606,7 @@ var CURRENT_AUTH_MODE=null;
 var CURRENT_PERMISSIONS=[];
 var CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
 var AUTH_MODE='login';
-var INVITE_CODE='AMB, ADIGUN';
+var INVITE_CODE='PORTAL2026';
 var MEMORY_AUTH_SESSION=null;
 var CONTEXT_READ_ONLY=false;
 window._academicContext=null;
@@ -2232,7 +2232,12 @@ function renderCurrentPageAfterSync(){
   if(id==='broadsheet')renderBroadsheet();
   if(id==='progress')renderProgress();
   if(id==='analytics')renderAnalytics();
-  if(id==='settings')renderSettings();
+  if(id==='settings'){
+    var activeTag = document.activeElement ? document.activeElement.tagName : '';
+    if(activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT'){
+      renderSettings();
+    }
+  }
   if(id==='history')renderHistoryContexts();
   if(id==='card'){
     var selector=document.getElementById('rc-stu');
@@ -2843,7 +2848,12 @@ function navTo(id,el){
     }
     renderAnalytics();
   }
-  if(id==='settings')renderSettings();
+  if(id==='settings'){
+    var activeTag = document.activeElement ? document.activeElement.tagName : '';
+    if(activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT'){
+      renderSettings();
+    }
+  }
   closeSidebar();
 }
 
@@ -3104,17 +3114,31 @@ function updateStaffMember(id,role,suspended){
 function loadInviteSettings(){
   var code=document.getElementById('invite-code-setting'),enabled=document.getElementById('invite-enabled-setting'),preview=document.getElementById('invite-link-preview');
   if(!code||!enabled)return;
-  resultDataRequest('management.invite.read',{}).then(function(payload){var invite=payload.invite||{};enabled.value=invite.invite_enabled===false?'false':'true';preview.textContent='Current invite code: AMB ADIGUN · '+(invite.invite_enabled===false?'Registration is paused.':'Registration is enabled.');}).catch(function(){preview.textContent='Current invite code: AMB ADIGUN · Unable to read live status.';});
+  resultDataRequest('management.invite.read',{}).then(function(payload){
+    var invite=payload.invite||{};
+    enabled.value=invite.invite_enabled===false?'false':'true';
+    var hint=invite.invite_hint||'PORTAL2026';
+    preview.textContent='Current invite code: '+hint+' · '+(invite.invite_enabled===false?'Registration is paused.':'Registration is enabled.');
+  }).catch(function(){
+    preview.textContent='Current invite code: PORTAL2026 · Unable to read live status.';
+  });
 }
 function resetInviteCode(){
   if(!hasResultPermission('management.review')){showToast('Management access is required.','error');return;}
-  var code=document.getElementById('invite-code-setting');if(code)code.value='AMBADIGUN';
-  var preview=document.getElementById('invite-link-preview');if(preview)preview.textContent='Reset ready: AMB ADIGUN · Click Save invite settings to apply it.';
+  var code=document.getElementById('invite-code-setting');if(code)code.value='PORTAL2026';
+  var preview=document.getElementById('invite-link-preview');if(preview)preview.textContent='Reset ready: PORTAL2026 · Click Save invite settings to apply it.';
 }
 function saveInviteSettings(){
   if(!hasResultPermission('management.review')){showToast('Management access is required.','error');return;}
   var code=document.getElementById('invite-code-setting'),enabled=document.getElementById('invite-enabled-setting');
-  resultDataRequest('management.invite.update',{invite_code:code?code.value.trim():'',invite_enabled:enabled?enabled.value==='true':true}).then(function(){var preview=document.getElementById('invite-link-preview');if(preview)preview.textContent='Current invite code: AMB ADIGUN · '+(enabled&&enabled.value==='true'?'Registration is enabled.':'Registration is paused.');showToast('Invite settings saved.');}).catch(function(error){showToast((error&&error.message)||'Invite settings could not be saved.','error');});
+  resultDataRequest('management.invite.update',{invite_code:code?code.value.trim():'',invite_enabled:enabled?enabled.value==='true':true}).then(function(res){
+    var hint=((res&&res.invite)||{}).invite_hint||(code&&code.value?code.value.trim():'PORTAL2026');
+    var preview=document.getElementById('invite-link-preview');
+    if(preview)preview.textContent='Current invite code: '+hint+' · '+(enabled&&enabled.value==='true'?'Registration is enabled.':'Registration is paused.');
+    showToast('Invite settings saved.');
+  }).catch(function(error){
+    showToast((error&&error.message)||'Invite settings could not be saved.','error');
+  });
 }
 
 // ============================================================
@@ -4853,8 +4877,9 @@ function renderAnalytics(){
 // ============================================================
 // SETTINGS
 // ============================================================
-function renderSettings(){
-  renderSettingsDashboard();
+function renderSettings(targetTab){
+  var currentActive = targetTab || (document.querySelector('[data-settings-tab].active') || {}).getAttribute('data-settings-tab') || 'identity';
+  renderSettingsDashboard(currentActive);
   hideDeveloperAIWalletManagement();
   refreshAIUsage();
   renderBillConfig();
@@ -4928,11 +4953,19 @@ function saveSecondaryDepartments(){
   if(!hasResultPermission('result_settings.manage')){showToast('Management access is required to change departments.','error');return;}
   var departments={ss1:{},ss2:{},ss3:{}};document.querySelectorAll('.secondary-dept-toggle').forEach(function(input){departments[input.getAttribute('data-level')][input.getAttribute('data-dept')]=input.checked;});var cfg=getCfg();cfg.secondaryDepartments=departments;saveCfg(cfg);renderHome();showToast('Senior Secondary departments saved.');
 }
-function renderSettingsDashboard(){
+function renderSettingsDashboard(targetTab){
   var root=document.getElementById('settings-dashboard-tabs');if(!root)return;
+  var currentActive = targetTab || (document.querySelector('[data-settings-tab].active') || {}).getAttribute('data-settings-tab') || 'identity';
   var tabs=[['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['ai','AI usage'],['subjects','Subjects'],['management','Management access']];
   root.innerHTML=tabs.map(function(t){return '<button type="button" data-settings-tab="'+t[0]+'" onclick="showSettingsTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
-  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');cards.forEach(function(card){var h=(card.querySelector('h3')||{}).textContent||'';if(card.classList.contains('obsolete-setting')){card.remove();return;}var g=card.id==='ai-wallet-management-card'||/AI Score|Admin Command/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';card.setAttribute('data-settings-group',g);});showSettingsTab('identity');
+  var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');
+  cards.forEach(function(card){
+    var h=(card.querySelector('h3')||{}).textContent||'';
+    if(card.classList.contains('obsolete-setting')){card.remove();return;}
+    var g=card.id==='ai-wallet-management-card'||/AI Score|Admin Command/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';
+    card.setAttribute('data-settings-group',g);
+  });
+  showSettingsTab(currentActive);
 }
 function showSettingsTab(tab){document.querySelectorAll('[data-settings-tab]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-settings-tab')===tab);});document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap').forEach(function(c){c.style.display=(c.getAttribute('data-settings-group')===tab)?'':'none';});var actions=document.getElementById('settings-global-actions');if(actions)actions.style.display=tab==='ai'?'none':'flex';}
 function saveSectionToggle(key,val){var cfg=getCfg();if(!cfg.sections)cfg.sections={};cfg.sections[key]=val;saveCfg(cfg);}

@@ -168,7 +168,7 @@ async function handleAction(action, payload, token) {
   if (action === 'management.invite.read') {
     await requireManagement(token);
     const rows = await supabaseRest('portal_access_config?id=eq.1&select=id,invite_enabled,invite_hint,updated_at&limit=1', {}, token);
-    return { ok: true, invite: rows?.[0] || { id: 1, invite_enabled: true, invite_hint: 'AMB••••••' } };
+    return { ok: true, invite: rows?.[0] || { id: 1, invite_enabled: true, invite_hint: 'POR••••26' } };
   }
   if (action === 'management.invite.update') {
     await requireManagement(token);
