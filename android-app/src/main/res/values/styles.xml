@@ -1,11 +1,11 @@
 <resources>
     <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:windowSplashScreenBackground">#075b38</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/first_choice_logo</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">#075b38</item>
+        <item name="android:windowSplashScreenBackground">#13254a</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/school_logo</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#13254a</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">#075b38</item>
-        <item name="android:navigationBarColor">#075b38</item>
+        <item name="android:statusBarColor">#13254a</item>
+        <item name="android:navigationBarColor">#13254a</item>
         <item name="android:windowNoTitle">true</item>
     </style>
 </resources>

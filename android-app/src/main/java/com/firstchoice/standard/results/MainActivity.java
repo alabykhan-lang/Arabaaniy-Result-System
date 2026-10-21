@@ -25,7 +25,7 @@ import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
     // Set your production portal URL here (e.g. deployed on Vercel)
-    private static final String PORTAL_URL = "https://your-school-portal.vercel.app/portal_core.html?v=20260813_a4print";
+    private static final String PORTAL_URL = "https://arabaaniy-result-system.vercel.app/portal_core.html";
     private static final int FILE_PICKER_REQUEST = 1001;
 
     private WebView webView;
@@ -40,9 +40,9 @@ public class MainActivity extends Activity {
         // Keep the Android system bars inside the school brand and keep
         // notification/home icons readable on modern edge-to-edge Android.
         Window window = getWindow();
-        int schoolGreen = Color.rgb(7, 91, 56);
-        window.setStatusBarColor(schoolGreen);
-        window.setNavigationBarColor(schoolGreen);
+        int schoolNavy = Color.rgb(19, 37, 74);
+        window.setStatusBarColor(schoolNavy);
+        window.setNavigationBarColor(schoolNavy);
         window.getDecorView().setSystemUiVisibility(0);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && window.getInsetsController() != null) {
             window.getInsetsController().setSystemBarsAppearance(

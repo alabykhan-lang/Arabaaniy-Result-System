@@ -284,8 +284,9 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 .progress-caption{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:0 0 6px;font-size:.75rem;color:var(--gray);font-weight:700}
 
 /* ── SETTINGS ── */
-.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.settings-layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:18px;align-items:start}.settings-dashboard-tabs{display:grid;gap:7px;position:sticky;top:84px;align-self:start;z-index:2}.settings-dashboard-tabs button{display:block;width:100%;border:1px solid var(--border);background:#fff;color:var(--g1);border-radius:10px;padding:11px 13px;text-align:left;font:600 .76rem 'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:.2s}.settings-dashboard-tabs button:hover{border-color:var(--g3);background:#faf5ea}.settings-dashboard-tabs button.active{background:var(--g1);color:#fff;border-color:var(--g1);box-shadow:0 6px 14px rgba(19,37,74,.15)}
+.settings-grid{display:flex;flex-direction:column;gap:18px;width:100%;min-width:0}
+.settings-grid>.tbl-wrap{width:100%!important;max-width:100%!important;min-width:0!important;margin-bottom:0!important;box-sizing:border-box}
+.settings-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px;align-items:start;width:100%;max-width:100%;min-width:0}.settings-dashboard-tabs{display:grid;gap:7px;position:sticky;top:84px;align-self:start;z-index:2}.settings-dashboard-tabs button{display:block;width:100%;border:1px solid var(--border);background:#fff;color:var(--g1);border-radius:10px;padding:11px 13px;text-align:left;font:600 .76rem 'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:.2s}.settings-dashboard-tabs button:hover{border-color:var(--g3);background:#faf5ea}.settings-dashboard-tabs button.active{background:var(--g1);color:#fff;border-color:var(--g1);box-shadow:0 6px 14px rgba(19,37,74,.15)}
 .settings-hero{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;background:linear-gradient(135deg,#13254a,#22427a);color:#fff;border-radius:18px;padding:22px 24px;margin-bottom:16px;box-shadow:0 14px 30px rgba(19,37,74,.18)}
 .settings-hero h2{font-family:'Fraunces',serif;font-size:1.45rem;margin:3px 0}.settings-hero p{font-size:.8rem;color:rgba(255,255,255,.78)}.settings-kicker{font-size:.65rem;letter-spacing:1.4px;font-weight:800;color:#f1d9a0}.settings-hero-badge{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:8px 12px;font-size:.72rem;font-weight:700}.settings-hero-badge .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#f1d9a0;margin-right:6px}.settings-dashboard-tabs{display:flex;gap:8px;overflow:auto;padding:2px 0 16px}.settings-dashboard-tabs button{border:1px solid var(--border);background:#fff;color:var(--g1);border-radius:999px;padding:9px 14px;font:600 .76rem 'Plus Jakarta Sans',sans-serif;white-space:nowrap;cursor:pointer}.settings-dashboard-tabs button.active{background:var(--g1);color:#fff;border-color:var(--g1)}.bill-section{border:1px solid var(--border);border-radius:12px;padding:12px;margin:10px 0;background:#fdfbf6}.bill-section h4{color:var(--g1);font-size:.82rem;margin-bottom:8px}.bill-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.bill-grid label{font-size:.7rem;color:var(--gray);font-weight:600}.bill-grid input{margin-top:4px;width:100%;padding:8px;border:1px solid var(--border);border-radius:7px}
 .toggle-row{display:flex;align-items:center;justify-content:space-between;
@@ -761,6 +762,286 @@ nav{padding:10px 10px}
 .subj-tag{background:#f6efdf;border-color:#e2cfa4}
 @media(max-width:600px){.content{padding:14px;padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))}.home-hero #home-sch-name{font-size:1.2rem!important}.home-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.home-hero{padding:24px 16px 20px!important}}
 @media print{body{background:#fff!important;background-image:none!important}}
+
+/* ================================================================
+   ROBUST SETTINGS DASHBOARD & MOBILE / DESKTOP RESPONSIVENESS
+   Completely prevents card shrinking on mobile & desktop-on-phone.
+   Guarantees zero overlapping from bottom navigation bar.
+   ================================================================ */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+#main {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+.content {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+#page-settings {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding-bottom: 30px;
+}
+
+.settings-hero {
+  border-radius: 16px;
+  padding: 20px 22px;
+  margin-bottom: 18px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-dashboard-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: sticky;
+  top: 84px;
+  align-self: start;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  padding: 10px;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.settings-dashboard-tabs button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 11px 14px;
+  text-align: left;
+  white-space: normal;
+  background: transparent;
+  color: var(--g1);
+  font-weight: 700;
+  font-size: .8rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  transition: all .18s ease;
+  box-sizing: border-box;
+}
+
+.settings-dashboard-tabs button:hover {
+  background: #f6efdf;
+  border-color: #e2cfa4;
+}
+
+.settings-dashboard-tabs button.active {
+  background: var(--g1) !important;
+  color: #fff !important;
+  box-shadow: inset 3px 0 0 var(--gold), 0 4px 12px rgba(19, 37, 74, .18) !important;
+}
+
+/* Settings content column: ALWAYS 100% full width of column, NEVER squished into 2 columns */
+.settings-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 18px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.settings-grid > .tbl-wrap {
+  display: block;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin-bottom: 0 !important;
+  box-sizing: border-box !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  box-shadow: var(--shadow) !important;
+  overflow: hidden !important;
+}
+
+.settings-grid > .tbl-wrap[style*="display: none"] {
+  display: none !important;
+}
+
+.settings-grid > .tbl-wrap .tbl-head {
+  padding: 14px 18px !important;
+  background: linear-gradient(180deg, #fdfbf6, #fff) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.settings-grid > .tbl-wrap > div:not(.tbl-head) {
+  padding: 18px 20px !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Ensure inputs and nested grids inside cards render beautifully */
+.settings-grid .fg {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.settings-grid .inp,
+.settings-grid .sel {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-grid .fg-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-grid .bill-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-grid .bill-section {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin: 12px 0;
+  background: #fdfbf6;
+  box-sizing: border-box;
+}
+
+/* Global Action Buttons (Save Settings, Sync, Reset) */
+#settings-global-actions {
+  margin-top: 22px;
+  display: flex !important;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 14px 18px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  width: 100%;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 20;
+}
+
+/* TABLETS, SMALL LAPTOPS & PHONES IN DESKTOP MODE (<= 1040px)
+   Switches the sidebar tabs to a horizontal pill bar so cards NEVER shrink */
+@media (max-width: 1040px) {
+  .settings-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 14px !important;
+  }
+  .settings-dashboard-tabs {
+    display: flex !important;
+    flex-direction: row !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    gap: 8px !important;
+    margin: 0 0 14px !important;
+    padding: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    border-radius: 12px !important;
+  }
+  .settings-dashboard-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+  .settings-dashboard-tabs button {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-height: 40px !important;
+    padding: 9px 15px !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+    font-size: .78rem !important;
+    border-radius: 999px !important;
+  }
+}
+
+/* MOBILE PHONES & APK VIEWPORTS (<= 640px)
+   Prevents all clipping and strictly eliminates overlay from bottom navigation bar */
+@media (max-width: 640px) {
+  .content {
+    padding: 12px !important;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .settings-hero {
+    padding: 16px 14px !important;
+    margin-bottom: 12px !important;
+  }
+  .settings-hero h2 {
+    font-size: 1.2rem !important;
+  }
+  .settings-dashboard-tabs {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 6px !important;
+    gap: 6px !important;
+  }
+  .settings-dashboard-tabs button {
+    min-height: 38px !important;
+    padding: 8px 12px !important;
+    font-size: .74rem !important;
+  }
+  .settings-grid > .tbl-wrap > div:not(.tbl-head) {
+    padding: 14px 12px !important;
+  }
+  .settings-grid .fg-row,
+  .settings-grid .bill-grid,
+  .settings-grid .fees-grid {
+    grid-template-columns: 1fr !important;
+  }
+  #page-settings {
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #settings-global-actions {
+    margin-top: 18px !important;
+    margin-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 12px 14px !important;
+    gap: 8px !important;
+  }
+  #settings-global-actions .btn {
+    flex: 1 1 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -1236,6 +1517,13 @@ nav{padding:10px 10px}
             <div class="fg"><label>Current term</label><select class="sel" id="cfg-term"><option>1st Term</option><option>2nd Term</option><option>3rd Term</option></select></div>
           </div>
           <div class="context-manager-row"><small id="context-manager-status">The active session and term are used throughout the portal.</small><button class="btn btn-primary btn-sm" type="button" onclick="activateNextAcademicTerm()">Activate Next Term</button></div>
+          <div style="margin-top:16px;padding:14px;background:#fdfbf6;border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-weight:700;font-size:.82rem;color:var(--g1)">📱 Android Mobile App</div>
+              <div style="font-size:.72rem;color:var(--gray)">Install the official Arrabaaniy Standard School APK on Android phones.</div>
+            </div>
+            <a href="./Arrabaaniy-Standard-School.apk" download class="btn btn-outline btn-sm" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download APK</a>
+          </div>
         </div>
       </div>
       <div class="tbl-wrap" data-settings-group="billing" style="margin-bottom:0;display:none">
@@ -1283,7 +1571,7 @@ nav{padding:10px 10px}
           </div>
         </div>
       </div>
-      <div class="tbl-wrap obsolete-setting" style="margin-bottom:0">
+      <div class="tbl-wrap" data-settings-group="academic" style="margin-bottom:0;display:none">
         <div class="tbl-head"><h3>Assessment scope</h3></div>
         <div style="padding:16px">
           <div class="fg"><label>Assessment entry mode</label><select class="sel" id="assessment-scope"><option value="full_class">Full class</option><option value="department">Department / subject group</option></select></div>
@@ -1291,7 +1579,7 @@ nav{padding:10px 10px}
           <button class="btn btn-outline btn-sm" type="button" onclick="saveAssessmentScope()">Save assessment mode</button>
         </div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0">
+      <div class="tbl-wrap" data-settings-group="academic" style="margin-bottom:0;display:none">
         <div class="tbl-head"><h3>Continuous assessment &amp; exam marks</h3></div>
         <div style="padding:16px">
           <div class="fg"><label>Number of CA entries per term</label><div id="assessment-ca-toggle" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"></div><select class="sel" id="assessment-ca-count" onchange="renderAssessmentConfigFields()" style="display:none"><option value="1">1 CA</option><option value="2">2 CAs</option><option value="3">3 CAs</option></select></div>
@@ -1301,7 +1589,7 @@ nav{padding:10px 10px}
           <button class="btn btn-outline btn-sm" type="button" onclick="saveAssessmentConfig()" style="margin-top:12px">Save mark structure</button>
         </div>
       </div>
-      <div class="tbl-wrap obsolete-setting" style="margin-bottom:0">
+      <div class="tbl-wrap" data-settings-group="academic" style="margin-bottom:0;display:none">
         <div class="tbl-head"><h3>Senior Secondary departments</h3></div>
         <div style="padding:16px">
           <p style="font-size:.75rem;color:var(--gray);line-height:1.45;margin-bottom:10px">SS1, SS2 and SS3 are always available. Turn on only the departments used by the school; the selected departments will appear after opening each SS class.</p>
@@ -5126,7 +5414,7 @@ function renderSettingsDashboard(targetTab){
   var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');
   cards.forEach(function(card){
     var h=(card.querySelector('h3')||{}).textContent||'';
-    if(card.classList.contains('obsolete-setting')){card.remove();return;}
+    // preserved settings cards
     var g=card.id==='ai-wallet-management-card'||/AI Score|Admin Command/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment|Senior Secondary/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';
     card.setAttribute('data-settings-group',g);
   });
@@ -5287,7 +5575,7 @@ function resetSettings(){if(!confirm('Reset the in-memory settings view?'))retur
 // EXPORT / IMPORT
 // ============================================================
 function downloadAndroidApp(){
-  window.location.href='https://github.com/alabykhan-lang/wts-result-system/releases/download/android-v1.0.1/WTS-Result-Management.apk';
+  window.location.href='./Arrabaaniy-Standard-School.apk';
 }
 function exportData(){
   resultActionRequest('results.export',{
