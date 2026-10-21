@@ -6,13 +6,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.CancellationSignal;
 import android.os.Environment;
+import android.os.ParcelFileDescriptor;
 import android.os.Build;
 import android.graphics.Color;
 import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
+import android.print.PageRange;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
@@ -135,24 +138,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (webView != null && printInProgress) {
-            final boolean restoreReportCard = reportCardPrintInProgress;
-            printInProgress = false;
-            reportCardPrintInProgress = false;
-            webView.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if (webView == null) return;
-                    String script = "(function(){"
-                        + "try{window.dispatchEvent(new Event('afterprint'));}catch(e){}"
-                        + (restoreReportCard
-                            ? "try{var p=document.getElementById('page-card');if(p){document.querySelectorAll('.page').forEach(function(x){x.classList.remove('active','print-active');});p.classList.add('active','print-active');var n=document.getElementById('ni-card');if(n){document.querySelectorAll('.ni').forEach(function(x){x.classList.remove('active');});n.classList.add('active');}try{sessionStorage.setItem('wts_page','card');}catch(e){}}}catch(e){}"
-                            : "")
-                        + "})();";
-                    webView.evaluateJavascript(script, null);
-                }
-            }, 250);
-        }
     }
 
     @Override
@@ -183,9 +168,7 @@ public class MainActivity extends Activity {
     private void printCurrentPage(final boolean reportCard) {
         if (webView == null) return;
 
-        // Native WebView printing does not reliably emit browser beforeprint,
-        // so trigger it explicitly. The portal uses it to fit each report card
-        // cleanly onto one A4 page.
+        // Ensure report cards fit A4 portrait cleanly before handing to Android Print Spooler
         webView.evaluateJavascript(
             "(function(){try{window.dispatchEvent(new Event('beforeprint'));}catch(e){}})();",
             null
@@ -193,7 +176,46 @@ public class MainActivity extends Activity {
 
         PrintManager printManager = (PrintManager) getSystemService(Context.PRINT_SERVICE);
         String jobName = getString(R.string.app_name) + (reportCard ? " Report Card" : " Print");
-        PrintDocumentAdapter adapter = webView.createPrintDocumentAdapter(jobName);
+        final PrintDocumentAdapter originalAdapter = webView.createPrintDocumentAdapter(jobName);
+
+        PrintDocumentAdapter adapter = new PrintDocumentAdapter() {
+            @Override
+            public void onStart() {
+                originalAdapter.onStart();
+            }
+
+            @Override
+            public void onLayout(PrintAttributes oldAttributes, PrintAttributes newAttributes,
+                                 CancellationSignal cancellationSignal,
+                                 LayoutResultCallback callback, Bundle extras) {
+                originalAdapter.onLayout(oldAttributes, newAttributes, cancellationSignal, callback, extras);
+            }
+
+            @Override
+            public void onWrite(PageRange[] pages, ParcelFileDescriptor destination,
+                                CancellationSignal cancellationSignal,
+                                WriteResultCallback callback) {
+                originalAdapter.onWrite(pages, destination, cancellationSignal, callback);
+            }
+
+            @Override
+            public void onFinish() {
+                originalAdapter.onFinish();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        printInProgress = false;
+                        reportCardPrintInProgress = false;
+                        if (webView != null) {
+                            webView.evaluateJavascript(
+                                "(function(){try{window.dispatchEvent(new Event('afterprint'));}catch(e){}})();",
+                                null
+                            );
+                        }
+                    }
+                });
+            }
+        };
 
         PrintAttributes.MediaSize mediaSize = reportCard
             ? PrintAttributes.MediaSize.ISO_A4.asPortrait()
@@ -214,7 +236,10 @@ public class MainActivity extends Activity {
         if (webView == null) return;
         webView.evaluateJavascript(
             "(function(){var p=document.getElementById('page-card');return !!(p&&(p.classList.contains('active')||p.classList.contains('print-active')));})()",
-            value -> printCurrentPage("true".equalsIgnoreCase(String.valueOf(value)))
+            value -> {
+                boolean isReportCard = value != null && value.replace("\"", "").trim().equalsIgnoreCase("true");
+                printCurrentPage(isReportCard);
+            }
         );
     }
 

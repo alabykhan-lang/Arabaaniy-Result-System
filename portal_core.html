@@ -4467,11 +4467,32 @@ function printReportCardDocument(){
 }
 function printCard(){
   if(!hasResultPermission('report_cards.generate')){showToast('Report-card printing is available to school administrators only.','error');return;}
-  var sid=document.getElementById('rc-stu').value;
-  if(!sid){showToast('Select a student first','error');return;}
-  refreshCard({silent:true}).then(function(){printReportCardDocument();}).catch(function(error){
-    showToast(error&&error.code?resultContextMessage(error):'Report-card permission required','error');
-  });
+  var sel=document.getElementById('rc-stu');
+  var sid=sel?sel.value:'';
+  if(!sid){
+    var students=DB_STUDENTS[CLS]||[];
+    if(students.length>0){
+      sid=students[0].id;
+      if(sel)sel.value=sid;
+    }
+  }
+  if(!sid){showToast('Please select a student first.','error');return;}
+  var wrap=document.getElementById('rc-wrap');
+  var card=wrap?wrap.querySelector('.report-card'):null;
+  if(!card){
+    showLoad('Preparing report card...');
+    renderCard().then(function(){
+      hideLoad();
+      fitReportCardsToOnePage();
+      printReportCardDocument();
+    }).catch(function(e){
+      hideLoad();
+      showToast('Could not load student report card','error');
+    });
+    return;
+  }
+  fitReportCardsToOnePage();
+  printReportCardDocument();
 }
 function renderBroadsheet(){
   var students=DB_STUDENTS[CLS]||[];
@@ -4750,11 +4771,7 @@ function resetReportCardPrintFit(){
 window.addEventListener('beforeprint',fitReportCardsToOnePage);
 window.addEventListener('afterprint',function(){
   resetReportCardPrintFit();
-  // Printing must finish on the report-card page, not the Home page.
   try{sessionStorage.removeItem('wts_print_return_page');}catch(e){}
-  if(document.getElementById('page-card')&&document.getElementById('page-card').classList.contains('print-active')){
-    navTo('card',document.getElementById('ni-card'));
-  }
 });
 
 // ============================================================
@@ -4762,11 +4779,15 @@ window.addEventListener('afterprint',function(){
 // ============================================================
 function populateCardSel(){
   var sel=document.getElementById('rc-stu');
+  if(!sel)return;
   var cur=sel.value;
   var students=DB_STUDENTS[CLS]||[];
   sel.innerHTML='<option value="">Select student</option>'+
     students.map(function(s){return'<option value="'+s.id+'">'+s.name+'</option>';}).join('');
   if(cur){var opt=sel.querySelector('option[value="'+cur+'"]');if(opt)sel.value=cur;}
+  if(!sel.value && students.length > 0){
+    sel.value = students[0].id;
+  }
 }
 
 function renderCardHome(){
@@ -4799,10 +4820,17 @@ function renderCardHome(){
 }
 function renderCard(){
   var sel=document.getElementById('rc-stu');
-  var sid=sel.value;
+  var sid=sel?sel.value:'';
   var wrap=document.getElementById('rc-wrap');
   if(!sid){
-    wrap.innerHTML='<div class="empty"><h3>Select a Student</h3><p>Choose a student to generate their result card</p></div>';
+    var students=DB_STUDENTS[CLS]||[];
+    if(students.length>0){
+      sid=students[0].id;
+      if(sel)sel.value=sid;
+    }
+  }
+  if(!sid){
+    if(wrap)wrap.innerHTML='<div class="empty"><h3>Select a Student</h3><p>Choose a student from the dropdown above to view and print their report card.</p></div>';
     return Promise.resolve(false);
   }
   var cardTerm=TERM;
