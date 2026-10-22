@@ -35,7 +35,7 @@ function fallbackProfile(user) {
   };
 }
 
-async function enrichUser(user, accessToken) {
+async function enrichUser(user, accessToken, isNewRegistration = false) {
   const fallback = fallbackProfile(user);
   if (!user?.id || !accessToken) return { user, profile: fallback };
   try {
@@ -49,14 +49,22 @@ async function enrichUser(user, accessToken) {
       }
       return { user, profile: rows[0] };
     }
-    const profile = await supabaseRest('staff_profiles', {
-      method: 'POST',
-      prefer: 'resolution=merge-duplicates,return=representation',
-      body: fallback,
-    }, accessToken);
-    return { user, profile: profile?.[0] || fallback };
+    // Allow auto-creation for developer, school admin, or fresh registration with invite code
+    if (fallback.is_developer || fallback.role === 'admin' || isNewRegistration) {
+      const profile = await supabaseRest('staff_profiles', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates,return=representation',
+        body: fallback,
+      }, accessToken);
+      return { user, profile: profile?.[0] || fallback };
+    }
+    // Account was previously registered but deleted/removed by an administrator
+    const error = new Error('This account has been removed by school administration.');
+    error.status = 403;
+    error.payload = { code: 'STAFF_REMOVED', message: error.message };
+    throw error;
   } catch (error) {
-    if (error?.payload?.code === 'STAFF_SUSPENDED') throw error;
+    if (error?.payload?.code === 'STAFF_SUSPENDED' || error?.payload?.code === 'STAFF_REMOVED') throw error;
     return { user, profile: fallback };
   }
 }
@@ -84,7 +92,8 @@ function authError(res, error) {
   if (message.includes('email not confirmed')) return sendJson(res, 403, { ok: false, code: 'EMAIL_NOT_CONFIRMED' });
   if (message.includes('already registered') || message.includes('already been registered')) return sendJson(res, 409, { ok: false, code: 'EMAIL_ALREADY_REGISTERED' });
   if (message.includes('suspended')) return sendJson(res, 403, { ok: false, code: 'STAFF_SUSPENDED', message: 'This staff account has been suspended.' });
-  sendJson(res, error?.status || 400, { ok: false, code: 'AUTH_REQUEST_FAILED', message: payload.msg || payload.message || 'Authentication failed.' });
+  if (message.includes('removed')) return sendJson(res, 403, { ok: false, code: 'STAFF_REMOVED', message: 'This account has been removed by school administration.' });
+  sendJson(res, error?.status || 400, { ok: false, code: payload.code || 'AUTH_REQUEST_FAILED', message: payload.msg || payload.message || 'Authentication failed.' });
 }
 
 module.exports = async function resultAuth(req, res) {
@@ -141,7 +150,7 @@ module.exports = async function resultAuth(req, res) {
           payload = await supabaseAuthRequest('token?grant_type=password', { email: body.email, password: body.password });
         } catch {}
       }
-      const enriched = payload.access_token ? await enrichUser(payload.user, payload.access_token) : { profile: fallbackProfile(payload.user) };
+      const enriched = payload.access_token ? await enrichUser(payload.user, payload.access_token, true) : { profile: fallbackProfile(payload.user) };
       if (payload.access_token) setSessionCookie(res, payload.access_token, payload.refresh_token);
       return sendJson(res, 200, { ok: true, auth_mode: 'local', session_created: Boolean(payload.access_token), user: payload.user || null, staff_profile: enriched.profile });
     }

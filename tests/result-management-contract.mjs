@@ -12,6 +12,7 @@ assert.match(portal, /document\.body\.classList\.remove\('central-management-mod
 assert.match(dataApi, /requireManagement\(token\)/);
 assert.match(dataApi, /management\.staff\.list/);
 assert.match(dataApi, /management\.staff\.update/);
+assert.match(dataApi, /management\.staff\.delete/);
 assert.match(dataApi, /management\.invite\.update/);
 
 console.log('Result management boundary contract passed');

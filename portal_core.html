@@ -576,8 +576,6 @@ body.central-management-mode .central-management-only{display:flex}
 .context-manager-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:12px 0;margin-top:12px;border-top:1px solid var(--border)}
 .context-manager-row small{color:var(--gray);font-size:.72rem;line-height:1.4}
 .staff-read-only #page-settings,.staff-read-only #ni-settings,.staff-read-only #bn-settings{display:none!important}
-.staff-read-only .report-card-print-only{display:none!important}
-.staff-read-only .edit-only,.staff-read-only #save-draft-btn,.staff-read-only #publish-btn,.staff-read-only #save-student-btn,.staff-read-only #save-profile-btn{display:none!important}
 .staff-access-note{padding:12px;border:1px solid #f0d58a;border-radius:10px;background:#fffaf0;color:#725500;font-size:.76rem;line-height:1.45}
 .staff-directory{display:grid;gap:10px}.staff-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fdfbf6}.staff-row strong{display:block;color:var(--g1);font-size:.82rem}.staff-row small{display:block;color:var(--gray);font-size:.7rem;margin-top:3px}.staff-row-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}.staff-status{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 8px;font-size:.66rem;font-weight:800}.staff-status::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}.staff-status.active{color:#087443;background:#e4f8ed}.staff-status.idle{color:#8a6500;background:#fff7d6}.staff-status.suspended{color:#a51d2d;background:#fee8eb}.staff-role{border:1px solid var(--border);border-radius:7px;padding:6px 8px;background:#fff;color:var(--g1);font-size:.72rem}.staff-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}@media(max-width:600px){.staff-row{grid-template-columns:1fr}.staff-actions{justify-content:flex-start}}
 .result-context-current{padding:15px;border:1px solid rgba(184,137,43,.5);border-radius:12px;background:#f6efdf;text-align:center}
@@ -2129,7 +2127,7 @@ function localUserFromPayload(payload){
   var adminEmail=String((getCfg().school||DEFAULT_SCHOOL).email||DEFAULT_SCHOOL.email).trim().toLowerCase();
   var role=profile.role|| (email===developerEmail?'developer':email===adminEmail?'admin':'staff');
   if(profile.suspended)role='suspended';
-  var permissions=role==='staff'?['results.view']:['results.manage','result_settings.manage','management.review','report_cards.generate','results.export'];
+  var isMgmt=role==='developer'||role==='admin';var permissions=isMgmt?['results.manage','result_settings.manage','management.review','report_cards.generate','results.export','scores.enter','students.manage']:['results.view','scores.enter','students.manage','report_cards.generate','results.export'];
   return {
     id:resultUser.id,
     email:resultUser.email,
@@ -3517,10 +3515,10 @@ function renderStaffOverview(){
   var role=CURRENT_USER&&CURRENT_USER._role||'staff';
   var label=role==='staff'?'Staff access':'School management access';
   if(role==='staff'){
-    el.innerHTML='<div class="staff-access-note"><strong>'+label+'</strong><br>This account can enter classes and view result records only. Settings and management review are hidden.</div>';
+    el.innerHTML='<div class="staff-access-note"><strong>'+label+'</strong><br>Normal Staff account: You have full access to enter marks, manage students, scan scores, and generate report cards. System configuration and staff account management are reserved for School Administrators.</div>';
     return;
   }
-  el.innerHTML='<div class="staff-access-note"><strong>'+label+'</strong><br>Review registered teachers, see their activity, promote or remove administrators, suspend access, and reset the registration invite code. Your private developer account is protected and hidden.</div>';
+  el.innerHTML='<div class="staff-access-note"><strong>'+label+'</strong><br>Administrator account: Manage school settings, review all registered accounts, promote or demote administrators and staff, suspend or remove unauthorized accounts, and configure the registration invite code.</div>';
   loadStaffDirectory();
   loadInviteSettings();
 }
@@ -3544,17 +3542,40 @@ function loadStaffDirectory(){
   if(status)status.textContent='Loading…';
   resultDataRequest('management.staff.list',{}).then(function(payload){
     var rows=Array.isArray(payload.staff)?payload.staff:[];
-    if(status)status.textContent=rows.length+' staff account'+(rows.length===1?'':'s');
-    if(!rows.length){el.innerHTML='<div class="empty"><h3>0 staff accounts registered</h3><p>No teachers or staff have registered yet. New registrations will appear here after their first sign-in.</p></div>';return;}
+    if(status)status.textContent=rows.length+' registered account'+(rows.length===1?'':'s');
+    if(!rows.length){el.innerHTML='<div class="empty"><h3>0 accounts registered</h3><p>No staff or teachers have registered yet. New registrations will appear here.</p></div>';return;}
+    var currentId=CURRENT_USER&&CURRENT_USER.id;
     el.innerHTML=rows.map(function(row){
       var display=row.display_name||row.email||'School staff';
-      var role=row.role==='admin'?'Admin':'Staff';
-      return '<div class="staff-row"><div><strong>'+escapeHtml(display)+'</strong><small>'+escapeHtml(row.email||'')+' · '+escapeHtml(staffSeenLabel(row))+'</small><div class="staff-row-meta">'+staffStatusLabel(row)+'<span class="staff-role">'+role+'</span></div></div><div class="staff-actions"><select class="staff-role" aria-label="Change staff role" onchange="updateStaffMember(\''+escapeHtml(row.id)+'\',this.value,'+Boolean(row.suspended)+')"><option value="staff" '+(row.role==='staff'?'selected':'')+'>Staff</option><option value="admin" '+(row.role==='admin'?'selected':'')+'>Admin</option></select><button class="btn btn-xs '+(row.suspended?'btn-outline':'btn-danger')+'" type="button" onclick="updateStaffMember(\''+escapeHtml(row.id)+'\',\''+row.role+'\','+(!row.suspended)+')">'+(row.suspended?'Restore access':'Suspend')+'</button></div></div>';
+      var isSelf=currentId&&String(row.id)===String(currentId);
+      var roleBadge=row.role==='admin'?'<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:700;background:#13254a;color:#c99a3b;">Admin</span>':'<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:600;background:#e8edf5;color:#13254a;">Staff</span>';
+      var statusBadge=row.suspended?'<span class="staff-status suspended">Suspended</span>':staffStatusLabel(row);
+      var roleSelect='<select class="staff-role" aria-label="Change staff role" style="font-size:.75rem;padding:4px 8px;border-radius:6px;" '+(isSelf?'disabled title="You cannot change your own role"':'')+' onchange="changeStaffRole(\''+escapeHtml(row.id)+'\',this.value,'+Boolean(row.suspended)+')"><option value="staff" '+(row.role==='staff'?'selected':'')+'>Staff</option><option value="admin" '+(row.role==='admin'?'selected':'')+'>Admin</option></select>';
+      var suspendBtn=isSelf?'':('<button class="btn btn-xs '+(row.suspended?'btn-outline':'btn-warning')+'" type="button" style="font-size:.72rem;padding:4px 8px;" onclick="toggleStaffSuspension(\''+escapeHtml(row.id)+'\',\''+row.role+'\','+(!row.suspended)+')">'+(row.suspended?'Unsuspend':'Suspend')+'</button>');
+      var removeBtn=isSelf?'':('<button class="btn btn-xs btn-danger" type="button" style="font-size:.72rem;padding:4px 8px;background:#b3261e;color:#fff;" onclick="deleteStaffMember(\''+escapeHtml(row.id)+'\',\''+escapeHtml(display)+'')">Remove</button>');
+      return '<div class="staff-row"><div><strong>'+escapeHtml(display)+(isSelf?' <span style="color:#c99a3b;font-size:.72rem;">(You)</span>':'')+'</strong><small>'+escapeHtml(row.email||'')+' · '+escapeHtml(staffSeenLabel(row))+'</small><div class="staff-row-meta">'+statusBadge+' '+roleBadge+'</div></div><div class="staff-actions">'+roleSelect+suspendBtn+removeBtn+'</div></div>';
     }).join('');
   }).catch(function(error){
     if(status)status.textContent='Unavailable';
     el.innerHTML='<div class="staff-access-note"><strong>Staff directory could not be loaded.</strong><br>Check the signed-in management account and refresh this overview.</div>';
   });
+}
+function changeStaffRole(id,role,suspended){
+  if(!hasResultPermission('management.review'))return;
+  var roleName=role==='admin'?'Administrator':'Normal Staff';
+  if(!confirm('Change account role to '+roleName+'?')) { loadStaffDirectory(); return; }
+  resultDataRequest('management.staff.update',{id:id,role:role,suspended:Boolean(suspended)}).then(function(){showToast('Role updated to '+roleName+'.');loadStaffDirectory();}).catch(function(error){showToast((error&&error.message)||'Could not update account role.','error');loadStaffDirectory();});
+}
+function toggleStaffSuspension(id,role,suspend){
+  if(!hasResultPermission('management.review'))return;
+  var actionText=suspend?'suspend':'unsuspend';
+  if(!confirm('Are you sure you want to '+actionText+' this account? '+(suspend?'The user will be immediately blocked from signing in or entering scores.':'Access will be restored.'))) return;
+  resultDataRequest('management.staff.update',{id:id,role:role,suspended:Boolean(suspend)}).then(function(){showToast('Account '+(suspend?'suspended':'restored')+'.');loadStaffDirectory();}).catch(function(error){showToast((error&&error.message)||'Could not update account suspension.','error');loadStaffDirectory();});
+}
+function deleteStaffMember(id,name){
+  if(!hasResultPermission('management.review'))return;
+  if(!confirm('Are you sure you want to remove unauthorized account "'+name+'"?\n\nThis will completely remove this account and revoke their access.')) return;
+  resultDataRequest('management.staff.delete',{id:id}).then(function(){showToast('Unauthorized account removed.');loadStaffDirectory();}).catch(function(error){showToast((error&&error.message)||'Could not remove account.','error');loadStaffDirectory();});
 }
 function updateStaffMember(id,role,suspended){
   if(!hasResultPermission('management.review'))return;
@@ -5966,6 +5987,7 @@ function runOCR(){
   })
   .catch(function(err){
     document.getElementById('ocr-loading').style.display='none';
+    document.getElementById('ocr-preview-wrap').style.display='block';
     settleAIUsage('failed');
     showToast(err.message||'OCR scan failed. Try a clearer photo.','error');
     document.getElementById('ocr-preview-wrap').style.display='block';

@@ -177,6 +177,8 @@ create policy "Staff can read own profile" on public.staff_profiles
   for select to authenticated using (id = (select auth.uid()) or (select private.is_management()));
 create policy "Management can update staff profiles" on public.staff_profiles
   for update to authenticated using ((select private.is_management())) with check ((select private.is_management()));
+create policy "Management can delete staff profiles" on public.staff_profiles
+  for delete to authenticated using ((select private.is_management()));
 create policy "Authenticated users can create own profile" on public.staff_profiles
   for insert to authenticated
   with check (
@@ -209,7 +211,7 @@ create policy "Management can update academic context" on public.academic_contex
   for update to authenticated using ((select private.is_management())) with check ((select private.is_management()));
 
 grant select on public.portal_access_config to anon;
-grant select, insert, update on public.staff_profiles to authenticated;
+grant select, insert, update, delete on public.staff_profiles to authenticated;
 grant select on public.staff_profiles to authenticated;
 
 -- Result records are readable by signed-in staff. Teachers can save the

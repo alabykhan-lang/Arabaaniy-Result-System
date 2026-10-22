@@ -34,9 +34,6 @@ async function currentStaff(token) {
   try {
     const rows = await supabaseRest(`staff_profiles?id=eq.${encodeURIComponent(user.id)}&limit=1`, {}, token);
     if (rows?.[0]) return { user, profile: rows[0] };
-    // Existing developer/admin sessions may have been created before the
-    // profile bootstrap was installed. Establish the protected profile before
-    // running management queries so RLS can recognise the manager.
     if (['developer', 'admin'].includes(fallback.role)) {
       const created = await supabaseRest('staff_profiles', {
         method: 'POST',
@@ -121,8 +118,6 @@ async function upsert(table, body, token) {
     fees: 'student_id,term,academic_session',
     published_subjects: 'class_key,subject_index,term,academic_session',
   };
-  // Keep composite conflict targets comma-separated for PostgREST. Encoding
-  // the commas can make the hosted Supabase REST endpoint ignore the target.
   const conflict = conflictKeys[table] ? `?on_conflict=${conflictKeys[table]}` : '';
   const rows = await supabaseRest(`${table}${conflict}`, {
     method: 'POST',
@@ -147,7 +142,16 @@ function unsupportedAction() {
 }
 
 async function handleAction(action, payload, token) {
+  const staff = await currentStaff(token);
+  if (staff.profile?.suspended) {
+    const error = new Error('This staff account has been suspended.');
+    error.status = 403;
+    error.payload = { code: 'RESULT_ACCOUNT_SUSPENDED', message: error.message };
+    throw error;
+  }
+
   if (NON_PERSISTENT_ACTIONS.has(action)) return { ok: true, read_only: true };
+
   if (action === 'management.staff.list') {
     await requireManagement(token);
     const rows = await supabaseRest('staff_profiles?is_developer=eq.false&order=last_seen_at.desc.nullslast,created_at.asc', {}, token);
@@ -156,14 +160,30 @@ async function handleAction(action, payload, token) {
   if (action === 'management.staff.update') {
     const manager = await requireManagement(token);
     if (!payload.id) throw Object.assign(new Error('Staff member is required.'), { payload: { code: 'RESULT_STAFF_REQUIRED' } });
-    if (String(payload.id) === String(manager.profile.id) && payload.suspended === true) throw Object.assign(new Error('You cannot suspend your own account.'), { payload: { code: 'RESULT_SELF_SUSPEND_DENIED' } });
+    if ((String(payload.id) === String(manager.profile.id) || String(payload.id) === String(manager.user?.id)) && payload.suspended === true) {
+      throw Object.assign(new Error('You cannot suspend your own account.'), { payload: { code: 'RESULT_SELF_SUSPEND_DENIED' } });
+    }
+    if ((String(payload.id) === String(manager.profile.id) || String(payload.id) === String(manager.user?.id)) && payload.role === 'staff') {
+      throw Object.assign(new Error('You cannot demote your own account.'), { payload: { code: 'RESULT_SELF_DEMOTE_DENIED' } });
+    }
     const target = await supabaseRest(`staff_profiles?id=eq.${encodeURIComponent(payload.id)}&limit=1`, {}, token);
     if (target?.[0]?.is_developer) throw Object.assign(new Error('The developer account cannot be changed here.'), { payload: { code: 'RESULT_DEVELOPER_PROTECTED' } });
-    const update = {};
+    const update = { updated_at: new Date().toISOString() };
     if (['staff', 'admin'].includes(payload.role)) update.role = payload.role;
     if (typeof payload.suspended === 'boolean') update.suspended = payload.suspended;
     const rows = await supabaseRest(`staff_profiles?id=eq.${encodeURIComponent(payload.id)}`, { method: 'PATCH', body: update }, token);
     return { ok: true, staff: rows?.[0] || null };
+  }
+  if (action === 'management.staff.delete') {
+    const manager = await requireManagement(token);
+    if (!payload.id) throw Object.assign(new Error('Staff member is required.'), { payload: { code: 'RESULT_STAFF_REQUIRED' } });
+    if (String(payload.id) === String(manager.profile.id) || String(payload.id) === String(manager.user?.id)) {
+      throw Object.assign(new Error('You cannot remove your own account.'), { payload: { code: 'RESULT_SELF_DELETE_DENIED' } });
+    }
+    const target = await supabaseRest(`staff_profiles?id=eq.${encodeURIComponent(payload.id)}&limit=1`, {}, token);
+    if (target?.[0]?.is_developer) throw Object.assign(new Error('The developer account cannot be removed.'), { payload: { code: 'RESULT_DEVELOPER_PROTECTED' } });
+    await supabaseRest(`staff_profiles?id=eq.${encodeURIComponent(payload.id)}`, { method: 'DELETE' }, token);
+    return { ok: true, removed: true, id: payload.id };
   }
   if (action === 'management.invite.read') {
     await requireManagement(token);
@@ -222,7 +242,6 @@ async function handleAction(action, payload, token) {
       const context = await upsert('academic_context', nextContext, token);
       return { ok: true, config, context };
     } catch (error) {
-      // Do not leave app_config and academic_context pointing at different terms.
       if (previous.app_config && Object.keys(previous.app_config).length) {
         try { await upsert('app_config', { id: 1, config: previous.app_config }, token); } catch (_) { /* preserve original error */ }
       }
@@ -260,9 +279,6 @@ async function handleAction(action, payload, token) {
         throw error;
       }
     }
-    // Update the exact score row when it already exists, otherwise insert it.
-    // This is deliberately explicit so score entry remains reliable even when
-    // PostgREST's composite upsert handling differs between deployments.
     const match = `scores?student_id=eq.${encodeURIComponent(payload.student_id)}&subject_index=eq.${encodeURIComponent(payload.subject_index)}&term=eq.${encodeURIComponent(payload.term)}&academic_session=eq.${encodeURIComponent(payload.academic_session)}&limit=1`;
     const existing = await supabaseRest(match, {}, token);
     const scoreBody = {
@@ -308,11 +324,15 @@ async function handleAction(action, payload, token) {
   }
   if (action === 'results.publish') {
     if (payload.published === false) {
+      await requireManagement(token);
       return unpublishResult(payload, token);
     }
     return { ok: true, published_subject: await upsert('published_subjects', payload, token) };
   }
-  if (action === 'results.unpublish') return unpublishResult(payload, token);
+  if (action === 'results.unpublish') {
+    await requireManagement(token);
+    return unpublishResult(payload, token);
+  }
   return unsupportedAction();
 }
 
