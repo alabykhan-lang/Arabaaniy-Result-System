@@ -10,6 +10,7 @@ import android.os.CancellationSignal;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.os.Build;
+import android.provider.MediaStore;
 import android.graphics.Color;
 import android.view.Window;
 import android.webkit.CookieManager;
@@ -26,6 +27,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import java.io.File;
+
 public class MainActivity extends Activity {
     // Set your production portal URL here (e.g. deployed on Vercel)
     private static final String PORTAL_URL = "https://arabaaniy-result-system.vercel.app/portal_core.html";
@@ -33,6 +36,8 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private ValueCallback<Uri[]> fileUploadCallback;
+    private Uri pendingCameraUri;
+    private File pendingCameraFile;
     private boolean printInProgress = false;
     private boolean reportCardPrintInProgress = false;
 
@@ -103,9 +108,26 @@ public class MainActivity extends Activity {
                     fileUploadCallback.onReceiveValue(null);
                 }
                 fileUploadCallback = callback;
-                Intent intent = params.createIntent();
+                pendingCameraUri = null;
+                pendingCameraFile = null;
+                Intent contentIntent = params.createIntent();
+                // capture="environment" asks for the camera. params.createIntent() only ever
+                // builds a document picker, which is why Take Photo opened the gallery.
+                if (params.isCaptureEnabled() && acceptsImages(params)) {
+                    Intent cameraIntent = buildCameraIntent();
+                    if (cameraIntent != null) {
+                        Intent chooser = Intent.createChooser(contentIntent, "Take a photo or choose from gallery");
+                        chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{cameraIntent});
+                        try {
+                            startActivityForResult(chooser, FILE_PICKER_REQUEST);
+                            return true;
+                        } catch (Exception ignored) {
+                            // fall through to the plain picker
+                        }
+                    }
+                }
                 try {
-                    startActivityForResult(intent, FILE_PICKER_REQUEST);
+                    startActivityForResult(contentIntent, FILE_PICKER_REQUEST);
                 } catch (Exception ex) {
                     fileUploadCallback = null;
                     return false;
@@ -150,9 +172,17 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == FILE_PICKER_REQUEST && fileUploadCallback != null) {
-            Uri[] result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+            Uri[] result;
+            if (resultCode == RESULT_OK && (data == null || data.getData() == null) && pendingCameraUri != null) {
+                // the camera app wrote the photo to our content:// Uri
+                result = new Uri[]{pendingCameraUri};
+            } else {
+                result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+            }
             fileUploadCallback.onReceiveValue(result);
             fileUploadCallback = null;
+            pendingCameraUri = null;
+            pendingCameraFile = null;
         }
     }
 
@@ -162,6 +192,29 @@ public class MainActivity extends Activity {
             webView.goBack();
         } else {
             super.onBackPressed();
+        }
+    }
+
+    private boolean acceptsImages(WebChromeClient.FileChooserParams params) {
+        String[] types = params.getAcceptTypes();
+        if (types == null || types.length == 0) return true;
+        for (String type : types) {
+            if (type != null && type.toLowerCase().contains("image")) return true;
+        }
+        return false;
+    }
+
+    private Intent buildCameraIntent() {
+        try {
+            pendingCameraFile = CameraFileProvider.newOutputFile(this);
+            pendingCameraUri = CameraFileProvider.uriFor(pendingCameraFile);
+            Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, pendingCameraUri);
+            intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            if (intent.resolveActivity(getPackageManager()) == null) return null;
+            return intent;
+        } catch (Exception ex) {
+            return null;
         }
     }
 
@@ -236,9 +289,12 @@ public class MainActivity extends Activity {
         if (webView == null) return;
         webView.evaluateJavascript(
             "(function(){var p=document.getElementById('page-card');return !!(p&&(p.classList.contains('active')||p.classList.contains('print-active')));})()",
-            value -> {
-                boolean isReportCard = value != null && value.replace("\"", "").trim().equalsIgnoreCase("true");
-                printCurrentPage(isReportCard);
+            new ValueCallback<String>() {
+                @Override
+                public void onReceiveValue(String value) {
+                    boolean isReportCard = value != null && value.replace("\"", "").trim().equalsIgnoreCase("true");
+                    printCurrentPage(isReportCard);
+                }
             }
         );
     }

@@ -1,6 +1,18 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.arrabaaniy.standard.results"
+    android:versionCode="6"
+    android:versionName="1.3.0">
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Needed on Android 11+ so the app can see the camera app before launching it. -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -19,5 +31,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Lets the camera app write the photo straight into this app's cache. -->
+        <provider
+            android:name="com.firstchoice.standard.results.CameraFileProvider"
+            android:authorities="com.arrabaaniy.standard.results.camera"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>
