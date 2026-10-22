@@ -1479,8 +1479,8 @@ html, body {
     </div>
     <!-- Charts -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
-      <div class="tbl-wrap" style="margin:0"><div class="tbl-head"><h3>Grade Distribution</h3></div><div style="padding:16px"><canvas id="ch-dist"></canvas></div></div>
-      <div class="tbl-wrap" style="margin:0"><div class="tbl-head"><h3>Subject Averages</h3></div><div style="padding:16px"><canvas id="ch-subj"></canvas></div></div>
+      <div class="tbl-wrap" style="margin:0"><div class="tbl-head"><h3>Grade Distribution</h3></div><div style="padding:16px;height:300px;position:relative"><canvas id="ch-dist" style="max-height:280px"></canvas></div></div>
+      <div class="tbl-wrap" style="margin:0"><div class="tbl-head"><h3>Subject Averages</h3></div><div style="padding:16px;height:300px;position:relative"><canvas id="ch-subj" style="max-height:280px"></canvas></div></div>
     </div>
   </div>
 
@@ -5447,10 +5447,10 @@ function renderAnalytics(){
   var gc2={A1:0,B2:0,B3:0,C4:0,C5:0,C6:0,D7:0,E8:0,F9:0};
   students.forEach(function(s){var sc=DB_SCORES[s.id]||{};subjs.forEach(function(_,i){var t=computeTotal(sc[i]);if(t!==''){var g=getGrade(t).g;gc2[g]=(gc2[g]||0)+1;}});});
   destroyChart('dist');
-  CHARTS.dist=new Chart(document.getElementById('ch-dist'),{type:'doughnut',data:{labels:Object.keys(gc2),datasets:[{data:Object.values(gc2),backgroundColor:['#065f46','#10b981','#34d399','#6ee7b7','#fbbf24','#f59e0b','#f97316','#ef4444','#991b1b'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,plugins:{legend:{position:'right'}}}});
+  CHARTS.dist=new Chart(document.getElementById('ch-dist'),{type:'doughnut',data:{labels:Object.keys(gc2),datasets:[{data:Object.values(gc2),backgroundColor:['#065f46','#10b981','#34d399','#6ee7b7','#fbbf24','#f59e0b','#f97316','#ef4444','#991b1b'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right'}}}});
   var subjAvgs=subjs.map(function(_,i){var vals=students.map(function(s){var sc=DB_SCORES[s.id]||{};return computeTotal(sc[i]);}).filter(function(x){return x!=='';});return vals.length?Math.round(vals.reduce(function(a,x){return a+x;},0)/vals.length*10)/10:0;});
   destroyChart('subj');
-  CHARTS.subj=new Chart(document.getElementById('ch-subj'),{type:'bar',data:{labels:subjs.map(function(s){return s.length>10?s.slice(0,10)+'..':s;}),datasets:[{label:'Avg',data:subjAvgs,backgroundColor:subjAvgs.map(function(v){return v>=70?'#10b981':v>=50?'#f59e0b':'#ef4444';}),borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100}}}});
+  CHARTS.subj=new Chart(document.getElementById('ch-subj'),{type:'bar',data:{labels:subjs.map(function(s){return s.length>10?s.slice(0,10)+'..':s;}),datasets:[{label:'Avg',data:subjAvgs,backgroundColor:subjAvgs.map(function(v){return v>=70?'#10b981':v>=50?'#f59e0b':'#ef4444';}),borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100}}}});
   var ranked=withData.slice().sort(function(a,b){return b.avg-a.avg;});
   destroyChart('rank');
   CHARTS.rank=new Chart(document.getElementById('ch-rank'),{type:'bar',data:{labels:ranked.map(function(s){return s.name.split(' ')[0];}),datasets:[{label:'Average',data:ranked.map(function(s){return s.avg;}),backgroundColor:ranked.map(function(s){return s.avg>=70?'#10b981':s.avg>=50?'#f59e0b':'#ef4444';}),borderRadius:4}]},options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:100}}}});
