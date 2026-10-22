@@ -4202,9 +4202,16 @@ function openSheet(idx){
         scoreStatus(sid,idx,'Save failed — not recorded','#991b1b');
         return;
       }
+      if(raw!==null&&raw<0){
+        inp.classList.add('over-limit');
+        showToast('Marks cannot be negative','error');
+        scoreStatus(sid,idx,'Not saved — negative mark','#991b1b');
+        return;
+      }
       if(raw!==null&&raw>max){
         inp.classList.add('over-limit');
         showToast('Max '+(field==='exam'?'Exam':'CA')+' is '+max,'error');
+        scoreStatus(sid,idx,'Not saved — max '+max,'#991b1b');
         return;
       }
       inp.classList.remove('over-limit');
