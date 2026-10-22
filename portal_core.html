@@ -1487,7 +1487,7 @@ html, body {
 
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
-    <div class="settings-hero"><div><span class="settings-kicker">PORTAL CONTROL CENTER</span><h2>Settings dashboard</h2><p>Manage identity, academic cycles, bills, report cards and subjects from focused sections.</p></div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end"><div class="settings-hero-badge"><span class="dot"></span> Continuous academic system</div><button class="btn btn-gold btn-sm" type="button" onclick="openDemoTools()">&#9881; Demo testing</button></div></div>
+    <div class="settings-hero"><div><span class="settings-kicker">PORTAL CONTROL CENTER</span><h2>Settings dashboard</h2><p>Manage identity, academic cycles, bills, report cards and subjects from focused sections.</p></div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end"><div class="settings-hero-badge"><span class="dot"></span> Continuous academic system</div></div></div>
     <div class="settings-layout">
     <aside id="settings-dashboard-tabs" class="settings-dashboard-tabs" aria-label="Settings sections">
       <button type="button" class="active" data-settings-tab="identity" onclick="showSettingsTab('identity')">School identity</button>
@@ -1619,14 +1619,7 @@ html, body {
           <div class="context-manager-row"><small id="invite-link-preview">Current invite code: PORTAL2026 · Registration is enabled.</small><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline btn-sm" type="button" onclick="resetInviteCode()">Reset to PORTAL2026</button><button class="btn btn-primary btn-sm" type="button" onclick="saveInviteSettings()">Save invite settings</button></div></div>
         </div>
       </div>
-      <div class="tbl-wrap" style="margin-bottom:0" data-settings-group="management" id="demo-tools-card">
-        <div class="tbl-head"><h3>Demo data &amp; testing</h3><span class="badge-access">Management only</span></div>
-        <div style="padding:16px">
-          <p style="font-size:.75rem;color:var(--gray);line-height:1.45;margin-bottom:12px">Load reversible sample pupils, profile pictures, scores and fee balances across the school to test the portal. Demo names begin with “Demo Pupil -” and can be removed here after testing.</p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" type="button" onclick="loadDemoData()">Load demo data</button><button class="btn btn-outline btn-sm" type="button" onclick="clearDemoData()">Clear demo data</button></div>
-          <small id="demo-data-status" style="display:block;color:var(--gray);font-size:.72rem;margin-top:10px">No demo data loaded by this tool yet.</small>
-        </div>
-      </div>
+      
       <div class="tbl-wrap" data-settings-group="cards" style="margin-bottom:0;display:none">
         <div class="tbl-head"><h3>Proprietor Signature</h3></div>
         <div style="padding:16px">
@@ -5524,7 +5517,7 @@ function renderSettingsDashboard(targetTab){
   cards.forEach(function(card){
     var h=(card.querySelector('h3')||{}).textContent||'';
     // preserved settings cards
-    var g=card.id==='ai-wallet-management-card'||/AI Score|Admin Command/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment|Senior Secondary/.test(h)?'academic':/Management access|Staff access|Registration invite|Demo data/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';
+    var g=card.id==='ai-wallet-management-card'||/AI Score|Admin Command/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment|Senior Secondary/.test(h)?'academic':/Management access|Staff access|Registration invite/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';
     card.setAttribute('data-settings-group',g);
   });
   showSettingsTab(currentActive);
