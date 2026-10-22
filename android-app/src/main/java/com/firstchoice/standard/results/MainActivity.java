@@ -38,6 +38,7 @@ public class MainActivity extends Activity {
     private WebView webView;
     private ValueCallback<Uri[]> fileUploadCallback;
     private Uri pendingCameraUri;
+    private Intent pendingPickIntent;
     private File pendingCameraFile;
     private boolean printInProgress = false;
     private boolean reportCardPrintInProgress = false;
@@ -120,9 +121,11 @@ public class MainActivity extends Activity {
                     Intent cameraIntent = buildCameraIntent();
                     if (cameraIntent != null) {
                         try {
+                            pendingPickIntent = contentIntent;
                             startActivityForResult(cameraIntent, FILE_PICKER_REQUEST);
                             return true;
                         } catch (Exception ignored) {
+                            pendingPickIntent = null;
                             // fall through to the picker
                         }
                     }
@@ -173,6 +176,20 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == FILE_PICKER_REQUEST && fileUploadCallback != null) {
+            if (resultCode != RESULT_OK && pendingPickIntent != null) {
+                // The camera gave nothing back. Rather than leaving the user stuck, open the
+                // gallery picker on the same tap.
+                Intent fallback = pendingPickIntent;
+                pendingPickIntent = null;
+                pendingCameraUri = null;
+                pendingCameraFile = null;
+                try {
+                    startActivityForResult(fallback, FILE_PICKER_REQUEST);
+                    return;
+                } catch (Exception ignored) {
+                    // fall through and report
+                }
+            }
             Uri[] result;
             if (resultCode == RESULT_OK && (data == null || data.getData() == null) && pendingCameraUri != null) {
                 // the camera app wrote the photo to our content:// Uri
@@ -184,6 +201,7 @@ public class MainActivity extends Activity {
             fileUploadCallback = null;
             pendingCameraUri = null;
             pendingCameraFile = null;
+            pendingPickIntent = null;
             if (resultCode != RESULT_OK) {
                 // say so in the page instead of silently dropping the user back on the form
                 webView.evaluateJavascript(
