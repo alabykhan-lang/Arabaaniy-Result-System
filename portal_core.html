@@ -3586,7 +3586,7 @@ function loadStaffDirectory(){
   resultDataRequest('management.staff.list',{}).then(function(payload){
     var rows=Array.isArray(payload.staff)?payload.staff:[];
     if(status)status.textContent=rows.length+' registered account'+(rows.length===1?'':'s');
-    if(!rows.length){el.innerHTML='<div class="empty"><h3>0 accounts registered</h3><p>No staff or teachers have registered yet. New registrations will appear here.</p></div>';return;}
+    if(!rows.length){el.innerHTML='<div class="empty"><h3>0 accounts registered</h3><p>No staff accounts yet. Use the form above to create one, or share the registration invite link.</p></div>';return;}
     var currentId=CURRENT_USER&&CURRENT_USER.id;
     el.innerHTML=rows.map(function(row){
       var display=row.display_name||row.email||'School staff';
