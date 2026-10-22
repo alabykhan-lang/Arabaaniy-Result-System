@@ -2775,7 +2775,7 @@ function setPublishedRemote(classKey,term,idx,val,cb){
       academic_session:getActiveSession(),
       published:!!val
     }).then(function(){
-      if(val)PUB_CACHE[pubKey(classKey,term,idx)]=true;
+      if(val){PUB_CACHE[pubKey(classKey,term,idx)]=true;freezeAssessmentScheme(term);}
       else delete PUB_CACHE[pubKey(classKey,term,idx)];
       if(cb)cb();
     }).catch(function(error){
@@ -3022,9 +3022,29 @@ function getGrade(t){
   return{g:'F9',r:'Fail',c:'#991b1b',bg:'#fee2e2'};
 }
 function gc(t){return getGrade(t).c;}
+function assessmentSnapshotKey(term,session){return String(session||getCfg().session||'')+'|'+String(term||TERM||'');}
+function freezeAssessmentScheme(term){
+  var cfg=getCfg();
+  var hist=Object.assign({},cfg.assessmentSnapshots||{});
+  var key=assessmentSnapshotKey(term);
+  var live=getAssessmentConfig();
+  var snap={caCount:Number(live.caCount||0),caMarks:(live.caMarks||[]).slice(),examMark:Number(live.examMark||0)};
+  if(hist[key]&&JSON.stringify(hist[key])===JSON.stringify(snap))return;
+  hist[key]=snap;
+  cfg.assessmentSnapshots=hist;
+  saveCfg(cfg);
+}
+function assessmentSchemeFor(term){
+  var live=getAssessmentConfig();
+  var t=term||'';
+  if(!t||t===TERM)return live; // the term being worked on always follows the live weights
+  var snap=(getCfg().assessmentSnapshots||{})[assessmentSnapshotKey(t)];
+  if(!snap)return live;        // terms published before this fix keep the old behaviour
+  return {caCount:Number(snap.caCount||live.caCount),caMarks:(snap.caMarks||live.caMarks).slice(),examMark:Number(snap.examMark||live.examMark)};
+}
 function computeTotal(sc){
   if(!sc)return'';
-  var assessment=getAssessmentConfig();var caVals=[sc.ca1,sc.ca2,sc.ca3].slice(0,assessment.caCount);
+  var assessment=assessmentSchemeFor(sc&&sc.term);var caVals=[sc.ca1,sc.ca2,sc.ca3].slice(0,assessment.caCount);
   var examVal=sc.exam;
   var hasCa=false;
   for(var i=0;i<caVals.length;i++)if(caVals[i]!==''&&caVals[i]!==null&&caVals[i]!==undefined)hasCa=true;
@@ -3498,7 +3518,10 @@ function activateNextAcademicTerm(){
   var session=String(cfg.session||DEFAULT_SESSION);
   if(current==='3rd Term')session=nextAcademicSession(session)||session;
   if(!confirm('Activate '+next+' for '+session+' across the full portal?'))return;
-  var nextCfg=Object.assign({},cfg,{session:session,term:next});
+  var frozen=Object.assign({},cfg.assessmentSnapshots||{});
+  var outKey=assessmentSnapshotKey(cfg.term,cfg.session);
+  if(!frozen[outKey]){var la=getAssessmentConfig();frozen[outKey]={caCount:Number(la.caCount||0),caMarks:(la.caMarks||[]).slice(),examMark:Number(la.examMark||0)};}
+  var nextCfg=Object.assign({},cfg,{session:session,term:next,assessmentSnapshots:frozen});
   resultDataRequest('settings.activate_next_term',{config:nextCfg,academic_session:session,term:next}).then(function(){
     saveCfg(nextCfg,{skipCloud:true});
     applyOfficialAcademicConfig(session,next,'open');
