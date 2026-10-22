@@ -2,15 +2,24 @@
 
 const { bearerTokenFromRequest, readJsonBody, requestOriginAllowed, sendJson, supabaseRpc, supabaseRest } = require('./_lib');
 
+// Model names are tried in order until one is accepted by the provider. The
+// provider rejects retired names with "no longer available to new users" / "is
+// not found for API version", so an ordered list is the only resilient option:
+// new names first, older ones kept as a last resort.
 const CANDIDATE_MODELS = Array.from(new Set([
   process.env.GEMINI_MODEL,
   process.env.FIRST_CHOICE_GEMINI_MODEL,
+  'gemini-3.8-flash',
+  'gemini-flash-latest',
+  'gemini-3-flash-preview',
+  'gemini-2.5-flash',
   'gemini-2.0-flash',
   'gemini-1.5-flash',
-  'gemini-2.5-flash',
-  'gemini-1.5-flash-8b',
   'gemini-1.5-pro',
 ].filter(Boolean)));
+
+// Some model names only exist on one API surface; try both before giving up.
+const API_VERSIONS = ['v1beta', 'v1'];
 
 async function resolveApiKey(bodyKey, token) {
   if (bodyKey && typeof bodyKey === 'string' && bodyKey.trim().length > 10) return bodyKey.trim();
@@ -54,43 +63,53 @@ module.exports = async function aiOcr(req, res) {
 
     let successfulData = null;
     let successfulModel = primaryModel;
+    let successfulVersion = API_VERSIONS[0];
     let lastError = null;
+    let keyRejected = false;
+    const tried = [];
 
     for (const model of CANDIDATE_MODELS) {
-      try {
-        const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: body.prompt }, { inline_data: { mime_type: body.mime_type, data: body.image_base64 } }] }],
-            generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
-          }),
-        });
-        const data = await upstream.json().catch(() => ({}));
-        if (upstream.ok && !data.error && data.candidates?.[0]?.content) {
-          successfulData = data;
-          successfulModel = model;
-          break;
-        } else {
-          lastError = data.error || { message: `Model ${model} returned HTTP ${upstream.status}` };
-          const msg = String(lastError?.message || '').toLowerCase();
-          if (msg.includes('api key not valid') || msg.includes('api_key_invalid')) {
+      for (const version of API_VERSIONS) {
+        try {
+          const upstream = await fetch(`https://generativelanguage.googleapis.com/${version}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: body.prompt }, { inline_data: { mime_type: body.mime_type, data: body.image_base64 } }] }],
+              generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+            }),
+          });
+          const data = await upstream.json().catch(() => ({}));
+          if (upstream.ok && !data.error && data.candidates?.[0]?.content) {
+            successfulData = data;
+            successfulModel = model;
+            successfulVersion = version;
             break;
           }
+          lastError = data.error || { message: `Model ${model} (${version}) returned HTTP ${upstream.status}` };
+          tried.push(`${model}@${version}: ${String(lastError?.message || '').slice(0, 120)}`);
+          const msg = String(lastError?.message || '').toLowerCase();
+          if (msg.includes('api key not valid') || msg.includes('api_key_invalid')) {
+            keyRejected = true;
+            break;
+          }
+        } catch (err) {
+          lastError = err;
+          tried.push(`${model}@${version}: ${String(err?.message || err).slice(0, 120)}`);
         }
-      } catch (err) {
-        lastError = err;
       }
+      if (successfulData || keyRejected) break;
     }
 
     if (!successfulData) {
-      await supabaseRpc('ai_settle_credits', { p_ledger_id: reserve.ledger_id, p_status: 'failed', p_input_tokens: 0, p_output_tokens: 0, p_billable_tokens: 0, p_credits_charged: 0, p_error_code: 'GEMINI_REQUEST_FAILED' }, token);
+      await supabaseRpc('ai_settle_credits', { p_ledger_id: reserve.ledger_id, p_status: 'failed', p_input_tokens: 0, p_output_tokens: 0, p_billable_tokens: 0, p_credits_charged: 0, p_error_code: keyRejected ? 'GEMINI_KEY_REJECTED' : 'GEMINI_REQUEST_FAILED' }, token);
       const detailMsg = lastError?.message ? ` (${lastError.message})` : '';
       return sendJson(res, 502, {
         ok: false,
-        code: 'AI_PROVIDER_REQUEST_FAILED',
+        code: keyRejected ? 'AI_PROVIDER_KEY_REJECTED' : 'AI_PROVIDER_REQUEST_FAILED',
         message: 'AI scanning failed' + detailMsg,
-        details: lastError?.message || 'Upstream provider error'
+        details: lastError?.message || 'Upstream provider error',
+        models_tried: tried.slice(0, 12)
       });
     }
 
@@ -105,6 +124,7 @@ module.exports = async function aiOcr(req, res) {
       ok: true,
       text,
       model: successfulModel,
+      api_version: successfulVersion,
       ledger_id: reserve.ledger_id,
       usage: { input_tokens: inputTokens, output_tokens: outputTokens, billable_tokens: total, credits_pending: credits }
     });
