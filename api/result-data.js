@@ -269,15 +269,6 @@ async function handleAction(action, payload, token) {
     }, token);
     return { ok: true, student: rows?.[0] || null };
   }
-  if (action === 'demo.clear') {
-    await requireManagement(token);
-    const prefix = String(payload.prefix || 'Demo Pupil -').trim() || 'Demo Pupil -';
-    const rows = await supabaseRest(`students?name=like.${encodeURIComponent(`${prefix}%`)}`, {
-      method: 'DELETE',
-      prefer: 'return=representation',
-    }, token);
-    return { ok: true, removed: Array.isArray(rows) ? rows.length : 0 };
-  }
   if (action === 'scores.enter') {
     const publication = await supabaseRest(`published_subjects?class_key=eq.${encodeURIComponent(payload.class_key)}&subject_index=eq.${encodeURIComponent(payload.subject_index)}&term=eq.${encodeURIComponent(payload.term)}&academic_session=eq.${encodeURIComponent(payload.academic_session)}&published=eq.true&limit=1`, {}, token);
     if (publication?.[0]) {
