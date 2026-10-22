@@ -6033,9 +6033,11 @@ function buildOCRPreview(rows,students){
     var dot={green:'#16a34a',yellow:'#d97706',red:'#dc2626'}[m.conf];
     var mn=m.student?m.student.name:'<em style="color:#dc2626">No match</em>';
     function inp(val,field,max){
+      var over=(val!=null&&(val<0||val>max));
       return '<input type="number" min="0" max="'+max+'" value="'+(val!=null?val:'')+'" '
         +'data-idx="'+i+'" data-field="'+field+'" onchange="updateOCRMatch(this)" '
-        +'style="width:38px;padding:3px;border:1px solid #ddd;border-radius:4px;text-align:center;font-size:.75rem"/>';
+        +'title="'+(over?'Impossible mark for this column - it will not be applied':'')+'" '
+        +'style="width:38px;padding:3px;border:1px solid '+(over?'#dc2626':'#ddd')+';border-radius:4px;text-align:center;font-size:.75rem;'+(over?'background:#fef2f2;color:#b91c1c;font-weight:700;':'')+'"/>';
     }
     html+='<tr style="background:'+bg+'">'
       +'<td style="padding:7px 10px"><span style="width:8px;height:8px;background:'+dot+';border-radius:50%;display:inline-block;margin-right:5px"></span>'+m.bookName+'</td>'
@@ -6057,9 +6059,13 @@ function updateOCRMatch(el){
 
 function applyOCRScores(){
   var assessment=getAssessmentConfig();
-  var applied=0;
+  var applied=0, skipped=0, unsafe=0;
   OCR_MATCHES.forEach(function(m){
-    if(!m.student)return;
+    if(!m.student||m.conf==='red'){skipped++;return;}
+    var bad=false;
+    assessment.caMarks.slice(0,assessment.caCount).forEach(function(mark,ci){var v=m['ca'+(ci+1)];if(v!=null&&(v<0||v>mark))bad=true;});
+    if(m.exam!=null&&(m.exam<0||m.exam>assessment.examMark))bad=true;
+    if(bad){unsafe++;return;}
     var sid=m.student.id;
     var idx=OCR_IDX;
     if(!DB_SCORES[sid])DB_SCORES[sid]={};
@@ -6080,7 +6086,7 @@ function applyOCRScores(){
   }).then(function(){
     hideLoad();closeModal('modal-ocr');
     openSheet(idx);
-    showToast(applied+' students scored via OCR scan');
+    showToast(applied+' students scored via OCR scan'+(skipped?' · '+skipped+' unmatched row(s) skipped':'')+(unsafe?' · '+unsafe+' row(s) with impossible marks skipped':'')||'', (skipped||unsafe)?'error':undefined);
   }).catch(function(){
     settleAIUsage('failed');
     hideLoad();closeModal('modal-ocr');
