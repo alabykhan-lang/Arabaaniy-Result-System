@@ -5791,18 +5791,33 @@ function applyResponsive(){
   if(sb&&w>=900)sb.classList.remove('open');
 }
 
+// A background refresh re-renders the page, which closes whatever the user is working in.
+// Taking a photo on a phone hides this page; returning from the camera used to trigger
+// exactly that. While any working dialog is open, the refresh is skipped.
+function suppressAutoRefresh(){
+  if(window.__captureInFlight)return true;
+  var ids=['modal-ocr','modal-bulk-students','modal-stu','modal-profile','modal-import','modal-remarks'];
+  for(var i=0;i<ids.length;i++){
+    var el=document.getElementById(ids[i]);
+    if(el){
+      var d=(el.style&&el.style.display)||getComputedStyle(el).display;
+      if(d&&d!=='none')return true;
+    }
+  }
+  return false;
+}
 // ============================================================
 // INIT
 // ============================================================
 window.addEventListener('DOMContentLoaded',function(){
   applyResponsive();
   window.addEventListener('resize',applyResponsive);
-  window.addEventListener('focus',function(){refreshPortalState();});
+  window.addEventListener('focus',function(){if(!suppressAutoRefresh())refreshPortalState();});
   document.addEventListener('visibilitychange',function(){
-    if(!document.hidden)refreshPortalState();
+    if(!document.hidden&&!suppressAutoRefresh())refreshPortalState();
   });
   setInterval(function(){
-    if(CURRENT_USER&&!document.hidden)refreshPortalState();
+    if(CURRENT_USER&&!document.hidden&&!suppressAutoRefresh())refreshPortalState();
   },60000);
   // Sensitive Result data is loaded only after a trusted session is present.
   // The legacy compatibility path still performs its own authenticated reads.
