@@ -1074,7 +1074,7 @@ html, body {
 
 <div id="sidebar">
   <div class="sb-logo" style="display:flex;align-items:center;gap:10px">
-    <img id="sb-logo" src="" style="width:42px;height:42px;object-fit:contain;border-radius:6px;background:#fff;padding:3px;flex-shrink:0"/>
+    <img alt="" id="sb-logo" src="" style="width:42px;height:42px;object-fit:contain;border-radius:6px;background:#fff;padding:3px;flex-shrink:0"/>
     <div><h1 style="font-size:.78rem;line-height:1.3">Results</h1><p style="font-size:.62rem;margin-top:2px;opacity:.8" id="sb-sch-name">Arrabaaniy Standard School</p></div>
   </div>
   <div class="sb-class-lbl" id="sb-class-lbl">
@@ -1222,7 +1222,7 @@ html, body {
   <div class="page active" id="page-home">
     <div style="max-width:720px;margin:0 auto">
       <div class="home-hero" style="background:var(--g1);border-radius:16px;padding:24px;text-align:center;margin-bottom:24px;box-shadow:var(--shadow2)">
-        <img id="home-logo" src="" style="width:110px;height:110px;object-fit:contain;margin:0 auto 10px;display:block;filter:drop-shadow(0 2px 8px rgba(0,0,0,.25))"/>
+        <img alt="" id="home-logo" src="" style="width:110px;height:110px;object-fit:contain;margin:0 auto 10px;display:block;filter:drop-shadow(0 2px 8px rgba(0,0,0,.25))"/>
         <h1 id="home-sch-name" style="font-family:'Fraunces',serif;color:var(--gold2);font-size:1.3rem;margin-bottom:4px">Arrabaaniy Standard School</h1>
         <p id="home-sch-addr" style="color:rgba(255,255,255,.6);font-size:.8rem">Off Isoko Road, Oko Oba, Oke Oyo, Ejigbo, Osun State</p>
         <div id="home-session" style="display:inline-block;background:var(--gold);color:var(--g1);font-size:.72rem;font-weight:700;padding:3px 14px;border-radius:20px;margin-top:10px">2026/2027 Session</div>
@@ -1776,7 +1776,7 @@ html, body {
         <input type="file" id="ocr-file" accept="image/*" style="display:none" onchange="handleOCRImage(event)"/>
         <input type="file" id="ocr-camera" accept="image/*" capture="environment" style="display:none" onchange="handleOCRImage(event)"/>
         <div id="ocr-preview-wrap" style="display:none;margin-top:14px;text-align:center">
-          <img id="ocr-preview-img" style="max-width:100%;max-height:180px;border-radius:8px;box-shadow:var(--shadow)"/>
+          <img alt="" id="ocr-preview-img" style="max-width:100%;max-height:180px;border-radius:8px;box-shadow:var(--shadow)"/>
           <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
             <button class="btn btn-primary" onclick="runOCR()">&#9654; Extract Scores</button>
             <button class="btn btn-outline btn-sm" onclick="resetOCR()">Change Photo</button>
@@ -3848,7 +3848,7 @@ function renderStudents(){
       +'<td><strong>'+(i+1)+'</strong></td>'
       +'<td><strong>'+s.name+'</strong></td>'
       +'<td><span class="badge '+(s.gender==='Male'?'badge-blue':'badge-gold')+'">'+s.gender+'</span></td>'
-      +'<td>'+(s.photo?'<img src="'+s.photo+'" style="width:30px;height:36px;object-fit:cover;border-radius:4px"/>':'--')+'</td>'
+      +'<td>'+(s.photo?'<img alt="" src="'+s.photo+'" style="width:30px;height:36px;object-fit:cover;border-radius:4px"/>':'--')+'</td>'
       +'<td style="display:flex;gap:6px">'
       +'<button class="btn btn-outline btn-xs" data-edit="'+s.id+'">Edit</button>'
       +'<button class="btn btn-danger btn-xs" data-del="'+s.id+'">Del</button>'
@@ -3885,7 +3885,7 @@ function openEditStu(id){
   photoDataURL=s.photo||'';
   var pp=document.getElementById('photo-preview');
   if(s.photo){
-    pp.innerHTML='<img src="'+s.photo+'" style="width:100%;height:100%;object-fit:cover"/>';
+    pp.innerHTML='<img alt="" src="'+s.photo+'" style="width:100%;height:100%;object-fit:cover"/>';
     document.getElementById('clear-photo-btn').style.display='block';
   }else{
     pp.innerHTML='<span style="font-size:1.5rem">&#128247;</span><span style="font-size:.6rem">No photo</span>';
@@ -3906,7 +3906,7 @@ function handlePhoto(e){
       canvas.width=w;canvas.height=h;
       canvas.getContext('2d').drawImage(img,0,0,w,h);
       photoDataURL=canvas.toDataURL('image/jpeg',0.75);
-      document.getElementById('photo-preview').innerHTML='<img src="'+photoDataURL+'" style="width:100%;height:100%;object-fit:cover"/>';
+      document.getElementById('photo-preview').innerHTML='<img alt="" src="'+photoDataURL+'" style="width:100%;height:100%;object-fit:cover"/>';
       document.getElementById('clear-photo-btn').style.display='block';
     };
     img.src=ev.target.result;
@@ -3926,11 +3926,35 @@ function generateAdmissionNumber(){
   for(var i=1;i<10000;i++){var candidate=prefix+'/'+String(i).padStart(4,'0');if(!used[candidate])return candidate;}
   return prefix+'/'+Date.now().toString().slice(-6);
 }
+function studentSaveError(error){
+  var c=String((error&&(error.code||error.message))||'');
+  if(c==='23502'||/not-null/i.test(c))return 'That student was not saved: a required detail is missing.';
+  if(c==='22P02'||/invalid input syntax/i.test(c))return 'That student was not saved: one of the values is not valid.';
+  if(/RESULT_PERMISSION_DENIED|Management access/i.test(c))return 'Your account is not allowed to save students.';
+  return 'That student could not be saved. Please try again.';
+}
 function saveStu(){
   if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
-  var name=document.getElementById('in-name').value.trim();
-  var gender=document.getElementById('in-gender').value;
-  if(!name||!gender){alert('Name and gender required.');return;}
+  var nameEl=document.getElementById('in-name'), genEl=document.getElementById('in-gender'), ageEl=document.getElementById('in-age');
+  var name=(nameEl.value||'').trim();
+  var gender=genEl.value;
+  var missing=[];
+  if(!name)missing.push('full name');
+  if(!gender)missing.push('gender');
+  if(missing.length){
+    if(!name){nameEl.style.outline='2px solid #dc2626';}
+    if(!gender){genEl.style.outline='2px solid #dc2626';}
+    try{(name?genEl:nameEl).focus();}catch(e){}
+    showToast('Please fill in the '+missing.join(' and ')+'.','error');
+    return;
+  }
+  nameEl.style.outline='';genEl.style.outline='';
+  var ageRaw=(ageEl.value||'').trim();
+  if(ageRaw!==''){
+    var ageNum=Number(ageRaw);
+    if(!isFinite(ageNum)||ageNum<3||ageNum>100){ageEl.style.outline='2px solid #dc2626';try{ageEl.focus();}catch(e){}showToast('Age must be between 3 and 100.','error');return;}
+    ageEl.style.outline='';
+  }
   var eid=document.getElementById('edit-id').value;
   var obj={name:name,gender:gender,
     admno:eid?((DB_STUDENTS[CLS]||[]).find(function(x){return x.id===eid;})||{}).admno||generateAdmissionNumber():generateAdmissionNumber(),
@@ -3953,7 +3977,7 @@ function saveStu(){
       }
       hideLoad();showToast(eid?'Student updated':'Student added');closeModal('modal-stu');renderStudents();renderDash();
     }).catch(function(error){
-      hideLoad();console.error('Protected student save error:',error);showToast('Student save denied','error');
+      hideLoad();console.error('Protected student save error:',error);showToast(studentSaveError(error),'error');
     });
     return;
   }
@@ -4332,7 +4356,7 @@ function renderProfile(s){
   document.getElementById('pf-class').textContent=DEPTS[CLS]?DEPTS[CLS].label:CLS;
   var promotionTarget=document.getElementById('pf-promotion-target');if(promotionTarget){var override=(getCfg().promotionOverrides||{})[String(s.id)]||{};promotionTarget.innerHTML='<option value="">Use promotion calculation</option>'+ALL_CLASSES.map(function(key){return '<option value="'+key+'">'+escapeHtml(DEPTS[key]?DEPTS[key].label:key)+'</option>';}).join('');promotionTarget.value=override.target||'';promotionTarget.disabled=!hasResultPermission('result_settings.manage');}
   var photo=document.getElementById('pf-photo');
-  photo.innerHTML=s.photo?'<img src="'+s.photo+'" style="width:100%;height:100%;object-fit:cover"/>':'&#128100;';
+  photo.innerHTML=s.photo?'<img alt="" src="'+s.photo+'" style="width:100%;height:100%;object-fit:cover"/>':'&#128100;';
 
   // Published subjects
   var subjs=subjects();var sc=DB_SCORES[sid]||{};
@@ -5020,7 +5044,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   var isCreative=theme.layout==='creative',isPremium=theme.layout==='premium';
   var P='-webkit-print-color-adjust:exact;print-color-adjust:exact';
 
-  var sigHTML=sig.image?('<img src="'+sig.image+'" style="height:38px;max-width:130px;object-fit:contain"/>')
+  var sigHTML=sig.image?('<img alt="" src="'+sig.image+'" style="height:38px;max-width:130px;object-fit:contain"/>')
     :sig.name?('<div style="font-family:Dancing Script,cursive;font-size:1.3rem;color:'+NAVY+'">'+sig.name+'</div>'):'';
   var sigTitle=sig.title||'Proprietor';
 
@@ -5029,7 +5053,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   // HEADER
   if(sec.showHeader){
     var logo=window.SCHOOL_LOGO
-      ?'<img src="'+window.SCHOOL_LOGO+'" style="width:'+(isCreative?'78px':'68px')+';height:'+(isCreative?'78px':'68px')+';object-fit:contain;border-radius:8px;background:#fff;padding:3px;'+P+'"/>'
+      ?'<img alt="" src="'+window.SCHOOL_LOGO+'" style="width:'+(isCreative?'78px':'68px')+';height:'+(isCreative?'78px':'68px')+';object-fit:contain;border-radius:8px;background:#fff;padding:3px;'+P+'"/>'
       :'<div style="font-weight:900;font-size:16pt;line-height:1;color:'+WHITE+'">'+(school.name?school.name.charAt(0):'★')+'</div>';
     var motto=school.motto||'';
     var contactParts=[school.addr, school.phone, school.email].filter(Boolean);
@@ -5065,7 +5089,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   if(sec.showBio){
     h+='<table style="width:100%;border-collapse:collapse;border-bottom:2px solid '+NAVY+';background:'+MINT+'">'
       +'<tr>'
-      +(sec.showPhoto&&s.photo?'<td style="padding:7px 10px;width:88px;text-align:center;border-right:1px solid '+BORDER+'"><img src="'+s.photo+'" style="width:62px;height:72px;object-fit:cover;border-radius:'+(isPremium?'4px':'50%')+';border:2px solid '+TEAL+';background:#fff"/></td>':'')
+      +(sec.showPhoto&&s.photo?'<td style="padding:7px 10px;width:88px;text-align:center;border-right:1px solid '+BORDER+'"><img alt="" src="'+s.photo+'" style="width:62px;height:72px;object-fit:cover;border-radius:'+(isPremium?'4px':'50%')+';border:2px solid '+TEAL+';background:#fff"/></td>':'')
       +'<td style="padding:7px 12px;'+(sec.showPhoto&&s.photo?'':'padding-left:16px;')+P+'">'
       +'<div style="font-size:10pt;font-weight:700;color:'+NAVY+'">NAME OF STUDENT: <span style="font-size:11pt;text-transform:uppercase">'+s.name+'</span></div>'
       +'<div style="margin-top:4px;display:flex;gap:20px;font-size:9pt">'
@@ -5484,7 +5508,7 @@ function previewSig(){
   var name=document.getElementById('cfg-sig-name').value;
   var cfg=getCfg();var sigImg=(cfg.signature||{}).image||'';
   var area=document.getElementById('sig-preview-wrap');if(!area)return;
-  if(sigImg)area.innerHTML='<img src="'+sigImg+'" style="max-height:60px;max-width:200px"/>';
+  if(sigImg)area.innerHTML='<img alt="" src="'+sigImg+'" style="max-height:60px;max-width:200px"/>';
   else if(name)area.innerHTML='<div style="font-family:\'Dancing Script\',cursive;font-size:1.8rem;color:var(--g1)">'+name+'</div>';
   else area.innerHTML='<p style="font-size:.8rem;color:var(--gray)">Tap to upload signature image</p>';
 }
@@ -5879,7 +5903,7 @@ function requestAIScan(payload){
     return data;
   }).catch(function(error){
     if(error&&error.code==='AI_CREDITS_EXHAUSTED')throw new Error('School AI credits are finished. Contact the developer to renew.');
-    throw new Error((error&&error.message)||'AI scanner is unavailable.');
+    throw new Error('The AI scanner could not read this photo. Try a clearer picture, or type the marks in by hand.');
   });
 }
 function settleAIUsage(status){
@@ -6111,6 +6135,6 @@ function applyOCRScores(){
 }
 </script>
 
-<img id="wts-logo" src="school-logo.png" style="display:none"/>
+<img alt="" id="wts-logo" src="school-logo.png" style="display:none"/>
 </body>
 </html>
