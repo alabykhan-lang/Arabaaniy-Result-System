@@ -6010,10 +6010,16 @@ function runOCR(){
 function normName(n){return (n||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();}
 
 function nameScore(a,b){
-  var wa=normName(a).split(' ');
-  var wb=normName(b).split(' ');
+  var wa=normName(a).split(' ').filter(function(w){return w.length>2;});
+  var wb=normName(b).split(' ').filter(function(w){return w.length>2;});
+  if(!wa.length||!wb.length)return 0;
   var hits=0;
-  wa.forEach(function(w){if(w.length>1&&wb.some(function(x){return x.indexOf(w)>-1||w.indexOf(x)>-1;}))hits++;});
+  wa.forEach(function(w){
+    var hit=wb.some(function(x){
+      if(x===w)return true;
+      if(w.length>=5&&x.length>=5&&(x.indexOf(w)===0||w.indexOf(x)===0))return true;
+      return false;});
+    if(hit)hits++;});
   return hits/Math.max(wa.length,1);
 }
 
@@ -6022,7 +6028,7 @@ function buildOCRPreview(rows,students){
   OCR_MATCHES=rows.map(function(row){
     var best=null,top=0;
     students.forEach(function(s){var sc=nameScore(row.name,s.name);if(sc>top){top=sc;best=s;}});
-    return {bookName:row.name,student:best,conf:top>=0.6?'green':top>=0.35?'yellow':'red',ca1:row.ca1,ca2:row.ca2,ca3:row.ca3,exam:row.exam};
+    return {bookName:row.name,student:(top>=0.45?best:null),conf:top>=0.7?'green':top>=0.45?'yellow':'red',ca1:row.ca1,ca2:row.ca2,ca3:row.ca3,exam:row.exam};
   });
   var tbody=document.getElementById('ocr-matches-tbody');
   if(!tbody)return;
