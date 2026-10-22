@@ -3922,7 +3922,8 @@ function generateAdmissionNumber(){
   var rows=DB_STUDENTS[CLS]||[];
   var used={};rows.forEach(function(row){if(row.admno)used[String(row.admno).toUpperCase()]=true;});
   var session=(getCfg().session||'2026/2027').replace(/[^0-9]/g,'').slice(-4)||'2627';
-  var prefix='FCSS/'+session+'/'+String(CLS||'STU').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+  var code=String(((getCfg().school||{}).code||'ARR')).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8)||'ARR';
+  var prefix=code+'/'+session+'/'+String(CLS||'STU').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
   for(var i=1;i<10000;i++){var candidate=prefix+'/'+String(i).padStart(4,'0');if(!used[candidate])return candidate;}
   return prefix+'/'+Date.now().toString().slice(-6);
 }
