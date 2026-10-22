@@ -4013,14 +4013,47 @@ function openStudentNameOCR(){
   var input=document.getElementById('student-name-ocr-file');if(input)input.click();
 }
 function runStudentNameOCR(evt){
-  var file=evt.target.files&&evt.target.files[0];if(!file)return;var key=getGeminiKey();var reader=new FileReader();
-  reader.onload=function(e){var src=e.target.result||'';var parts=src.split(',');var mime=file.type||'image/jpeg';var prompt='Read every student name from this school class list or record-book image. Return a JSON array only, with one object per visible student: {"name":"FULL NAME"}. Do not include serial numbers, headings, totals, or other text.';showLoad('Reading student names...');
-    fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:mime,data:parts[1]||src}}]}],generationConfig:{temperature:0.1,maxOutputTokens:2048}})})
-      .then(function(r){if(!r.ok)return r.json().then(function(x){throw new Error(x.error?x.error.message:'HTTP '+r.status);});return r.json();})
-      .then(function(data){var txt=data.candidates&&data.candidates[0]&&data.candidates[0].content.parts[0].text||'';var match=txt.match(/\[[\s\S]*\]/);if(!match)throw new Error('No names found');var rows=JSON.parse(match[0]);var names=rows.map(function(x){return typeof x==='string'?x:x.name;}).filter(Boolean);var box=document.getElementById('bulk-student-names');var current=box.value.trim();box.value=(current?current+'\n':'')+names.join('\n');updateBulkStudentCount();hideLoad();showToast(names.length+' student names extracted. Review before saving.');})
-      .catch(function(err){hideLoad();showToast('Could not extract names: '+(err.message||'check the image and API key'),'error');})
-      .finally(function(){evt.target.value='';});
-  };reader.readAsDataURL(file);
+  var file=evt.target.files&&evt.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var rawSrc=e.target.result||'';
+    var img=new Image();
+    img.onload=function(){
+      // same sharpening as the score scanner: 2048px at high quality
+      var MAX=2048,w=img.width,h=img.height;
+      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+      var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      var b64=canvas.toDataURL('image/jpeg',0.92).split(',')[1];
+      var prompt='Read every student name from this school class list or record-book image. '
+        +'Return a JSON array only, no other text: [{"name":"FULL NAME"}] with one object per row. '
+        +'Drop serial numbers, headings, totals and any non-name text. '
+        +'Keep the spelling exactly as handwritten; if a word is illegible keep your best reading rather than blanking the row.';
+      showLoad('Reading student names...');
+      // goes through the same server route as the score scanner, so it uses the
+      // working model list instead of a hardcoded one
+      requestAIScan({operation:'ocr_names',image_base64:b64,mime_type:'image/jpeg',prompt:prompt})
+        .then(function(data){
+          var txt='';
+          try{txt=data.text||(data.candidates&&data.candidates[0].content.parts[0].text)||'';}catch(err){txt='';}
+          var match=txt.match(/\[[\s\S]*\]/);
+          if(!match)throw new Error('no names found in that image');
+          var rows=JSON.parse(match[0]);
+          var names=rows.map(function(x){return typeof x==='string'?x:(x&&x.name);}).filter(Boolean).map(function(n){return String(n).trim();}).filter(Boolean);
+          if(!names.length)throw new Error('no names found in that image');
+          var box=document.getElementById('bulk-student-names');
+          var current=box.value.trim();
+          box.value=(current?current+'\n':'')+names.join('\n');
+          updateBulkStudentCount();hideLoad();
+          showToast(names.length+' student names extracted. Review before saving.');
+        })
+        .catch(function(err){hideLoad();showToast('Could not read the names. Try a clearer photo.','error');console.warn('name OCR:',err);})
+        .finally(function(){evt.target.value='';});
+    };
+    img.onerror=function(){hideLoad();showToast('That file could not be opened as an image.','error');};
+    img.src=rawSrc;
+  };
+  reader.readAsDataURL(file);
 }
 function saveBulkStudents(){
   if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
@@ -5955,7 +5988,7 @@ function handleOCRImage(evt){
     var img2=new Image();
     img2.onload=function(){
       // Resize to max 1200px for better handwriting legibility
-      var MAX=1200;
+      var MAX=2048;
       var w=img2.width,h=img2.height;
       if(w>MAX||h>MAX){
         if(w>h){h=Math.round(h*MAX/w);w=MAX;}
@@ -5965,7 +5998,7 @@ function handleOCRImage(evt){
       canvas.width=w; canvas.height=h;
       var ctx=canvas.getContext('2d');
       ctx.drawImage(img2,0,0,w,h);
-      var compressed=canvas.toDataURL('image/jpeg',0.85);
+      var compressed=canvas.toDataURL('image/jpeg',0.92);
       OCR_IMG_B64=compressed.split(',')[1];
       var prev=document.getElementById('ocr-preview-img');
       if(prev)prev.src=compressed;
@@ -5992,6 +6025,10 @@ function runOCR(){
     +'Return a JSON array only - no other text, no markdown, no code fences. '
     +'Each item must be: {"name":"STUDENT FULL NAME AS WRITTEN",'+assessment.caMarks.slice(0,assessment.caCount).map(function(_,i){return '"ca'+(i+1)+'":number_or_null';}).join(',')+',"exam":number_or_null} '
     +'If a score cell is empty, crossed out, or unreadable use null. '
+    +'RULES: match names to the registered list by spelling similarity, not by serial position. '
+    +'Never invent or estimate a mark - if a digit is faint but visibly present, read it; if truly illegible, null. '
+    +'A mark can never exceed its column maximum; if your reading exceeds it you misread the digit, so re-read that cell. '
+    +'Digits often confused in this handwriting: 1/7, 4/9, 3/8, 5/6, 0/6 - check both readings. '
     +'Include every student row visible. Start your response with [ and end with ].';
   requestAIScan({operation:'ocr_scores',image_base64:OCR_IMG_B64,mime_type:OCR_IMG_MIME,prompt:prompt})
   .then(function(data){
@@ -6043,6 +6080,15 @@ function runOCR(){
 
 function normName(n){return (n||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();}
 
+function editRatio(a,b){
+  if(a===b)return 1;
+  if(!a.length||!b.length)return 0;
+  var d=[];for(var i=0;i<=a.length;i++){d[i]=[i];}
+  for(var j=0;j<=b.length;j++){d[0][j]=j;}
+  for(i=1;i<=a.length;i++){for(j=1;j<=b.length;j++){
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));}}
+  return 1-d[a.length][b.length]/Math.max(a.length,b.length);
+}
 function nameScore(a,b){
   var wa=normName(a).split(' ').filter(function(w){return w.length>2;});
   var wb=normName(b).split(' ').filter(function(w){return w.length>2;});
@@ -6052,6 +6098,8 @@ function nameScore(a,b){
     var hit=wb.some(function(x){
       if(x===w)return true;
       if(w.length>=5&&x.length>=5&&(x.indexOf(w)===0||w.indexOf(x)===0))return true;
+      // handwriting spelling: one or two letters wrong is still the same child
+      if(w.length>=4&&x.length>=4&&editRatio(w,x)>=0.6)return true; // catches Bello/Bela, still rejects different names
       return false;});
     if(hit)hits++;});
   return hits/Math.max(wa.length,1);
@@ -6062,7 +6110,13 @@ function buildOCRPreview(rows,students){
   OCR_MATCHES=rows.map(function(row){
     var best=null,top=0;
     students.forEach(function(s){var sc=nameScore(row.name,s.name);if(sc>top){top=sc;best=s;}});
-    return {bookName:row.name,student:(top>=0.45?best:null),conf:top>=0.7?'green':top>=0.45?'yellow':'red',ca1:row.ca1,ca2:row.ca2,ca3:row.ca3,exam:row.exam};
+    var out={bookName:row.name,student:(top>=0.45?best:null),conf:top>=0.7?'green':top>=0.45?'yellow':'red',ca1:row.ca1,ca2:row.ca2,ca3:row.ca3,exam:row.exam};
+    // consistency check: a perfect mark in every single column is more often a misread
+    // than a real result, so it is flagged for the teacher to confirm.
+    var filled=[row.ca1,row.ca2,row.ca3,row.exam].filter(function(v){return v!=null;});
+    var fulls=filled.filter(function(v,i){var maxs=assessment.caMarks.slice(0,assessment.caCount);return i<maxs.length?v==maxs[i]:v==assessment.examMark;});
+    out.check=(filled.length>=3&&fulls.length===filled.length)?'Every column read as full marks - please confirm':'';
+    return out;
   });
   var tbody=document.getElementById('ocr-matches-tbody');
   if(!tbody)return;
@@ -6081,7 +6135,7 @@ function buildOCRPreview(rows,students){
     }
     html+='<tr style="background:'+bg+'">'
       +'<td style="padding:7px 10px"><span style="width:8px;height:8px;background:'+dot+';border-radius:50%;display:inline-block;margin-right:5px"></span>'+m.bookName+'</td>'
-      +'<td style="padding:7px 10px;font-weight:600">'+mn+'</td>'
+      +'<td style="padding:7px 10px;font-weight:600">'+mn+(m.check?'<br><span style="font-size:.62rem;color:#b45309;font-weight:600">'+m.check+'</span>':'')+'</td>'
       +assessment.caMarks.slice(0,assessment.caCount).map(function(mark,ci){return '<td style="padding:5px;text-align:center">'+inp(m['ca'+(ci+1)],'ca'+(ci+1),mark)+'</td>';}).join('')
       +'<td style="padding:5px;text-align:center">'+inp(m.exam,'exam',assessment.examMark)+'</td>'
       +'</tr>';
