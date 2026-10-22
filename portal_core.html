@@ -3552,7 +3552,7 @@ function loadStaffDirectory(){
       var statusBadge=row.suspended?'<span class="staff-status suspended">Suspended</span>':staffStatusLabel(row);
       var roleSelect='<select class="staff-role" aria-label="Change staff role" style="font-size:.75rem;padding:4px 8px;border-radius:6px;" '+(isSelf?'disabled title="You cannot change your own role"':'')+' onchange="changeStaffRole(\''+escapeHtml(row.id)+'\',this.value,'+Boolean(row.suspended)+')"><option value="staff" '+(row.role==='staff'?'selected':'')+'>Staff</option><option value="admin" '+(row.role==='admin'?'selected':'')+'>Admin</option></select>';
       var suspendBtn=isSelf?'':('<button class="btn btn-xs '+(row.suspended?'btn-outline':'btn-warning')+'" type="button" style="font-size:.72rem;padding:4px 8px;" onclick="toggleStaffSuspension(\''+escapeHtml(row.id)+'\',\''+row.role+'\','+(!row.suspended)+')">'+(row.suspended?'Unsuspend':'Suspend')+'</button>');
-      var removeBtn=isSelf?'':('<button class="btn btn-xs btn-danger" type="button" style="font-size:.72rem;padding:4px 8px;background:#b3261e;color:#fff;" onclick="deleteStaffMember(\''+escapeHtml(row.id)+'\',\''+escapeHtml(display)+'')">Remove</button>');
+      var removeBtn=isSelf?'':('<button class="btn btn-xs btn-danger" type="button" style="font-size:.72rem;padding:4px 8px;background:#b3261e;color:#fff;" onclick="deleteStaffMember(\''+escapeHtml(row.id)+'\')">Remove</button>');
       return '<div class="staff-row"><div><strong>'+escapeHtml(display)+(isSelf?' <span style="color:#c99a3b;font-size:.72rem;">(You)</span>':'')+'</strong><small>'+escapeHtml(row.email||'')+' · '+escapeHtml(staffSeenLabel(row))+'</small><div class="staff-row-meta">'+statusBadge+' '+roleBadge+'</div></div><div class="staff-actions">'+roleSelect+suspendBtn+removeBtn+'</div></div>';
     }).join('');
   }).catch(function(error){
@@ -3572,9 +3572,9 @@ function toggleStaffSuspension(id,role,suspend){
   if(!confirm('Are you sure you want to '+actionText+' this account? '+(suspend?'The user will be immediately blocked from signing in or entering scores.':'Access will be restored.'))) return;
   resultDataRequest('management.staff.update',{id:id,role:role,suspended:Boolean(suspend)}).then(function(){showToast('Account '+(suspend?'suspended':'restored')+'.');loadStaffDirectory();}).catch(function(error){showToast((error&&error.message)||'Could not update account suspension.','error');loadStaffDirectory();});
 }
-function deleteStaffMember(id,name){
+function deleteStaffMember(id){
   if(!hasResultPermission('management.review'))return;
-  if(!confirm('Are you sure you want to remove unauthorized account "'+name+'"?\n\nThis will completely remove this account and revoke their access.')) return;
+  if(!confirm('Are you sure you want to remove this unauthorized account?\n\nThis will completely remove this account and revoke their access.')) return;
   resultDataRequest('management.staff.delete',{id:id}).then(function(){showToast('Unauthorized account removed.');loadStaffDirectory();}).catch(function(error){showToast((error&&error.message)||'Could not remove account.','error');loadStaffDirectory();});
 }
 function updateStaffMember(id,role,suspended){
