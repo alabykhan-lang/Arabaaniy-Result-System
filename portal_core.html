@@ -2741,10 +2741,19 @@ function getSchool(){
   };
 }
 function getAutoRemark(avg){
-  if(avg===''||avg===null)return '--';
+  if(avg===''||avg===null||avg===undefined)return '--';
+  var v=Number(avg);
+  if(!isFinite(v))return '--';
   var r=getCfg().remarks||DEFAULT_REMARKS;
-  for(var i=0;i<r.length;i++){if(avg>=r[i].min&&avg<=r[i].max)return r[i].text;}
-  return '--';
+  // Bands are written as whole numbers (50-59, 60-69). A real average is a decimal, so
+  // 59.4 used to match no band at all and every such card printed '--'. Compare against
+  // the band rounded to half a mark, so 59.4 belongs to 50-59 and 59.6 to 60-69.
+  var key=Math.round(v*2)/2;
+  for(var i=0;i<r.length;i++){if(key>=Number(r[i].min)&&key<=Number(r[i].max))return r[i].text;}
+  // last resort: the nearest band below, so a remark is never blank
+  var best=null;
+  for(i=0;i<r.length;i++){if(Number(r[i].min)<=v)best=r[i];}
+  return best?best.text:'--';
 }
 // Published subjects - stored in Supabase published_subjects table
 // Published state is read only through the protected Result data boundary.
