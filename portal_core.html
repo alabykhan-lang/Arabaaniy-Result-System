@@ -1605,6 +1605,18 @@ html, body {
       <div class="tbl-wrap" style="margin-bottom:0" data-settings-group="management">
         <div class="tbl-head"><h3>Staff access controls</h3><span id="staff-directory-status" style="font-size:.7rem;color:var(--gray)">Loading…</span></div>
         <div style="padding:16px">
+          <div style="background:#f7faf7;border:1px solid #dbe7db;border-radius:10px;padding:14px;margin-bottom:14px">
+            <h4 style="margin:0 0 4px;font-size:.85rem">Create staff profile directly</h4>
+            <p style="font-size:.72rem;color:var(--gray);line-height:1.45;margin:0 0 10px">The account is confirmed immediately and appears in this directory at once. Give the staff member the temporary password securely and ask them to change it after signing in.</p>
+            <div class="settings-grid" style="gap:10px">
+              <div class="fg"><label for="new-staff-name">Full name</label><input class="inp" id="new-staff-name" type="text" autocomplete="off" placeholder="Full name"/></div>
+              <div class="fg"><label for="new-staff-email">Email address</label><input class="inp" id="new-staff-email" type="email" autocomplete="off" placeholder="Email address"/></div>
+              <div class="fg"><label for="new-staff-password">Temporary password</label><input class="inp" id="new-staff-password" type="text" autocomplete="off" placeholder="At least 8 characters"/></div>
+              <div class="fg"><label for="new-staff-role">Role</label><select class="sel" id="new-staff-role"><option value="staff">Staff</option><option value="admin">Administrator</option></select></div>
+            </div>
+            <div style="margin-top:10px"><button class="btn btn-primary btn-sm" type="button" onclick="createStaffProfile()">Create staff profile</button></div>
+            <small id="new-staff-status" style="display:block;color:var(--gray);font-size:.72rem;margin-top:8px"></small>
+          </div>
           <div id="staff-directory" class="staff-directory"><div class="empty"><p>No staff accounts registered yet.</p></div></div>
         </div>
       </div>
@@ -1865,10 +1877,12 @@ html, body {
       </div>
       <div class="fg"><label>Student names</label><textarea class="inp" id="bulk-student-names" rows="10" oninput="updateBulkStudentCount()" placeholder="One student name per line"></textarea></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-        <button class="btn btn-gold btn-sm" type="button" onclick="openStudentNameOCR()">&#128247; Scan names from image</button>
+        <button class="btn btn-gold btn-sm" type="button" onclick="document.getElementById('student-name-ocr-camera').click()">&#128247; Take Photo</button>
+        <button class="btn btn-outline btn-sm" type="button" onclick="openStudentNameOCR()">&#128444; From Gallery</button>
         <span id="bulk-count" style="font-size:.75rem;color:var(--gray);align-self:center">0 names</span>
       </div>
       <input type="file" id="student-name-ocr-file" accept="image/*" style="display:none" onchange="runStudentNameOCR(event)"/>
+      <input type="file" id="student-name-ocr-camera" accept="image/*" capture="environment" style="display:none" onchange="runStudentNameOCR(event)"/>
     </div>
     <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-bulk-students')">Cancel</button><button class="btn btn-primary" onclick="saveBulkStudents()">Save students</button></div>
   </div>
@@ -3617,6 +3631,36 @@ function resetInviteCode(){
   if(!hasResultPermission('management.review')){showToast('Management access is required.','error');return;}
   var code=document.getElementById('invite-code-setting');if(code)code.value='PORTAL2026';
   var preview=document.getElementById('invite-link-preview');if(preview)preview.textContent='Reset ready: PORTAL2026 · Click Save invite settings to apply it.';
+}
+function createStaffProfile(){
+  if(!hasResultPermission('management.review')){showToast('Management access is required.','error');return;}
+  var nameEl=document.getElementById('new-staff-name'),emailEl=document.getElementById('new-staff-email');
+  var pwEl=document.getElementById('new-staff-password'),roleEl=document.getElementById('new-staff-role');
+  var status=document.getElementById('new-staff-status');
+  var name=(nameEl.value||'').trim(),email=(emailEl.value||'').trim(),password=pwEl.value||'';
+  var role=roleEl?roleEl.value:'staff';
+  [nameEl,emailEl,pwEl].forEach(function(el){el.style.outline='';});
+  var bad=null,msg='';
+  if(!name){bad=nameEl;msg='Enter the staff member\'s full name.';}
+  else if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){bad=emailEl;msg='Enter a valid email address.';}
+  else if(password.length<8){bad=pwEl;msg='The temporary password must be at least 8 characters.';}
+  if(bad){bad.style.outline='2px solid #dc2626';try{bad.focus();}catch(e){}showToast(msg,'error');if(status)status.textContent=msg;return;}
+  showLoad('Creating the staff account...');
+  resultDataRequest('management.staff.create',{display_name:name,email:email,password:password,role:role})
+    .then(function(res){
+      hideLoad();
+      nameEl.value='';emailEl.value='';pwEl.value='';
+      var who=((res&&res.staff)||{}).display_name||name;
+      if(status)status.textContent='Created '+who+'. Give them the password you set, and ask them to change it after signing in.';
+      showToast(who+' can now sign in.');
+      renderStaffOverview();
+    })
+    .catch(function(error){
+      hideLoad();
+      var m=(error&&error.message)||'The account could not be created.';
+      if(status)status.textContent=m;
+      showToast(m,'error');
+    });
 }
 function saveInviteSettings(){
   if(!hasResultPermission('management.review')){showToast('Management access is required.','error');return;}

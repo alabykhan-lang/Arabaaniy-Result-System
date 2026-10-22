@@ -157,6 +157,59 @@ async function handleAction(action, payload, token) {
     const rows = await supabaseRest('staff_profiles?is_developer=eq.false&order=last_seen_at.desc.nullslast,created_at.asc', {}, token);
     return { ok: true, staff: rows || [] };
   }
+  if (action === 'management.staff.create') {
+    const manager = await requireManagement(token);
+    const email = String(payload.email || '').trim().toLowerCase();
+    const password = String(payload.password || '');
+    const displayName = String(payload.display_name || '').trim();
+    const role = String(payload.role || 'staff') === 'admin' ? 'admin' : 'staff';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      throw Object.assign(new Error('Enter a valid email address.'), { payload: { code: 'RESULT_STAFF_EMAIL_INVALID' } });
+    }
+    if (!displayName) {
+      throw Object.assign(new Error('Enter the staff member\'s full name.'), { payload: { code: 'RESULT_STAFF_NAME_REQUIRED' } });
+    }
+    if (password.length < 8) {
+      throw Object.assign(new Error('The temporary password must be at least 8 characters.'), { payload: { code: 'RESULT_STAFF_PASSWORD_SHORT' } });
+    }
+    const existing = await supabaseRest(`staff_profiles?email=eq.${encodeURIComponent(email)}&limit=1`, {}, token);
+    if (existing?.[0]) {
+      throw Object.assign(new Error('An account with that email already exists.'), { payload: { code: 'RESULT_STAFF_EXISTS' } });
+    }
+    let created = null;
+    try {
+      created = await supabaseAuthRequest('signup', {
+        email,
+        password,
+        data: { portal: 'arabaaniy_result', display_name: displayName },
+      });
+    } catch (error) {
+      const msg = String(error?.message || '');
+      if (/already registered|already exists/i.test(msg)) {
+        throw Object.assign(new Error('An account with that email already exists.'), { payload: { code: 'RESULT_STAFF_EXISTS' } });
+      }
+      throw Object.assign(new Error('The account could not be created. Please try again.'), { payload: { code: 'RESULT_STAFF_CREATE_FAILED' } });
+    }
+    const authUser = created?.user || created;
+    if (!authUser?.id) {
+      throw Object.assign(new Error('The account could not be created. Please try again.'), { payload: { code: 'RESULT_STAFF_CREATE_FAILED' } });
+    }
+    const profile = {
+      id: authUser.id,
+      email,
+      display_name: displayName,
+      role,
+      suspended: false,
+      is_developer: false,
+      school_id: manager.profile.school_id || null,
+    };
+    const saved = await supabaseRest('staff_profiles', {
+      method: 'POST',
+      prefer: 'resolution=merge-duplicates,return=representation',
+      body: profile,
+    }, token);
+    return { ok: true, staff: saved?.[0] || profile };
+  }
   if (action === 'management.staff.update') {
     const manager = await requireManagement(token);
     if (!payload.id) throw Object.assign(new Error('Staff member is required.'), { payload: { code: 'RESULT_STAFF_REQUIRED' } });
