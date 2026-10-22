@@ -378,13 +378,14 @@ async function handleAction(action, payload, token) {
   }
   if (action === 'results.publish') {
     if (payload.published === false) {
-      await requireManagement(token);
+      // Any signed-in staff account may unpublish. Publishing is already open to teachers,
+      // so requiring management to undo it trapped them: they could mark a subject published
+      // by mistake and then had no way back to the marks themselves.
       return unpublishResult(payload, token);
     }
     return { ok: true, published_subject: await upsert('published_subjects', payload, token) };
   }
   if (action === 'results.unpublish') {
-    await requireManagement(token);
     return unpublishResult(payload, token);
   }
   return unsupportedAction();
