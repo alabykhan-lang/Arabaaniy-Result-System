@@ -2886,8 +2886,9 @@ function calcCumulativePromotionAverage(studentId,classKey,scores,published){
   var terms=['1st Term','2nd Term','3rd Term'],values=[];
   terms.forEach(function(term){
     var rows=(scores||[]).filter(function(row){return String(row.student_id)===String(studentId)&&String(row.term)===term;});
+    var pubForTerm=(published&&!Array.isArray(published))?(published[term]||[]):(published||[]);
     var total=0,count=0;(DEPTS[classKey]?DEPTS[classKey].subjects:[]).forEach(function(_,idx){
-      if(published&&published.length&&!published.some(function(p){return Number(p.subject_index)===idx;}))return;
+      if(pubForTerm&&pubForTerm.length&&!pubForTerm.some(function(p){return Number(p.subject_index)===idx;}))return;
       var row=rows.find(function(s){return Number(s.subject_index)===idx;});var mark=computeTotal(row||null);
       if(mark!==''){total+=mark;count++;}
     });
@@ -2916,16 +2917,18 @@ function loadPromotionClassPlan(classKey,sourceSession,targetSession){
   return Promise.all([
     dbGet('students?class_key=eq.'+encodeURIComponent(sourceKey)+'&order=created_at.asc'),
     dbGet('scores?class_key=eq.'+encodeURIComponent(sourceKey)+'&term=eq.3rd%20Term'),
-    dbGet('published_subjects?class_key=eq.'+encodeURIComponent(sourceKey)+'&term=eq.3rd%20Term'),
+    dbGet('published_subjects?class_key=eq.'+encodeURIComponent(sourceKey)),
     cumulative?dbGet('scores?class_key=eq.'+encodeURIComponent(sourceKey)+'&term=eq.1st%20Term'):Promise.resolve([]),
     cumulative?dbGet('scores?class_key=eq.'+encodeURIComponent(sourceKey)+'&term=eq.2nd%20Term'):Promise.resolve([])
   ]).then(function(res){
     var students=res[0]||[],scores=res[1]||[],published=res[2]||[],allScores=scores.concat(res[3]||[],res[4]||[]);
+    var publishedByTerm={'1st Term':[],'2nd Term':[],'3rd Term':[]};
+    (published||[]).forEach(function(r){var t=String(r.term||'');if(publishedByTerm[t])publishedByTerm[t].push(r);});
     return {
       classKey:classKey,
       rule:rule,
       students:students.map(function(st){
-        var avg=cumulative?calcCumulativePromotionAverage(st.id,classKey,allScores,published):calcPromotionAverage(st.id,classKey,scores,published);
+        var avg=cumulative?calcCumulativePromotionAverage(st.id,classKey,allScores,publishedByTerm):calcPromotionAverage(st.id,classKey,scores,publishedByTerm['3rd Term']);
         var status=classifyPromotion(avg,rule);
         return {student:st,avg:avg,status:status,target:rule.target};
       })
@@ -3922,8 +3925,7 @@ function generateAdmissionNumber(){
   var rows=DB_STUDENTS[CLS]||[];
   var used={};rows.forEach(function(row){if(row.admno)used[String(row.admno).toUpperCase()]=true;});
   var session=(getCfg().session||'2026/2027').replace(/[^0-9]/g,'').slice(-4)||'2627';
-  var code=String(((getCfg().school||{}).code||'ARR')).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8)||'ARR';
-  var prefix=code+'/'+session+'/'+String(CLS||'STU').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+  var prefix='STU';
   for(var i=1;i<10000;i++){var candidate=prefix+'/'+String(i).padStart(4,'0');if(!used[candidate])return candidate;}
   return prefix+'/'+Date.now().toString().slice(-6);
 }
@@ -5177,7 +5179,8 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   }
 
   // NEXT TERM FEE SCHEDULE — planned charges, not current outstanding balances
-  if(sec.showFees&&getSessionCfg().showFees!==false&&configuredFees.length){
+  var anyFee=false;configuredFees.forEach(function(l){if(Number((feeMatrix[feeCategory]||{})[l]||0)>0)anyFee=true;});
+  if(sec.showFees&&getSessionCfg().showFees!==false&&configuredFees.length&&anyFee){
     h+='<div style="background:'+TEAL+';color:'+WHITE+';text-align:center;padding:5px;font-weight:700;font-size:9.5pt;text-transform:uppercase;'+P+'">Next Term Fee Schedule</div>'
       +'<table style="width:100%;border-collapse:collapse;border-top:2px solid '+NAVY+';font-size:8pt">'
       +'<thead><tr style="background:'+NAVY+';color:'+WHITE+';'+P+'"><th style="padding:5px 8px;text-align:left;border:1px solid '+BORDER+'">FEE ITEM</th><th style="padding:5px 8px;text-align:right;border:1px solid '+BORDER+'">NEXT TERM AMOUNT</th></tr></thead><tbody>'
