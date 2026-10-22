@@ -195,6 +195,16 @@ async function handleAction(action, payload, token) {
     const code = String(payload.invite_code || '').replace(/[\s,]+/g, '').toUpperCase();
     if (code && code.length < 6) throw Object.assign(new Error('Invite code must contain at least 6 characters.'), { payload: { code: 'RESULT_INVITE_INVALID' } });
     const update = { id: 1, invite_enabled: payload.invite_enabled !== false };
+    const existing = await supabaseRest('portal_access_config?id=eq.1&select=invite_code_hash,invite_hint&limit=1', {}, token);
+    const current = existing?.[0] || null;
+    if (current) {
+      // invite_code_hash / invite_hint are NOT NULL: keep the stored ones when the
+      // manager saves the switch without retyping the code.
+      update.invite_code_hash = current.invite_code_hash;
+      update.invite_hint = current.invite_hint;
+    } else if (!code) {
+      throw Object.assign(new Error('Enter an invite code to turn registration on.'), { payload: { code: 'RESULT_INVITE_INVALID' } });
+    }
     if (code) { update.invite_code_hash = inviteHash(code); update.invite_hint = `${code.slice(0, 3)}••••${code.slice(-2)}`; }
     const row = await upsert('portal_access_config', update, token);
     return { ok: true, invite: row };
