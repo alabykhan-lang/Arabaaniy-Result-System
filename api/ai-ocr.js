@@ -90,7 +90,7 @@ async function aiOcr(req, res) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts: [{ text: body.prompt }, { inline_data: { mime_type: body.mime_type, data: body.image_base64 } }] }],
-              generationConfig: { temperature: 0.1, maxOutputTokens: 2048, responseMimeType: 'application/json' }
+              generationConfig: { temperature: 0.1, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 }, responseMimeType: 'application/json' }
             }),
             signal: controller.signal,
           });
