@@ -1779,7 +1779,7 @@ html, body {
           </div>
         </div>
         <input type="file" id="ocr-file" accept="image/*" style="display:none" onchange="handleOCRImage(event)"/>
-        <input type="file" id="ocr-camera" accept="image/*" capture="environment" style="display:none" onchange="handleOCRImage(event)"/>
+        <input type="file" id="ocr-camera" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;left:-9999px" onchange="handleOCRImage(event)"/>
         <div id="ocr-preview-wrap" style="display:none;margin-top:14px;text-align:center">
           <img alt="" id="ocr-preview-img" style="max-width:100%;max-height:180px;border-radius:8px;box-shadow:var(--shadow)"/>
           <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
@@ -1877,12 +1877,12 @@ html, body {
       </div>
       <div class="fg"><label>Student names</label><textarea class="inp" id="bulk-student-names" rows="10" oninput="updateBulkStudentCount()" placeholder="One student name per line"></textarea></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-        <button class="btn btn-gold btn-sm" type="button" onclick="document.getElementById('student-name-ocr-camera').click()">&#128247; Take Photo</button>
+        <button class="btn btn-gold btn-sm" type="button" onclick="openStudentNameCamera()">&#128247; Take Photo</button>
         <button class="btn btn-outline btn-sm" type="button" onclick="openStudentNameOCR()">&#128444; From Gallery</button>
         <span id="bulk-count" style="font-size:.75rem;color:var(--gray);align-self:center">0 names</span>
       </div>
       <input type="file" id="student-name-ocr-file" accept="image/*" style="display:none" onchange="runStudentNameOCR(event)"/>
-      <input type="file" id="student-name-ocr-camera" accept="image/*" capture="environment" style="display:none" onchange="runStudentNameOCR(event)"/>
+      <input type="file" id="student-name-ocr-camera" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;left:-9999px" onchange="runStudentNameOCR(event)"/>
     </div>
     <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-bulk-students')">Cancel</button><button class="btn btn-primary" onclick="saveBulkStudents()">Save students</button></div>
   </div>
@@ -4053,8 +4053,11 @@ function openBulkStudentImport(){
 }
 function updateBulkStudentCount(){var el=document.getElementById('bulk-student-names');var count=el?(el.value.split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean).length):0;var out=document.getElementById('bulk-count');if(out)out.textContent=count+' name'+(count===1?'':'s')+(count>30?' (maximum 30)':'');}
 function openStudentNameOCR(){
-  if(!getGeminiKey()){showToast('Add Gemini API key in Settings first','error');return;}
+  // uses the server AI route, so no browser-side key is required
   var input=document.getElementById('student-name-ocr-file');if(input)input.click();
+}
+function openStudentNameCamera(){
+  var input=document.getElementById('student-name-ocr-camera');if(input)input.click();
 }
 function runStudentNameOCR(evt){
   var file=evt.target.files&&evt.target.files[0];if(!file)return;
