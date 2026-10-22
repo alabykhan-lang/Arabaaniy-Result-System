@@ -7,9 +7,13 @@ const CANDIDATE_MODELS = Array.from(new Set([
   process.env.FIRST_CHOICE_GEMINI_MODEL,
   'gemini-2.0-flash',
   'gemini-1.5-flash',
+  'gemini-2.5-flash',
+  'gemini-1.5-flash-8b',
+  'gemini-1.5-pro',
 ].filter(Boolean)));
 
-async function resolveApiKey(token) {
+async function resolveApiKey(bodyKey, token) {
+  if (bodyKey && typeof bodyKey === 'string' && bodyKey.trim().length > 10) return bodyKey.trim();
   if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
   if (process.env.FIRST_CHOICE_GEMINI_API_KEY) return process.env.FIRST_CHOICE_GEMINI_API_KEY;
   const rows = await supabaseRest('app_config?select=config&limit=1', {}, token).catch(() => []);
@@ -33,9 +37,9 @@ module.exports = async function aiOcr(req, res) {
 
   let reservedLedger = null;
   try {
-    const apiKey = await resolveApiKey(token);
-    if (!apiKey) fail('AI_PROVIDER_NOT_CONFIGURED', 'AI scanning is not configured on the server. Please set GEMINI_API_KEY on Vercel or in Settings.', 503);
     const body = await readJsonBody(req);
+    const apiKey = await resolveApiKey(body?.gemini_key, token);
+    if (!apiKey) fail('AI_PROVIDER_NOT_CONFIGURED', 'Gemini API key is not configured. Please enter your Gemini API key in Settings.', 503);
     const operation = body.operation === 'ocr_student_names' ? 'ocr_student_names' : 'ocr_scores';
     if (!body.image_base64 || !body.mime_type || !body.prompt) fail('AI_REQUEST_INVALID', 'Image and prompt are required.');
     if (String(body.image_base64).length > 8_000_000) fail('AI_IMAGE_TOO_LARGE', 'Image is too large.');
@@ -68,12 +72,9 @@ module.exports = async function aiOcr(req, res) {
           successfulModel = model;
           break;
         } else {
-          lastError = data.error || { message: `Model ${model} returned status ${upstream.status}` };
+          lastError = data.error || { message: `Model ${model} returned HTTP ${upstream.status}` };
           const msg = String(lastError?.message || '').toLowerCase();
-          if (upstream.status === 404 || msg.includes('not found') || msg.includes('no longer available')) {
-            continue;
-          }
-          if (upstream.status === 400 || upstream.status === 403 || upstream.status === 429) {
+          if (msg.includes('api key not valid') || msg.includes('api_key_invalid')) {
             break;
           }
         }
@@ -84,8 +85,13 @@ module.exports = async function aiOcr(req, res) {
 
     if (!successfulData) {
       await supabaseRpc('ai_settle_credits', { p_ledger_id: reserve.ledger_id, p_status: 'failed', p_input_tokens: 0, p_output_tokens: 0, p_billable_tokens: 0, p_credits_charged: 0, p_error_code: 'GEMINI_REQUEST_FAILED' }, token);
-      const friendlyMessage = 'AI scanning service is currently unavailable. Please verify your Gemini API key in Settings or enter scores manually.';
-      return sendJson(res, 502, { ok: false, code: 'AI_PROVIDER_REQUEST_FAILED', message: friendlyMessage, details: lastError?.message || 'Upstream provider error' });
+      const detailMsg = lastError?.message ? ` (${lastError.message})` : '';
+      return sendJson(res, 502, {
+        ok: false,
+        code: 'AI_PROVIDER_REQUEST_FAILED',
+        message: 'AI scanning failed' + detailMsg,
+        details: lastError?.message || 'Upstream provider error'
+      });
     }
 
     const usage = successfulData.usageMetadata || {};

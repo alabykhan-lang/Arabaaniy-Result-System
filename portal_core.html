@@ -5738,19 +5738,30 @@ function forceSyncSettings(){
     });
 }
 function saveGeminiKey(){
-  if(!CURRENT_USER||CURRENT_USER._role!=='developer'){showToast('Only the developer account can configure the Gemini provider.','error');return;}
+  if(!CURRENT_USER||(CURRENT_USER._role!=='developer'&&CURRENT_USER._role!=='admin')){showToast('Management access is required to configure the Gemini provider.','error');return;}
   var input=document.getElementById('gemini-key-input');
   var key=input?input.value.trim():'';
   if(!key){showToast('Enter a Gemini API key first.','error');return;}
   window._geminiKey=key;
-  try{sessionStorage.setItem('wts_gemini_key',key);}catch(e){}
-  if(input){input.value='';input.placeholder='Saved API key loaded';input.dataset.keyLoaded='true';}
-  showToast('OCR provider key loaded for this session.');
+  try{sessionStorage.setItem('arrabaaniy_gemini_key',key);localStorage.setItem('arrabaaniy_gemini_key',key);}catch(e){}
+  showLoad('Saving Gemini API key...');
+  resultDataRequest('settings.read',{}).then(function(res){
+    var cfg=(res&&res.settings&&res.settings.app_config)||{};
+    cfg.gemini_key=key;
+    return resultDataRequest('settings.app_config.update',{config:cfg});
+  }).then(function(){
+    hideLoad();
+    if(input){input.value='';input.placeholder='Saved API key loaded';input.dataset.keyLoaded='true';}
+    showToast('Gemini API key saved to server.');
+  }).catch(function(){
+    hideLoad();
+    if(input){input.value='';input.placeholder='Saved API key loaded';input.dataset.keyLoaded='true';}
+    showToast('Gemini key active for this session.');
+  });
 }
 function getGeminiKey(){
-  if(!CURRENT_USER||CURRENT_USER._role!=='developer')return '';
   if(window._geminiKey)return window._geminiKey;
-  try{window._geminiKey=sessionStorage.getItem('wts_gemini_key')||'';}catch(e){}
+  try{window._geminiKey=sessionStorage.getItem('arrabaaniy_gemini_key')||localStorage.getItem('arrabaaniy_gemini_key')||sessionStorage.getItem('wts_gemini_key')||'';}catch(e){}
   return window._geminiKey||'';
 }
 
@@ -5839,6 +5850,8 @@ function contactDeveloperForAI(){
 }
 function requestAIScan(payload){
   payload.idempotency_key='ai-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+  var customKey=getGeminiKey();
+  if(customKey)payload.gemini_key=customKey;
   return fetch('/api/ai-ocr',{
     method:'POST',
     credentials:'same-origin',
