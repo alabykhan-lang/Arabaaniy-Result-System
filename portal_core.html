@@ -4420,7 +4420,7 @@ function saveProfile(){
   });
   Promise.all([
     dbUpsertConflict('remarks','student_id,term,academic_session',{student_id:sid,class_key:dbClassKey(CLS),term:TERM,
-      academic:'',form_master:'',principal:'',days_opened:op,days_present:pr})
+      academic:(DB_REMARKS[sid]||{}).academic||'',form_master:(DB_REMARKS[sid]||{}).form_master||'',principal:(DB_REMARKS[sid]||{}).principal||'',days_opened:op,days_present:pr})
   ].concat(traitCalls)).then(function(){
     DB_REMARKS[sid]=DB_REMARKS[sid]||{};
     DB_REMARKS[sid].days_opened=op;DB_REMARKS[sid].days_present=pr;
