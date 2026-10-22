@@ -2127,7 +2127,7 @@ function localUserFromPayload(payload){
   var adminEmail=String((getCfg().school||DEFAULT_SCHOOL).email||DEFAULT_SCHOOL.email).trim().toLowerCase();
   var role=profile.role|| (email===developerEmail?'developer':email===adminEmail?'admin':'staff');
   if(profile.suspended)role='suspended';
-  var isMgmt=role==='developer'||role==='admin';var permissions=isMgmt?['results.manage','result_settings.manage','management.review','report_cards.generate','results.export','scores.enter','students.manage']:['results.view','scores.enter','students.manage','report_cards.generate','results.export'];
+  var isMgmt=role==='developer'||role==='admin';var permissions=role==='suspended'?[]:isMgmt?['results.manage','result_settings.manage','management.review','report_cards.generate','results.export','scores.enter','students.manage']:['results.view','scores.enter','students.manage','report_cards.generate','results.export'];
   return {
     id:resultUser.id,
     email:resultUser.email,
@@ -3014,6 +3014,7 @@ function subjects(){
 function getGrade(t){
   if(t===''||t===null||t===undefined)return{g:'',r:'',c:'#aaa',bg:'#f9f9f9'};
   t=Math.floor(Number(t)); // Floor so 74.4 = 74 = B2, not between grades
+  if(t>GRADE_SCALE[0].max)t=GRADE_SCALE[0].max; // above the top band is still the top grade, never F9
   for(var i=0;i<GRADE_SCALE.length;i++)if(t>=GRADE_SCALE[i].min&&t<=GRADE_SCALE[i].max)return GRADE_SCALE[i];
   return{g:'F9',r:'Fail',c:'#991b1b',bg:'#fee2e2'};
 }
@@ -4181,7 +4182,7 @@ function openSheet(idx){
     var total=computeTotal(sc);var grade=getGrade(total);
     html+='<div class="sheet-row" style="background:'+(rowIdx%2===0?'#fff':'#fafafa')+'">'
       +'<span style="font-size:.75rem;color:var(--gray)">'+(rowIdx+1)+'</span>'
-      +'<span style="font-size:.82rem;font-weight:600;color:var(--g1)">'+s.name+'<small id="ss-'+s.id+'-'+idx+'" style="display:block;font-size:.66rem;font-weight:600;color:var(--g1)">Saved</small></span>'
+      +'<span style="font-size:.82rem;font-weight:600;color:var(--g1)">'+s.name+'<small id="ss-'+s.id+'-'+idx+'" style="display:block;font-size:.66rem;font-weight:600;color:var(--g1)"></small></span>'
       +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[0]+'" value="'+scoreCellValue(sc.ca1)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca1"/>'
       +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[1]+'" value="'+scoreCellValue(sc.ca2)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca2" style="display:'+(assessment.caCount>=2?'':'none')+'"/>'
       +'<input class="sc-inp" type="number" min="0" max="'+assessment.caMarks[2]+'" value="'+scoreCellValue(sc.ca3)+'" placeholder="-" data-sid="'+s.id+'" data-field="ca3" style="display:'+(assessment.caCount>=3?'':'none')+'"/>'
@@ -4627,7 +4628,7 @@ function exportBroadsheetNow(){
     var row=[i+1,st.name,st.gender];
     subjs.forEach(function(_,idx){
       var r=sc[idx]||{};var t=computeTotal(r);
-      for(var ci=0;ci<assessment.caCount;ci++)row.push(r['ca'+(ci+1)]||'');row.push(r.exam||'',t!==''?t:'');
+      for(var ci=0;ci<assessment.caCount;ci++){var cv=r['ca'+(ci+1)];row.push((cv===null||cv===undefined||cv==='')?'':cv);}var ev=r.exam;row.push((ev===null||ev===undefined||ev==='')?'':ev,t!==''?t:'');
     });
     rows.push(row);
   });
@@ -4723,8 +4724,9 @@ function renderProgress(){
       var total=progressTotal(sc,stage);
       if(total!==''){currentTotal+=total;subjectCount++;}
     });
-    return{student:st,total:currentTotal,count:subjectCount};
+    return{student:st,total:currentTotal,count:subjectCount,hasData:subjectCount>0};
   }).sort(function(a,b){
+    if(a.hasData!==b.hasData)return a.hasData?-1:1;
     if(b.total!==a.total)return b.total-a.total;
     return String(a.student.name).localeCompare(String(b.student.name));
   });
@@ -5009,7 +5011,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   var feeCategory=FEE_CATS[CLS]||'primary';var feeMatrix=getBillMatrix();var configuredFees=getBillLines(feeCategory).filter(function(label){return isBillLineEnabled(feeCategory,label);});
   var dept=DEPTS[CLS]?DEPTS[CLS].label:CLS;
   var overallPerf=avg!==''?getGrade(avg).r:'--';
-  var att={opened:rem.days_opened||'',present:rem.days_present||'',absent:Number(rem.days_opened||0)-Number(rem.days_present||0)||''};
+  var att={opened:rem.days_opened||'',present:rem.days_present||'',absent:(rem.days_opened===''||rem.days_opened===null||rem.days_opened===undefined)?'':Math.max(0,Number(rem.days_opened||0)-Number(rem.days_present||0))};
 
   // The selected template changes presentation only; all values above remain
   // driven by the live portal data and management settings.
@@ -5290,7 +5292,7 @@ function renderAnalytics(){
     .sort(function(a,b){return b.avg-a.avg;});
   var unscored=summaries.filter(function(s){return s.avg==='';});
   var allRanked=ranked.concat(unscored);
-  var rank=1;
+  var rank=1,prevRank=1;
   document.getElementById('an-student-tbody').innerHTML=allRanked.map(function(s,i){
     var hasData=s.avg!==''&&s.avg!==null&&s.cnt>0;
     var avgNum=hasData?Number(s.avg):0;
@@ -5301,7 +5303,7 @@ function renderAnalytics(){
     var passCount=hasData?s.pass:'--';
     var totalSubjs=hasData?s.cnt:'--';
     var rkDisplay='--';
-    if(hasData){rkDisplay=rank;rank++;}
+    if(hasData){rkDisplay=(i>0&&allRanked[i-1].avg===s.avg)?prevRank:rank;prevRank=rkDisplay;rank=i+2;}
     var rkClass=typeof rkDisplay==='number'?(rkDisplay===1?'rk1':rkDisplay===2?'rk2':rkDisplay===3?'rk3':'rkn'):'rkn';
     return'<tr>'
       +'<td><span class="rk '+rkClass+'">'+rkDisplay+'</span></td>'
