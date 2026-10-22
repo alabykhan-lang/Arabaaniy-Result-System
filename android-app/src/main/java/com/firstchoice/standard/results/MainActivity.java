@@ -2,6 +2,7 @@ package com.firstchoice.standard.results;
 
 import android.app.Activity;
 import android.app.DownloadManager;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -31,7 +32,7 @@ import java.io.File;
 
 public class MainActivity extends Activity {
     // Set your production portal URL here (e.g. deployed on Vercel)
-    private static final String PORTAL_URL = "https://arabaaniy-result-system.vercel.app/portal_core.html";
+    private static final String PORTAL_URL = "https://arabaaniy-result-system.vercel.app/portal_core.html?app=131";
     private static final int FILE_PICKER_REQUEST = 1001;
 
     private WebView webView;
@@ -73,7 +74,7 @@ public class MainActivity extends Activity {
         settings.setDisplayZoomControls(false);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         settings.setTextZoom(100);
 
         CookieManager.getInstance().setAcceptCookie(true);
@@ -113,16 +114,16 @@ public class MainActivity extends Activity {
                 Intent contentIntent = params.createIntent();
                 // capture="environment" asks for the camera. params.createIntent() only ever
                 // builds a document picker, which is why Take Photo opened the gallery.
+                // Launch the camera directly: routing it through a chooser drops the
+                // content:// write grant, so the camera opens and immediately bounces back.
                 if (params.isCaptureEnabled() && acceptsImages(params)) {
                     Intent cameraIntent = buildCameraIntent();
                     if (cameraIntent != null) {
-                        Intent chooser = Intent.createChooser(contentIntent, "Take a photo or choose from gallery");
-                        chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{cameraIntent});
                         try {
-                            startActivityForResult(chooser, FILE_PICKER_REQUEST);
+                            startActivityForResult(cameraIntent, FILE_PICKER_REQUEST);
                             return true;
                         } catch (Exception ignored) {
-                            // fall through to the plain picker
+                            // fall through to the picker
                         }
                     }
                 }
@@ -183,6 +184,13 @@ public class MainActivity extends Activity {
             fileUploadCallback = null;
             pendingCameraUri = null;
             pendingCameraFile = null;
+            if (resultCode != RESULT_OK) {
+                // say so in the page instead of silently dropping the user back on the form
+                webView.evaluateJavascript(
+                    "(function(){try{if(window.showToast)window.showToast('No photo was returned. Use From Gallery instead.','error');}catch(e){}})();",
+                    null
+                );
+            }
         }
     }
 
@@ -211,6 +219,7 @@ public class MainActivity extends Activity {
             Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             intent.putExtra(MediaStore.EXTRA_OUTPUT, pendingCameraUri);
             intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.setClipData(ClipData.newRawUri("photo", pendingCameraUri));
             if (intent.resolveActivity(getPackageManager()) == null) return null;
             return intent;
         } catch (Exception ex) {
