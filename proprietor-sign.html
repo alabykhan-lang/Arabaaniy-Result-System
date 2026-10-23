@@ -52,6 +52,7 @@
             align-items:center; justify-content:center; z-index:50; }
   .review.on { display:flex; }
   .sheet { background:#fff; border-radius:16px; padding:18px; width:100%; max-width:420px;
+           max-height:92vh; overflow:auto;
            display:flex; flex-direction:column; gap:12px; }
   .sheet h2 { margin:0; font-size:1rem; color:var(--navy); }
   .sheet p { margin:0; font-size:.78rem; color:#4a5568; line-height:1.5; }
@@ -167,6 +168,7 @@
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#12203a';
     redraw();
+    updateTip();
   }
 
   function redraw(){
