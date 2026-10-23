@@ -20,8 +20,12 @@
   /* The pad is always laid out: nothing here is display:none, because a hidden box cannot
      be measured and the ink would land in a zero-size canvas. */
   .pad { position:relative; background:#fff; border:2px dashed #c3ccd6; border-radius:14px;
-         width:100%; height:190px; overflow:hidden; touch-action:none; flex:0 0 auto; }
-  .pad[data-shape="portrait"] { height:290px; width:210px; max-width:100%; margin:0 auto; }
+         width:100%; height:min(50vh, 420px); min-height:200px; overflow:hidden;
+         touch-action:none; flex:0 1 auto; }
+  /* Turn the phone sideways and the box turns with it, so a long signature gets a long box. */
+  @media (orientation: landscape) {
+    .pad { height:min(56vh, 240px); min-height:170px; }
+  }
   .pad canvas { display:block; width:100%; height:100%; touch-action:none; }
   .baseline { position:absolute; left:18px; right:18px; bottom:38px; border-bottom:1.5px solid #d7dde5;
               pointer-events:none; }
@@ -74,18 +78,16 @@
 </header>
 
 <main id="sign-area">
-  <p class="hint">Sign inside the box with your finger — landscape or portrait, whichever fits your signature. You will see exactly how it prints on the card before it is sent.</p>
+  <p class="hint">Sign inside the box with your finger. Turn the phone sideways if your signature is long — the box turns with it, and the ink stays where you put it.</p>
 
-  <div class="pad" id="pad" data-shape="landscape">
+  <div class="pad" id="pad">
     <canvas id="sig"></canvas>
     <div class="baseline"><span>sign above this line</span></div>
     <div class="empty" id="empty">Sign here</div>
   </div>
 
   <div class="tools">
-    <span>Box:</span>
-    <button class="chip" type="button" data-shape="landscape" aria-pressed="true">Landscape</button>
-    <button class="chip" type="button" data-shape="portrait" aria-pressed="false">Portrait</button>
+    <span id="tip">Turn the phone sideways for a wider box.</span>
     <span class="grow"></span>
     <button class="chip" type="button" id="clear">Clear</button>
   </div>
@@ -134,14 +136,28 @@
   var ctx = canvas.getContext('2d');
   var empty = document.getElementById('empty');
   var drawing = false, dirty = false, last = null;
-  var strokes = [];   // finished strokes, in pad CSS pixels, so a box change can redraw them
+  var strokes = [];   // finished strokes, in pad pixels, so any re-size can redraw them
   var current = [];   // the stroke being drawn
+  var space = { w: 0, h: 0 };   // the pad size those points were recorded against
 
-  function shape(){ return pad.getAttribute('data-shape') || 'landscape'; }
+  // Keep the ink where the hand put it when the box changes shape (turning the phone):
+  // scale it evenly and keep it centred, so a signature is never squashed or cut off.
+  function refit(w0, h0, w1, h1){
+    if (!w0 || !h0 || !strokes.length) return;
+    var s = Math.min(w1 / w0, h1 / h0);
+    var dx = (w1 - w0 * s) / 2, dy = (h1 - h0 * s) / 2;
+    var f = function(p){ return { x: p.x * s + dx, y: p.y * s + dy }; };
+    strokes = strokes.map(function(st){ return st.map(f); });
+    if (current.length) current = current.map(f);
+  }
 
   function sizeCanvas(){
     var r = pad.getBoundingClientRect();
     if (!r.width || !r.height) return;
+    if (space.w && (Math.abs(space.w - r.width) > 1 || Math.abs(space.h - r.height) > 1)) {
+      refit(space.w, space.h, r.width, r.height);
+    }
+    space = { w: r.width, h: r.height };
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(r.width * dpr);
     canvas.height = Math.round(r.height * dpr);
@@ -217,19 +233,18 @@
   pad.addEventListener('mousemove', move);
   window.addEventListener('mouseup', end);
 
-  document.querySelectorAll('[data-shape]').forEach(function(b){
-    b.addEventListener('click', function(){
-      var next = b.getAttribute('data-shape');
-      if (next === shape()) return;
-      end();
-      pad.setAttribute('data-shape', next);
-      document.querySelectorAll('[data-shape]').forEach(function(o){
-        o.setAttribute('aria-pressed', String(o.getAttribute('data-shape') === next));
-      });
-      // Redraw into the new box, kept proportionally so the ink does not squash.
-      requestAnimationFrame(function(){ sizeCanvas(); });
-      setTimeout(sizeCanvas, 60);
-    });
+  function updateTip(){
+    var sideways = window.matchMedia('(orientation: landscape)').matches;
+    var tip = document.getElementById('tip');
+    if (tip) tip.textContent = sideways
+      ? 'Wide box — good for a long signature.'
+      : 'Turn the phone sideways for a wider box.';
+  }
+  updateTip();
+  window.addEventListener('orientationchange', function(){
+    updateTip();
+    setTimeout(sizeCanvas, 120);
+    setTimeout(sizeCanvas, 450);
   });
 
   document.getElementById('clear').addEventListener('click', function(){
