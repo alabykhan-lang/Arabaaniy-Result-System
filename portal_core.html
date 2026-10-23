@@ -2555,6 +2555,8 @@ function getCfg(){
       if(!window._remoteCfg.school.email) window._remoteCfg.school.email = DEFAULT_SCHOOL.email;
     }
     if(!window._remoteCfg.signature){window._remoteCfg.signature={image:DEFAULT_SIGNATURE_IMAGE,title:'School Proprietor',version:DEFAULT_SIGNATURE_VERSION};}
+    // A stale phone-drawn signature saved before the artwork changed would hide the new one.
+    else if((window._remoteCfg.signature.version||0)<DEFAULT_SIGNATURE_VERSION){window._remoteCfg.signature.image=DEFAULT_SIGNATURE_IMAGE;window._remoteCfg.signature.version=DEFAULT_SIGNATURE_VERSION;}
     return hydrateGradeScale(window._remoteCfg);
   }
   return{school:Object.assign({},DEFAULT_SCHOOL),remarks:DEFAULT_REMARKS.slice(),session:DEFAULT_SESSION,term:DEFAULT_TERM,signature:{image:DEFAULT_SIGNATURE_IMAGE,title:'School Proprietor',version:DEFAULT_SIGNATURE_VERSION}};
