@@ -2429,8 +2429,8 @@ var DEFAULT_REMARKS=[
 ];
 var DEFAULT_SESSION='2026/2027';
 var DEFAULT_TERM='1st Term';
-var DEFAULT_SIGNATURE_IMAGE='proprietor-signature.png?v=2';
-var DEFAULT_SIGNATURE_VERSION=2;
+var DEFAULT_SIGNATURE_IMAGE='proprietor-signature.png?v=3';
+var DEFAULT_SIGNATURE_VERSION=3;
 
 function getActiveSession(){
   if(CONTEXT_EXPLICIT&&SELECTED_SESSION)return SELECTED_SESSION;
@@ -5133,7 +5133,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   var isCreative=theme.layout==='creative',isPremium=theme.layout==='premium';
   var P='-webkit-print-color-adjust:exact;print-color-adjust:exact';
 
-  var sigHTML=sig.image?('<img alt="" src="'+sig.image+'" style="max-height:54px;max-width:190px;object-fit:contain;display:block"/>')
+  var sigHTML=sig.image?('<img alt="" src="'+sig.image+'" style="max-height:56px;max-width:150px;object-fit:contain;display:block"/>')
     :sig.name?('<div style="font-family:Dancing Script,cursive;font-size:1.3rem;color:'+NAVY+'">'+sig.name+'</div>'):'';
   var sigTitle=sig.title||'Proprietor';
 
@@ -5293,8 +5293,8 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   if(sec.showSignature){
     var sigArt=sigHTML||'<div style="height:1px"></div>';
     h+='<div style="display:flex;justify-content:flex-start;padding:12px 14px 10px">'
-      +'<div style="width:200px;text-align:center">'
-      +'<div style="height:56px;display:flex;align-items:flex-end;justify-content:center;padding:0 4px 3px">'+sigArt+'</div>'
+      +'<div style="width:160px;text-align:center">'
+      +'<div style="height:58px;display:flex;align-items:flex-end;justify-content:center;padding:0 4px 3px">'+sigArt+'</div>'
       +'<div style="border-top:1.3px solid '+NAVY+';opacity:.6"></div>'
       +'<div style="font-size:7.5pt;font-weight:700;color:'+NAVY+';margin-top:3px;text-transform:uppercase;letter-spacing:.05em">'+sigTitle+'</div>'
       +'</div></div>';
