@@ -1040,6 +1040,26 @@ html, body {
     justify-content: center !important;
   }
 }
+
+/* Bulk-add: one review card per pupil. Everything optional except the name. */
+.bulk-hint { font-size:.76rem; color:#33513f; background:#f2f8f3; border:1px solid #d7e6da;
+             border-radius:10px; padding:10px 12px; line-height:1.5; margin:10px 0 12px; }
+.bulk-note { font-size:.74rem; color:#8a6d1f; background:#fffaf0; border:1px solid #f0e0b8;
+             border-radius:9px; padding:8px 10px; margin:8px 0 0; }
+.bulk-review-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+                    margin:14px 0 8px; font-size:.82rem; color:var(--g1); }
+.bulk-review-head span { font-size:.72rem; font-weight:600; color:var(--gray); }
+.bulk-row { border:1px solid var(--border); border-radius:11px; padding:10px 11px; margin-bottom:9px;
+            background:#fff; }
+.bulk-row-top { display:flex; align-items:center; gap:8px; }
+.bulk-num { flex:0 0 24px; height:24px; border-radius:50%; background:var(--g1); color:#fff;
+            font-size:.72rem; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.bulk-row-top .inp { flex:1; }
+.bulk-row-fields { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+.bulk-row-fields label { font-size:.68rem; font-weight:700; color:var(--gray); text-transform:uppercase;
+                         letter-spacing:.04em; display:block; }
+.bulk-row-fields .sel, .bulk-row-fields .inp { margin-top:3px; width:100%; }
+.bulk-empty { font-size:.76rem; color:var(--gray); padding:8px 2px; }
 </style>
 </head>
 <body>
@@ -1871,18 +1891,29 @@ html, body {
     <div class="modal-hdr"><h3>&#128196; Add multiple students</h3><button class="modal-x" onclick="closeModal('modal-bulk-students')">&#215;</button></div>
     <div class="modal-body">
       <p style="font-size:.82rem;color:var(--gray);line-height:1.45">Add 5–30 students at once. Paste one name per line, or scan a clear class list/record page to extract names. Registration numbers are generated automatically.</p>
+      <div class="bulk-hint">Standard student fields: scan or paste one name per line, then press <b>Prepare student fields</b> to review each pupil in their own Name, Gender and Age boxes before saving. Gender and age are optional — a missing one never stops the name from saving.</div>
       <div class="fg-row">
-        <div class="fg"><label>Default gender</label><select class="sel" id="bulk-gender"><option>Not specified</option><option>Male</option><option>Female</option></select></div>
-        <div class="fg"><label>Optional age</label><input class="inp" id="bulk-age" type="number" placeholder="Leave blank if unknown"/></div>
+        <div class="fg"><label>Default gender (optional)</label><select class="sel" id="bulk-gender"><option>Not specified</option><option>Male</option><option>Female</option></select></div>
+        <div class="fg"><label>Default age (optional)</label><input class="inp" id="bulk-age" type="number" placeholder="Leave blank if unknown"/></div>
       </div>
-      <div class="fg"><label>Student names</label><textarea class="inp" id="bulk-student-names" rows="10" oninput="updateBulkStudentCount()" placeholder="One student name per line"></textarea></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <div class="fg"><label>Student names</label><textarea class="inp" id="bulk-student-names" rows="8" oninput="onBulkNamesInput()" placeholder="One student name per line"></textarea></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center">
         <button class="btn btn-gold btn-sm" type="button" onclick="openStudentNameCamera()">&#128247; Take Photo</button>
         <button class="btn btn-outline btn-sm" type="button" onclick="openStudentNameOCR()">&#128444; From Gallery</button>
+        <button class="btn btn-outline btn-sm" type="button" onclick="prepareBulkFields()">Prepare student fields</button>
         <span id="bulk-count" style="font-size:.75rem;color:var(--gray);align-self:center">0 names</span>
       </div>
+      <p id="bulk-review-note" class="bulk-note" style="display:none"></p>
       <input type="file" id="student-name-ocr-file" accept="image/*" style="display:none" onchange="runStudentNameOCR(event)"/>
       <input type="file" id="student-name-ocr-camera" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;left:-9999px" onchange="runStudentNameOCR(event)"/>
+
+      <div id="bulk-review" style="display:none">
+        <div class="bulk-review-head">
+          <strong>Review each student</strong>
+          <span id="bulk-review-count"></span>
+        </div>
+        <div id="bulk-review-list"></div>
+      </div>
     </div>
     <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal('modal-bulk-students')">Cancel</button><button class="btn btn-primary" onclick="saveBulkStudents()">Save students</button></div>
   </div>
@@ -4060,7 +4091,12 @@ function saveStu(){
 }
 function openBulkStudentImport(){
   if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
-  document.getElementById('bulk-student-names').value='';document.getElementById('bulk-gender').value='Not specified';document.getElementById('bulk-age').value='';updateBulkStudentCount();document.getElementById('modal-bulk-students').style.display='flex';
+  document.getElementById('bulk-student-names').value='';document.getElementById('bulk-gender').value='Not specified';document.getElementById('bulk-age').value='';updateBulkStudentCount();
+  // start clean: no review boxes carried over from a previous visit
+  var rev=document.getElementById('bulk-review');
+  if(rev){rev.style.display='none';document.getElementById('bulk-review-list').innerHTML='';}
+  var note=document.getElementById('bulk-review-note');if(note)note.style.display='none';
+  document.getElementById('modal-bulk-students').style.display='flex';
 }
 function updateBulkStudentCount(){var el=document.getElementById('bulk-student-names');var count=el?(el.value.split(/\r?\n/).map(function(x){return x.trim();}).filter(Boolean).length):0;var out=document.getElementById('bulk-count');if(out)out.textContent=count+' name'+(count===1?'':'s')+(count>30?' (maximum 30)':'');}
 function openStudentNameOCR(){
@@ -4113,10 +4149,87 @@ function runStudentNameOCR(evt){
   };
   reader.readAsDataURL(file);
 }
+function bulkReadNames(){
+  var box=document.getElementById('bulk-student-names');
+  var names=(box&&box.value||'').split(/\r?\n/).map(function(x){return x.trim().replace(/^\d+[.)-]\s*/,'');}).filter(Boolean);
+  var unique=[],seen={};
+  names.forEach(function(n){var key=normName(n);if(key&&!seen[key]){seen[key]=true;unique.push(n);}});
+  return unique;
+}
+function onBulkNamesInput(){
+  updateBulkStudentCount();
+  var rev=document.getElementById('bulk-review');
+  var note=document.getElementById('bulk-review-note');
+  if(rev&&rev.style.display!=='none'&&note){
+    note.textContent='Names changed. Press Prepare student fields again to rebuild the review boxes.';
+    note.style.display='block';
+    var c=document.getElementById('bulk-review-count');if(c)c.textContent='';
+  }
+}
+function genderSelectOptions(selected){
+  return ['Not specified','Male','Female'].map(function(g){
+    return '<option'+(g===selected?' selected':'')+'>'+g+'</option>';
+  }).join('');
+}
+// One review card per pupil. Name is required; gender and age are optional and never block a save.
+function prepareBulkFields(){
+  var names=bulkReadNames();
+  if(!names.length){showToast('Add at least one student name.','error');return;}
+  if(names.length>30){showToast('Add a maximum of 30 students at a time.','error');return;}
+  var g=document.getElementById('bulk-gender').value||'Not specified';
+  var a=(document.getElementById('bulk-age').value||'').trim();
+  var list=document.getElementById('bulk-review-list');
+  list.innerHTML=names.map(function(n,i){
+    return '<div class="bulk-row" data-bulk-row>'
+      +'<div class="bulk-row-top"><span class="bulk-num">'+(i+1)+'</span>'
+      +'<input class="inp bulk-name" type="text" value="'+escapeHtml(n)+'" placeholder="Student name"/></div>'
+      +'<div class="bulk-row-fields">'
+      +'<label>Gender<select class="sel bulk-gender">'+genderSelectOptions(g)+'</select></label>'
+      +'<label>Age (optional)<input class="inp bulk-age" type="number" inputmode="numeric" min="1" max="99" value="'+escapeHtml(a)+'" placeholder="optional"/></label>'
+      +'</div></div>';
+  }).join('');
+  document.getElementById('bulk-review').style.display='';
+  document.getElementById('bulk-review-count').textContent=names.length+' student'+(names.length===1?'':'s');
+  document.getElementById('bulk-review-note').style.display='none';
+  try{document.getElementById('bulk-review').scrollIntoView({behavior:'smooth',block:'nearest'});}catch(e){}
+}
+function bulkReviewRows(){
+  return [].slice.call(document.querySelectorAll('#bulk-review-list [data-bulk-row]')).map(function(r){
+    var name=(r.querySelector('.bulk-name').value||'').trim();
+    var gender=(r.querySelector('.bulk-gender').value||'').trim()||'Not specified';
+    var ageRaw=(r.querySelector('.bulk-age').value||'').trim();
+    var age=/^\d{1,2}$/.test(ageRaw)?String(parseInt(ageRaw,10)):'';
+    return {name:name,gender:gender,age:age};
+  }).filter(function(r){return r.name;});
+}
 function saveBulkStudents(){
   if(CONTEXT_READ_ONLY){showToast('Historical records are read-only.','error');return;}
-  var box=document.getElementById('bulk-student-names');var names=(box.value||'').split(/\r?\n/).map(function(x){return x.trim().replace(/^\d+[.)-]\s*/,'');}).filter(Boolean);var unique=[];var seen={};names.forEach(function(n){var key=normName(n);if(key&&!seen[key]){seen[key]=true;unique.push(n);}});if(!unique.length){showToast('Add at least one student name.','error');return;}if(unique.length>30){showToast('Add a maximum of 30 students at a time.','error');return;}if(!isCentralAuth()){showToast('Management access is required for student administration.','error');return;}
-  var gender=document.getElementById('bulk-gender').value||'Not specified',age=document.getElementById('bulk-age').value||'';var rows=[];unique.forEach(function(name){rows.push({name:name,gender:gender,admno:generateAdmissionNumber(),house:null,age:age,photo:''});DB_STUDENTS[CLS]=DB_STUDENTS[CLS]||[];DB_STUDENTS[CLS].push(rows[rows.length-1]);});showLoad('Saving '+rows.length+' students...');
+  var review=document.getElementById('bulk-review');
+  var prepared=review&&review.style.display!=='none';
+  var picked;
+  if(prepared){
+    picked=bulkReviewRows();
+  }else{
+    var defGender=document.getElementById('bulk-gender').value||'Not specified';
+    var defAge=(document.getElementById('bulk-age').value||'').trim();
+    picked=bulkReadNames().map(function(n){return {name:n,gender:defGender,age:defAge};});
+  }
+  var seen={},unique=[];
+  picked.forEach(function(r){
+    var key=normName(r.name);
+    if(key&&!seen[key]){seen[key]=true;unique.push(r);}
+  });
+  if(!unique.length){showToast('Add at least one student name.','error');return;}
+  if(unique.length>30){showToast('Add a maximum of 30 students at a time.','error');return;}
+  if(!isCentralAuth()){showToast('Management access is required for student administration.','error');return;}
+  var rows=[];
+  unique.forEach(function(r){
+    var obj={name:r.name,gender:r.gender||'Not specified',admno:generateAdmissionNumber(),house:null,age:r.age||'',photo:''};
+    rows.push(obj);
+    DB_STUDENTS[CLS]=DB_STUDENTS[CLS]||[];
+    DB_STUDENTS[CLS].push(obj);
+  });
+  showLoad('Saving '+rows.length+' students...');
   Promise.all(rows.map(function(obj){return resultDataRequest('students.upsert',Object.assign({class_key:dbClassKey(CLS)},obj)).then(function(payload){var saved=payload.student;if(saved){var local=DB_STUDENTS[CLS].find(function(x){return x.name===obj.name&&x.id===undefined;});if(local){Object.assign(local,saved);}else{DB_STUDENTS[CLS].push(saved);}}})})).then(function(){hideLoad();closeModal('modal-bulk-students');renderStudents();renderDash();showToast(rows.length+' students added successfully.');}).catch(function(err){hideLoad();DB_STUDENTS[CLS]=(DB_STUDENTS[CLS]||[]).filter(function(s){return s.id;});showToast('Some students could not be saved: '+(err.message||'database error'),'error');});
 }
 
