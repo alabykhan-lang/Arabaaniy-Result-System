@@ -19,7 +19,7 @@
   .state.waiting .value { color:var(--gold); }
   .state.ready .value { color:var(--teal); }
   .sigbox { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:18px; text-align:center; }
-  .sigbox img { max-width:100%; max-height:190px; }
+  .sigbox img { max-width:100%; max-height:190px; background:#fff; }
   .sigbox .none { color:#a9b3bd; font-size:.86rem; padding:26px 0; }
   .sigbox .who { font-size:.74rem; color:#7b8794; margin-top:10px; }
   button { font:inherit; border:0; border-radius:11px; padding:15px 18px; font-weight:700; cursor:pointer; width:100%; }
@@ -65,6 +65,16 @@
   <div class="copy">
     <input id="link" type="text" readonly/>
     <button id="copylink" type="button">Copy</button>
+  </div>
+
+  <div class="steps" id="backup" style="display:none">
+    <b>The green button did nothing?</b><br/>
+    Open the portal on this same device with the link below, sign in as usual, and the
+    signature will be applied.
+    <div class="copy" style="margin-top:10px">
+      <input id="portallink" type="text" readonly/>
+      <button id="copyportal" type="button">Copy</button>
+    </div>
   </div>
 </main>
 
@@ -122,8 +132,24 @@
   poll();
   setInterval(poll, 5000);
 
+  var portalUrl = 'https://arabaaniy-result-system.vercel.app/portal_core.html?proprietor_signature=' + encodeURIComponent(PICKUP);
+  document.getElementById('portallink').value = portalUrl;
+  document.getElementById('backup').style.display = '';
+  document.getElementById('copyportal').addEventListener('click', function(){
+    var el = document.getElementById('portallink');
+    el.select();
+    try { document.execCommand('copy'); } catch(e){}
+    if (navigator.clipboard) navigator.clipboard.writeText(el.value).catch(function(){});
+    this.textContent = 'Copied';
+    var b = this; setTimeout(function(){ b.textContent = 'Copy'; }, 1500);
+  });
+
   btn.addEventListener('click', function(){
     if (!current) return;
+    // Remember the token on this device, so if the browser drops the redirect the portal can
+    // still pick the signature up (portal_core accepts ?proprietor_signature, and also offers
+    // a link that carries it).
+    try { localStorage.setItem('arabaaniy_sig_token', PICKUP); } catch (e) {}
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ png: current.png, at: current.signed_at })); }
     catch (e) {
       alert('The signature could not be stored on this device. Please open the portal in this same browser.');

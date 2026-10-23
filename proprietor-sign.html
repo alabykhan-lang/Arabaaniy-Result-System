@@ -7,36 +7,64 @@
 <style>
   :root { --navy:#13254a; --teal:#0f766e; --gold:#b08b3e; --ink:#1a2333; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body { margin:0; height:100%; }
+  html,body { margin:0; min-height:100%; }
   body { font-family:"Segoe UI",Tahoma,Arial,sans-serif; background:#f4f6f8; color:var(--ink);
          display:flex; flex-direction:column; min-height:100dvh; }
-  header { background:var(--navy); color:#fff; padding:14px 16px; text-align:center; }
-  header .school { font-size:1.02rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
-  header .sub { font-size:.74rem; color:rgba(255,255,255,.72); margin-top:3px; }
-  main { flex:1; padding:14px; display:flex; flex-direction:column; gap:12px; max-width:760px;
+  header { background:var(--navy); color:#fff; padding:12px 16px; text-align:center; }
+  header .school { font-size:1rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+  header .sub { font-size:.72rem; color:rgba(255,255,255,.72); margin-top:3px; }
+  main { flex:1; padding:12px; display:flex; flex-direction:column; gap:10px; max-width:860px;
          width:100%; margin:0 auto; justify-content:center; }
-  .hint { font-size:.82rem; color:#4a5568; line-height:1.5; }
+  .hint { font-size:.8rem; color:#4a5568; line-height:1.45; margin:0; }
+
+  /* The pad is always laid out: nothing here is display:none, because a hidden box cannot
+     be measured and the ink would land in a zero-size canvas. */
   .pad { position:relative; background:#fff; border:2px dashed #c3ccd6; border-radius:14px;
-         width:100%; aspect-ratio:2.2 / 1; max-height:44vh; margin:0 auto; flex:0 0 auto;
-         overflow:hidden; touch-action:none; }
+         width:100%; height:190px; overflow:hidden; touch-action:none; flex:0 0 auto; }
+  .pad[data-shape="portrait"] { height:290px; width:210px; max-width:100%; margin:0 auto; }
   .pad canvas { display:block; width:100%; height:100%; touch-action:none; }
-  .baseline { position:absolute; left:20px; right:20px; bottom:46px; border-bottom:1.5px solid #d7dde5;
+  .baseline { position:absolute; left:18px; right:18px; bottom:38px; border-bottom:1.5px solid #d7dde5;
               pointer-events:none; }
-  .baseline span { position:absolute; right:0; bottom:-18px; font-size:.62rem; color:#9aa5b1; }
+  .baseline span { position:absolute; right:0; bottom:-16px; font-size:.6rem; color:#9aa5b1; }
   .pad .empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-                color:#a9b3bd; font-size:.9rem; pointer-events:none; }
+                color:#a9b3bd; font-size:.88rem; pointer-events:none; }
+
+  .tools { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:.74rem; color:#4a5568; }
+  .tools .grow { flex:1; }
+  .chip { font:inherit; font-size:.74rem; padding:8px 11px; border-radius:9px; border:1px solid #cfd7df;
+          background:#fff; color:#374151; cursor:pointer; font-weight:600; flex:0 0 auto; }
+  .chip[aria-pressed="true"] { background:var(--navy); color:#fff; border-color:var(--navy); }
+
   .row { display:flex; gap:10px; }
-  button { font:inherit; border:0; border-radius:11px; padding:14px 16px; font-weight:700;
-           cursor:pointer; flex:1; }
-  button:active { transform:translateY(1px); }
+  button.act { font:inherit; border:0; border-radius:11px; padding:14px 16px; font-weight:700;
+               cursor:pointer; flex:1; }
+  button.act:active { transform:translateY(1px); }
   .primary { background:var(--teal); color:#fff; }
+  .primary[disabled] { opacity:.55; cursor:default; }
   .ghost { background:#fff; color:#374151; border:1px solid #cfd7df; flex:0 0 34%; }
-  .foot { font-size:.7rem; color:#7b8794; text-align:center; padding:0 16px 14px; }
+
+  /* Review: exactly how the card prints it — on the rule, caption underneath. */
+  .review { position:fixed; inset:0; background:rgba(15,23,42,.62); padding:16px; display:none;
+            align-items:center; justify-content:center; z-index:50; }
+  .review.on { display:flex; }
+  .sheet { background:#fff; border-radius:16px; padding:18px; width:100%; max-width:420px;
+           display:flex; flex-direction:column; gap:12px; }
+  .sheet h2 { margin:0; font-size:1rem; color:var(--navy); }
+  .sheet p { margin:0; font-size:.78rem; color:#4a5568; line-height:1.5; }
+  .cardbox { border:1px solid #dbe3ec; border-radius:12px; padding:14px 12px 10px; background:#fff; }
+  .cardbox .block { width:170px; text-align:center; }
+  .cardbox .art { height:58px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 3px; }
+  .cardbox .art img { max-height:56px; max-width:158px; object-fit:contain; display:block; }
+  .cardbox .rule { border-top:1.3px solid var(--navy); opacity:.6; }
+  .cardbox .cap { font-size:.6rem; font-weight:700; color:var(--navy); margin-top:3px;
+                  text-transform:uppercase; letter-spacing:.05em; }
+
   .done { background:#fff; border-radius:14px; padding:22px 18px; text-align:center; }
   .done h2 { margin:0 0 8px; color:var(--teal); font-size:1.15rem; }
   .done p { margin:0; font-size:.86rem; color:#4a5568; line-height:1.6; }
   .hidden { display:none !important; }
-  .err { color:#b91c1c; font-size:.8rem; text-align:center; }
+  .err { color:#b91c1c; font-size:.8rem; text-align:center; margin:0; }
+  .foot { font-size:.68rem; color:#7b8794; text-align:center; padding:4px 16px 14px; }
 </style>
 </head>
 <body>
@@ -46,18 +74,47 @@
 </header>
 
 <main id="sign-area">
-  <p class="hint">Please sign inside the box below using your finger. This signature will appear on the pupils' report cards.</p>
-  <div class="pad" id="pad">
+  <p class="hint">Sign inside the box with your finger — landscape or portrait, whichever fits your signature. You will see exactly how it prints on the card before it is sent.</p>
+
+  <div class="pad" id="pad" data-shape="landscape">
     <canvas id="sig"></canvas>
     <div class="baseline"><span>sign above this line</span></div>
     <div class="empty" id="empty">Sign here</div>
   </div>
+
+  <div class="tools">
+    <span>Box:</span>
+    <button class="chip" type="button" data-shape="landscape" aria-pressed="true">Landscape</button>
+    <button class="chip" type="button" data-shape="portrait" aria-pressed="false">Portrait</button>
+    <span class="grow"></span>
+    <button class="chip" type="button" id="clear">Clear</button>
+  </div>
+
   <div class="row">
-    <button class="ghost" id="clear" type="button">Clear</button>
-    <button class="primary" id="save" type="button">Done — send my signature</button>
+    <button class="act primary" id="save" type="button">Done — show me my signature</button>
   </div>
   <p class="err hidden" id="err"></p>
 </main>
+
+<div class="review" id="review">
+  <div class="sheet">
+    <h2>This is how it will print</h2>
+    <p>The card shows your signature exactly like this, above SCHOOL PROPRIETOR.</p>
+    <div class="cardbox">
+      <div class="block">
+        <div class="art"><img id="prev" alt="Your signature"/></div>
+        <div class="rule"></div>
+        <div class="cap">School Proprietor</div>
+      </div>
+    </div>
+    <p id="review-note"></p>
+    <div class="row">
+      <button class="act ghost" id="back" type="button">Sign again</button>
+      <button class="act primary" id="send" type="button">Use this signature</button>
+    </div>
+    <p class="err hidden" id="err2"></p>
+  </div>
+</div>
 
 <section class="done hidden" id="done">
   <h2>Thank you</h2>
@@ -77,11 +134,15 @@
   var ctx = canvas.getContext('2d');
   var empty = document.getElementById('empty');
   var drawing = false, dirty = false, last = null;
+  var strokes = [];   // finished strokes, in pad CSS pixels, so a box change can redraw them
+  var current = [];   // the stroke being drawn
+
+  function shape(){ return pad.getAttribute('data-shape') || 'landscape'; }
 
   function sizeCanvas(){
     var r = pad.getBoundingClientRect();
+    if (!r.width || !r.height) return;
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
-    var snapshot = dirty ? canvas.toDataURL() : null;
     canvas.width = Math.round(r.width * dpr);
     canvas.height = Math.round(r.height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -89,18 +150,28 @@
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#12203a';
-    if (snapshot) {
-      var img = new Image();
-      img.onload = function(){ ctx.drawImage(img, 0, 0, r.width, r.height); };
-      img.src = snapshot;
-    }
+    redraw();
   }
+
+  function redraw(){
+    var r = pad.getBoundingClientRect();
+    ctx.clearRect(0, 0, r.width, r.height);
+    var all = strokes.concat(current.length ? [current] : []);
+    for (var i = 0; i < all.length; i++) {
+      var pts = all[i];
+      if (!pts.length) continue;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      if (pts.length === 1) ctx.lineTo(pts[0].x + 0.1, pts[0].y + 0.1);
+      for (var j = 1; j < pts.length; j++) ctx.lineTo(pts[j].x, pts[j].y);
+      ctx.stroke();
+    }
+    empty.style.display = (strokes.length || current.length) ? 'none' : 'flex';
+  }
+
   sizeCanvas();
-  window.addEventListener('resize', function(){ sizeCanvas(); });
-  // The pad's final size is only known after fonts and layout settle. Without this the
-  // canvas buffer stays at its first guess and the browser stretches it, which turns the
-  // ink soft and grey instead of a crisp line.
-  window.addEventListener('load', function(){ sizeCanvas(); });
+  window.addEventListener('resize', sizeCanvas);
+  window.addEventListener('load', sizeCanvas);
   setTimeout(sizeCanvas, 250);
   setTimeout(sizeCanvas, 800);
   if (window.ResizeObserver) {
@@ -114,20 +185,29 @@
   }
   function start(e){
     e.preventDefault();
-    drawing = true; last = pos(e);
-    empty.style.display = 'none'; dirty = true;
+    drawing = true; dirty = true;
+    last = pos(e);
+    current = [last];
+    redraw();
   }
   function move(e){
     if (!drawing) return;
     e.preventDefault();
     var p = pos(e);
+    if (Math.abs(p.x - last.x) < 0.6 && Math.abs(p.y - last.y) < 0.6) return;
+    current.push(p);
     ctx.beginPath();
     ctx.moveTo(last.x, last.y);
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
     last = p;
   }
-  function end(e){ drawing = false; }
+  function end(){
+    if (!drawing) return;
+    drawing = false;
+    if (current.length) strokes.push(current);
+    current = [];
+  }
 
   pad.addEventListener('touchstart', start, { passive:false });
   pad.addEventListener('touchmove', move, { passive:false });
@@ -137,45 +217,94 @@
   pad.addEventListener('mousemove', move);
   window.addEventListener('mouseup', end);
 
-  document.getElementById('clear').addEventListener('click', function(){
-    var r = pad.getBoundingClientRect();
-    ctx.clearRect(0, 0, r.width, r.height);
-    empty.style.display = 'flex'; dirty = false;
+  document.querySelectorAll('[data-shape]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var next = b.getAttribute('data-shape');
+      if (next === shape()) return;
+      end();
+      pad.setAttribute('data-shape', next);
+      document.querySelectorAll('[data-shape]').forEach(function(o){
+        o.setAttribute('aria-pressed', String(o.getAttribute('data-shape') === next));
+      });
+      // Redraw into the new box, kept proportionally so the ink does not squash.
+      requestAnimationFrame(function(){ sizeCanvas(); });
+      setTimeout(sizeCanvas, 60);
+    });
   });
 
-  document.getElementById('save').addEventListener('click', function(){
-    var err = document.getElementById('err');
-    err.classList.add('hidden');
-    if (!dirty) { err.textContent = 'Please sign in the box first.'; err.classList.remove('hidden'); return; }
-    if (!TOKEN) { err.textContent = 'This page needs its full link. Please open the original link again.'; err.classList.remove('hidden'); return; }
+  document.getElementById('clear').addEventListener('click', function(){
+    strokes = []; current = []; dirty = false;
+    redraw();
+    empty.textContent = 'Sign here';
+  });
 
-    // trim to the inked area so the card shows the signature, not empty space
+  // Trim to the ink, then scale up so the long edge is at least 900px: a finger signature
+  // is a small drawing on a phone, and the card prints it larger than it was drawn.
+  function buildPng(){
     var r = pad.getBoundingClientRect();
     var dpr = canvas.width / r.width;
-    var data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
     var minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0, found = false;
     for (var y = 0; y < canvas.height; y += 2) {
       for (var x = 0; x < canvas.width; x += 2) {
-        if (data.data[(y * canvas.width + x) * 4 + 3] > 12) {
+        if (data[(y * canvas.width + x) * 4 + 3] > 12) {
           found = true;
           if (x < minX) minX = x; if (x > maxX) maxX = x;
           if (y < minY) minY = y; if (y > maxY) maxY = y;
         }
       }
     }
-    if (!found) { err.textContent = 'Please sign in the box first.'; err.classList.remove('hidden'); return; }
-
-    var pad2 = Math.round(10 * dpr);
+    if (!found) return null;
+    var pad2 = Math.round(8 * dpr);
     minX = Math.max(0, minX - pad2); minY = Math.max(0, minY - pad2);
     maxX = Math.min(canvas.width, maxX + pad2); maxY = Math.min(canvas.height, maxY + pad2);
+    var w0 = maxX - minX, h0 = maxY - minY;
+    var scale = Math.max(1, Math.min(3, 900 / Math.max(w0, h0)));
     var out = document.createElement('canvas');
-    out.width = maxX - minX; out.height = maxY - minY;
-    out.getContext('2d').drawImage(canvas, minX, minY, out.width, out.height, 0, 0, out.width, out.height);
-    var png = out.toDataURL('image/png');
+    out.width = Math.round(w0 * scale); out.height = Math.round(h0 * scale);
+    var octx = out.getContext('2d');
+    octx.imageSmoothingEnabled = true;
+    octx.imageSmoothingQuality = 'high';
+    octx.drawImage(canvas, minX, minY, w0, h0, 0, 0, out.width, out.height);
+    return { png: out.toDataURL('image/png'), w: out.width, h: out.height };
+  }
 
-    var btn = document.getElementById('save');
+  var pending = null;
+  var review = document.getElementById('review');
+  var err = document.getElementById('err');
+
+  document.getElementById('save').addEventListener('click', function(){
+    err.classList.add('hidden');
+    end();
+    if (!strokes.length) {
+      err.textContent = 'Please sign in the box first.'; err.classList.remove('hidden'); return;
+    }
+    if (!TOKEN) {
+      err.textContent = 'This page needs its full link. Please open the original link again.';
+      err.classList.remove('hidden'); return;
+    }
+    pending = buildPng();
+    if (!pending) {
+      err.textContent = 'Please sign in the box first.'; err.classList.remove('hidden'); return;
+    }
+    document.getElementById('prev').src = pending.png;
+    review.classList.add('on');
+    document.getElementById('err2').classList.add('hidden');
+    // honest note when the mark is wider than the card block can hold
+    document.getElementById('review-note').textContent = (pending.w / pending.h) > 3.2
+      ? 'Your signature is very wide, so it prints a little smaller to fit. The portrait box usually answers this.'
+      : '';
+  });
+
+  document.getElementById('back').addEventListener('click', function(){
+    review.classList.remove('on');
+  });
+
+  document.getElementById('send').addEventListener('click', function(){
+    if (!pending) return;
+    var btn = document.getElementById('send');
+    var err2 = document.getElementById('err2');
     btn.disabled = true; btn.textContent = 'Sending…';
-
     fetch(API + '/rest/v1/signature_requests?token=eq.' + encodeURIComponent(TOKEN), {
       method: 'PATCH',
       headers: {
@@ -184,7 +313,7 @@
         'Authorization': 'Bearer ' + KEY,
         'Prefer': 'return=representation'
       },
-      body: JSON.stringify({ png: png, status: 'signed', signed_at: new Date().toISOString() })
+      body: JSON.stringify({ png: pending.png, status: 'signed', signed_at: new Date().toISOString() })
     })
     .then(function(res){
       if (!res.ok) return res.text().then(function(t){ throw new Error(t.slice(0, 160)); });
@@ -192,13 +321,14 @@
     })
     .then(function(rows){
       if (!rows || !rows.length) throw new Error('This link is no longer open for signing.');
+      review.classList.remove('on');
       document.getElementById('sign-area').classList.add('hidden');
       document.getElementById('done').classList.remove('hidden');
     })
     .catch(function(e){
-      btn.disabled = false; btn.textContent = 'Done — send my signature';
-      err.textContent = 'Could not send the signature. Please check the connection and try again.';
-      err.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = 'Use this signature';
+      err2.textContent = 'Could not send the signature. Please check the connection and try again.';
+      err2.classList.remove('hidden');
       console.error(e);
     });
   });

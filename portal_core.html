@@ -5625,7 +5625,24 @@ function applyProprietorSignature(token){
   if(!token)return;
   var raw=null;
   try{raw=localStorage.getItem('arabaaniy_signature_v1');}catch(e){}
-  if(!raw){showToast('Open the signature pickup page first, on this same device.','error');return;}
+  if(!raw){
+    // Moving between pages can lose the hand-off. The token alone is enough: fetch the
+    // signed image directly, then run this function again with it stored.
+    var SIGAPI='https://bbseogjqgsvsovrluiov.supabase.co';
+    var SIGKEY='"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJic2VvZ2pxZ3N2c292cmx1aW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NDYyNTEsImV4cCI6MjEwODAyMjI1MX0.wlOq_Hcxg58HcaoGtrYrgD0lVk3tZlDH5iR4nuY-GlQ';
+    fetch(SIGAPI+'/rest/v1/signature_requests?token=eq.'+encodeURIComponent(token)+'&select=status,png',{headers:{'apikey':SIGKEY,'Authorization':'Bearer '+SIGKEY}})
+      .then(function(r){return r.json();})
+      .then(function(rows){
+        var row=(rows||[])[0];
+        if(row&&row.status==='signed'&&row.png){
+          try{localStorage.setItem('arabaaniy_signature_v1',JSON.stringify({png:row.png,at:new Date().toISOString()}));}catch(e){}
+          applyProprietorSignature(token);
+        }else{
+          showToast('No signature has been sent yet. Please open the signing link first.','error');
+        }
+      }).catch(function(){showToast('Open the signature pickup page first, on this same device.','error');});
+    return;
+  }
   var saved=null;
   try{saved=JSON.parse(raw);}catch(e){}
   if(!saved||!saved.png){showToast('The signature could not be read. Please pick it up again.','error');return;}
