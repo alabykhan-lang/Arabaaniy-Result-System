@@ -97,6 +97,15 @@
   }
   sizeCanvas();
   window.addEventListener('resize', function(){ sizeCanvas(); });
+  // The pad's final size is only known after fonts and layout settle. Without this the
+  // canvas buffer stays at its first guess and the browser stretches it, which turns the
+  // ink soft and grey instead of a crisp line.
+  window.addEventListener('load', function(){ sizeCanvas(); });
+  setTimeout(sizeCanvas, 250);
+  setTimeout(sizeCanvas, 800);
+  if (window.ResizeObserver) {
+    try { new ResizeObserver(function(){ sizeCanvas(); }).observe(pad); } catch(e){}
+  }
 
   function pos(e){
     var r = canvas.getBoundingClientRect();
