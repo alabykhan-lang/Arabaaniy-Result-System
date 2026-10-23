@@ -327,7 +327,13 @@
     })
     .catch(function(e){
       btn.disabled = false; btn.textContent = 'Use this signature';
-      err2.textContent = 'Could not send the signature. Please check the connection and try again.';
+      // Say what actually happened instead of guessing at the connection.
+      var msg = String((e && e.message) || e || '');
+      var looksLikeJson = /^\s*[\[{"]/.test(msg);
+      err2.textContent = looksLikeJson
+        ? 'This signing link has already been used and is closed. Ask the office for a new link.'
+        : 'Could not send the signature. Please check the connection and try again.' +
+          (msg ? ' (' + msg + ')' : '');
       err2.classList.remove('hidden');
       console.error(e);
     });
