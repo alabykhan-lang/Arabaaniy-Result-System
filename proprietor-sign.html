@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Arrabaaniy Standard School — Signature</title>
+<style>
+  :root { --navy:#13254a; --teal:#0f766e; --gold:#b08b3e; --ink:#1a2333; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; }
+  body { font-family:"Segoe UI",Tahoma,Arial,sans-serif; background:#f4f6f8; color:var(--ink);
+         display:flex; flex-direction:column; min-height:100dvh; }
+  header { background:var(--navy); color:#fff; padding:14px 16px; text-align:center; }
+  header .school { font-size:1.02rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+  header .sub { font-size:.74rem; color:rgba(255,255,255,.72); margin-top:3px; }
+  main { flex:1; padding:14px; display:flex; flex-direction:column; gap:12px; max-width:760px;
+         width:100%; margin:0 auto; }
+  .hint { font-size:.82rem; color:#4a5568; line-height:1.5; }
+  .pad { position:relative; background:#fff; border:2px dashed #c3ccd6; border-radius:14px;
+         flex:1; min-height:230px; overflow:hidden; touch-action:none; }
+  .pad canvas { display:block; width:100%; height:100%; touch-action:none; }
+  .baseline { position:absolute; left:20px; right:20px; bottom:46px; border-bottom:1.5px solid #d7dde5;
+              pointer-events:none; }
+  .baseline span { position:absolute; right:0; bottom:-18px; font-size:.62rem; color:#9aa5b1; }
+  .pad .empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+                color:#a9b3bd; font-size:.9rem; pointer-events:none; }
+  .row { display:flex; gap:10px; }
+  button { font:inherit; border:0; border-radius:11px; padding:14px 16px; font-weight:700;
+           cursor:pointer; flex:1; }
+  button:active { transform:translateY(1px); }
+  .primary { background:var(--teal); color:#fff; }
+  .ghost { background:#fff; color:#374151; border:1px solid #cfd7df; flex:0 0 34%; }
+  .foot { font-size:.7rem; color:#7b8794; text-align:center; padding:0 16px 14px; }
+  .done { background:#fff; border-radius:14px; padding:22px 18px; text-align:center; }
+  .done h2 { margin:0 0 8px; color:var(--teal); font-size:1.15rem; }
+  .done p { margin:0; font-size:.86rem; color:#4a5568; line-height:1.6; }
+  .hidden { display:none !important; }
+  .err { color:#b91c1c; font-size:.8rem; text-align:center; }
+</style>
+</head>
+<body>
+<header>
+  <div class="school">Arrabaaniy Standard School</div>
+  <div class="sub">Proprietor's signature</div>
+</header>
+
+<main id="sign-area">
+  <p class="hint">Please sign inside the box below using your finger. This signature will appear on the pupils' report cards.</p>
+  <div class="pad" id="pad">
+    <canvas id="sig"></canvas>
+    <div class="baseline"><span>sign above this line</span></div>
+    <div class="empty" id="empty">Sign here</div>
+  </div>
+  <div class="row">
+    <button class="ghost" id="clear" type="button">Clear</button>
+    <button class="primary" id="save" type="button">Done — send my signature</button>
+  </div>
+  <p class="err hidden" id="err"></p>
+</main>
+
+<section class="done hidden" id="done">
+  <h2>Thank you</h2>
+  <p>Your signature has been sent to the school.<br/>You can close this page.</p>
+</section>
+
+<div class="foot">Nothing else is collected on this page.</div>
+
+<script>
+(function(){
+  var API = 'https://bbseogjqgsvsovrluiov.supabase.co';
+  var KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJic2VvZ2pxZ3N2c292cmx1aW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NDYyNTEsImV4cCI6MjEwODAyMjI1MX0.wlOq_Hcxg58HcaoGtrYrgD0lVk3tZlDH5iR4nuY-GlQ';
+  var TOKEN = new URLSearchParams(location.search).get('t') || '';
+
+  var pad = document.getElementById('pad');
+  var canvas = document.getElementById('sig');
+  var ctx = canvas.getContext('2d');
+  var empty = document.getElementById('empty');
+  var drawing = false, dirty = false, last = null;
+
+  function sizeCanvas(){
+    var r = pad.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var snapshot = dirty ? canvas.toDataURL() : null;
+    canvas.width = Math.round(r.width * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineWidth = 2.6;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#12203a';
+    if (snapshot) {
+      var img = new Image();
+      img.onload = function(){ ctx.drawImage(img, 0, 0, r.width, r.height); };
+      img.src = snapshot;
+    }
+  }
+  sizeCanvas();
+  window.addEventListener('resize', function(){ sizeCanvas(); });
+
+  function pos(e){
+    var r = canvas.getBoundingClientRect();
+    var t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  }
+  function start(e){
+    e.preventDefault();
+    drawing = true; last = pos(e);
+    empty.style.display = 'none'; dirty = true;
+  }
+  function move(e){
+    if (!drawing) return;
+    e.preventDefault();
+    var p = pos(e);
+    ctx.beginPath();
+    ctx.moveTo(last.x, last.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    last = p;
+  }
+  function end(e){ drawing = false; }
+
+  pad.addEventListener('touchstart', start, { passive:false });
+  pad.addEventListener('touchmove', move, { passive:false });
+  pad.addEventListener('touchend', end);
+  pad.addEventListener('touchcancel', end);
+  pad.addEventListener('mousedown', start);
+  pad.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+
+  document.getElementById('clear').addEventListener('click', function(){
+    var r = pad.getBoundingClientRect();
+    ctx.clearRect(0, 0, r.width, r.height);
+    empty.style.display = 'flex'; dirty = false;
+  });
+
+  document.getElementById('save').addEventListener('click', function(){
+    var err = document.getElementById('err');
+    err.classList.add('hidden');
+    if (!dirty) { err.textContent = 'Please sign in the box first.'; err.classList.remove('hidden'); return; }
+    if (!TOKEN) { err.textContent = 'This page needs its full link. Please open the original link again.'; err.classList.remove('hidden'); return; }
+
+    // trim to the inked area so the card shows the signature, not empty space
+    var r = pad.getBoundingClientRect();
+    var dpr = canvas.width / r.width;
+    var data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0, found = false;
+    for (var y = 0; y < canvas.height; y += 2) {
+      for (var x = 0; x < canvas.width; x += 2) {
+        if (data.data[(y * canvas.width + x) * 4 + 3] > 12) {
+          found = true;
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (!found) { err.textContent = 'Please sign in the box first.'; err.classList.remove('hidden'); return; }
+
+    var pad2 = Math.round(10 * dpr);
+    minX = Math.max(0, minX - pad2); minY = Math.max(0, minY - pad2);
+    maxX = Math.min(canvas.width, maxX + pad2); maxY = Math.min(canvas.height, maxY + pad2);
+    var out = document.createElement('canvas');
+    out.width = maxX - minX; out.height = maxY - minY;
+    out.getContext('2d').drawImage(canvas, minX, minY, out.width, out.height, 0, 0, out.width, out.height);
+    var png = out.toDataURL('image/png');
+
+    var btn = document.getElementById('save');
+    btn.disabled = true; btn.textContent = 'Sending…';
+
+    fetch(API + '/rest/v1/signature_requests?token=eq.' + encodeURIComponent(TOKEN), {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': KEY,
+        'Authorization': 'Bearer ' + KEY,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({ png: png, status: 'signed', signed_at: new Date().toISOString() })
+    })
+    .then(function(res){
+      if (!res.ok) return res.text().then(function(t){ throw new Error(t.slice(0, 160)); });
+      return res.json();
+    })
+    .then(function(rows){
+      if (!rows || !rows.length) throw new Error('This link is no longer open for signing.');
+      document.getElementById('sign-area').classList.add('hidden');
+      document.getElementById('done').classList.remove('hidden');
+    })
+    .catch(function(e){
+      btn.disabled = false; btn.textContent = 'Done — send my signature';
+      err.textContent = 'Could not send the signature. Please check the connection and try again.';
+      err.classList.remove('hidden');
+      console.error(e);
+    });
+  });
+})();
+</script>
+</body>
+</html>

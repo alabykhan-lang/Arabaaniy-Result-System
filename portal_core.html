@@ -5616,6 +5616,34 @@ function handleSigUpload(e){
     };img.src=ev.target.result;
   };r.readAsDataURL(f);
 }
+// Opens from the signature pickup page: portal_core.html?proprietor_signature=<token>
+// The pickup page stores the signature on this device first, so nothing secret travels
+// in the URL itself.
+function applyProprietorSignature(token){
+  if(!token)return;
+  var raw=null;
+  try{raw=localStorage.getItem('arabaaniy_signature_v1');}catch(e){}
+  if(!raw){showToast('Open the signature pickup page first, on this same device.','error');return;}
+  var saved=null;
+  try{saved=JSON.parse(raw);}catch(e){}
+  if(!saved||!saved.png){showToast('The signature could not be read. Please pick it up again.','error');return;}
+  var img=new Image();
+  img.onload=function(){
+    var canvas=document.createElement('canvas');var ratio=Math.min(600/img.width,240/img.height);
+    canvas.width=Math.max(1,Math.round(img.width*ratio));canvas.height=Math.max(1,Math.round(img.height*ratio));
+    canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+    var cfg=getCfg();if(!cfg.signature)cfg.signature={};
+    cfg.signature.image=canvas.toDataURL('image/png',0.92);
+    cfg.signature.version=3;
+    saveCfg(cfg);
+    if(typeof previewSig==='function')previewSig();
+    try{localStorage.removeItem('arabaaniy_signature_v1');}catch(e){}
+    showToast('Proprietor signature applied to the report cards.');
+    try{history.replaceState({},'',location.pathname);}catch(e){}
+  };
+  img.onerror=function(){showToast('The signature image could not be loaded.','error');};
+  img.src=saved.png;
+}
 function clearSig(){var cfg=getCfg();cfg.signature={};saveCfg(cfg);document.getElementById('cfg-sig-name').value='';previewSig();}
 function updateRemark(i,field,val){var cfg=getCfg();var r=cfg.remarks||DEFAULT_REMARKS.slice();if(!r[i])return;r[i][field]=field==='text'?val:Number(val);cfg.remarks=r;saveCfg(cfg);}
 function renderThemePicker(){
@@ -5828,6 +5856,18 @@ window.addEventListener('DOMContentLoaded',function(){
   setInterval(function(){
     if(CURRENT_USER&&!document.hidden&&!suppressAutoRefresh())refreshPortalState();
   },60000);
+  // a signature arriving from the pickup page is applied once the user is signed in
+  try{
+    var sigToken=new URLSearchParams(location.search).get('proprietor_signature');
+    if(sigToken){
+      var tries=0;
+      var t=setInterval(function(){
+        tries++;
+        if(CURRENT_USER){clearInterval(t);applyProprietorSignature(sigToken);}
+        else if(tries>150){clearInterval(t);}
+      },400);
+    }
+  }catch(e){}
   // Sensitive Result data is loaded only after a trusted session is present.
   // The legacy compatibility path still performs its own authenticated reads.
   console.log('WTS Result Portal ready');

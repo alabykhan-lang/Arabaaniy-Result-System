@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Arrabaaniy Standard School — Signature received</title>
+<style>
+  :root { --navy:#13254a; --teal:#0f766e; --gold:#b08b3e; --ink:#1a2333; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Segoe UI",Tahoma,Arial,sans-serif; background:#f4f6f8; color:var(--ink);
+         min-height:100dvh; }
+  header { background:var(--navy); color:#fff; padding:14px 16px; text-align:center; }
+  header .school { font-size:1.02rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+  header .sub { font-size:.74rem; color:rgba(255,255,255,.72); margin-top:3px; }
+  main { max-width:720px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:14px; }
+  .state { background:#fff; border-radius:14px; padding:16px; border:1px solid #e2e8f0; }
+  .state .label { font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:#7b8794; }
+  .state .value { font-size:1rem; font-weight:700; margin-top:4px; }
+  .state.waiting .value { color:var(--gold); }
+  .state.ready .value { color:var(--teal); }
+  .sigbox { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:18px; text-align:center; }
+  .sigbox img { max-width:100%; max-height:190px; }
+  .sigbox .none { color:#a9b3bd; font-size:.86rem; padding:26px 0; }
+  .sigbox .who { font-size:.74rem; color:#7b8794; margin-top:10px; }
+  button { font:inherit; border:0; border-radius:11px; padding:15px 18px; font-weight:700; cursor:pointer; width:100%; }
+  .primary { background:var(--teal); color:#fff; }
+  .primary[disabled] { opacity:.45; cursor:default; }
+  .ghost { background:#fff; color:#374151; border:1px solid #cfd7df; }
+  .steps { font-size:.78rem; color:#4a5568; line-height:1.75; background:#fff; border-radius:14px;
+           padding:14px 16px; border:1px solid #e2e8f0; }
+  .steps b { color:var(--navy); }
+  .copy { display:flex; gap:8px; }
+  .copy input { flex:1; font:inherit; font-size:.78rem; padding:12px; border:1px solid #cfd7df; border-radius:10px;
+                min-width:0; background:#fff; color:#374151; }
+  .copy button { width:auto; flex:0 0 auto; background:var(--navy); color:#fff; padding:12px 14px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="school">Arrabaaniy Standard School</div>
+  <div class="sub">Proprietor's signature — pickup</div>
+</header>
+
+<main>
+  <div class="state waiting" id="state">
+    <div class="label">Status</div>
+    <div class="value" id="state-text">Waiting for the signature…</div>
+  </div>
+
+  <div class="sigbox">
+    <div class="none" id="sig-none">No signature yet. Open the signing link on the proprietor's phone.</div>
+    <img id="sig-img" alt="Proprietor's signature" style="display:none"/>
+    <div class="who" id="sig-who"></div>
+  </div>
+
+  <button class="primary" id="use" type="button" disabled>Put this signature on the report cards</button>
+
+  <div class="steps">
+    <b>How this works</b><br/>
+    1. Send the signing link below to the proprietor.<br/>
+    2. He signs on his phone and presses Done.<br/>
+    3. This page updates by itself — then press the green button.
+  </div>
+
+  <div class="copy">
+    <input id="link" type="text" readonly/>
+    <button id="copylink" type="button">Copy</button>
+  </div>
+</main>
+
+<script>
+(function(){
+  var API = 'https://bbseogjqgsvsovrluiov.supabase.co';
+  var KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJic2VvZ2pxZ3N2c292cmx1aW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NDYyNTEsImV4cCI6MjEwODAyMjI1MX0.wlOq_Hcxg58HcaoGtrYrgD0lVk3tZlDH5iR4nuY-GlQ';
+  var PICKUP = new URLSearchParams(location.search).get('k') || '';
+  var STORE_KEY = 'arabaaniy_signature_v1';
+
+  var btn = document.getElementById('use');
+  var img = document.getElementById('sig-img');
+  var none = document.getElementById('sig-none');
+  var who = document.getElementById('sig-who');
+  var stateBox = document.getElementById('state');
+  var stateText = document.getElementById('state-text');
+  var current = null;
+
+  document.getElementById('link').value = location.origin + location.pathname.replace(/[^/]*$/, '') + 'proprietor-sign.html?t=' + PICKUP;
+  document.getElementById('copylink').addEventListener('click', function(){
+    var el = document.getElementById('link');
+    el.select();
+    try { document.execCommand('copy'); } catch(e){}
+    if (navigator.clipboard) navigator.clipboard.writeText(el.value).catch(function(){});
+    this.textContent = 'Copied';
+    var b = this; setTimeout(function(){ b.textContent = 'Copy'; }, 1500);
+  });
+
+  function show(row){
+    if (!row) return;
+    if (row.png && row.status === 'signed') {
+      current = row;
+      img.src = row.png;
+      img.style.display = 'block';
+      none.style.display = 'none';
+      who.textContent = 'Signed ' + (row.signed_at ? new Date(row.signed_at).toLocaleString('en-GB') : '');
+      stateBox.className = 'state ready';
+      stateText.textContent = 'Signature received';
+      btn.disabled = false;
+    } else {
+      stateBox.className = 'state waiting';
+      stateText.textContent = 'Waiting for the signature…';
+    }
+  }
+
+  function poll(){
+    if (!PICKUP) return;
+    fetch(API + '/rest/v1/signature_requests?token=eq.' + encodeURIComponent(PICKUP) + '&select=status,png,signed_at', {
+      headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY }
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(rows){ show(rows && rows[0]); })
+    .catch(function(){});
+  }
+  poll();
+  setInterval(poll, 5000);
+
+  btn.addEventListener('click', function(){
+    if (!current) return;
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ png: current.png, at: current.signed_at })); }
+    catch (e) {
+      alert('The signature could not be stored on this device. Please open the portal in this same browser.');
+      return;
+    }
+    window.location.href = 'https://arabaaniy-result-system.vercel.app/portal_core.html?proprietor_signature=' + encodeURIComponent(PICKUP);
+  });
+})();
+</script>
+</body>
+</html>
