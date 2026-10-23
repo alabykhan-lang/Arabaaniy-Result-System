@@ -5133,7 +5133,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   var isCreative=theme.layout==='creative',isPremium=theme.layout==='premium';
   var P='-webkit-print-color-adjust:exact;print-color-adjust:exact';
 
-  var sigHTML=sig.image?('<img alt="" src="'+sig.image+'" style="height:38px;max-width:130px;object-fit:contain"/>')
+  var sigHTML=sig.image?('<img alt="" src="'+sig.image+'" style="height:52px;max-width:190px;max-height:52px;object-fit:contain;object-position:left center;display:block;margin-bottom:2px"/>')
     :sig.name?('<div style="font-family:Dancing Script,cursive;font-size:1.3rem;color:'+NAVY+'">'+sig.name+'</div>'):'';
   var sigTitle=sig.title||'Proprietor';
 
@@ -5629,7 +5629,7 @@ function applyProprietorSignature(token){
   if(!saved||!saved.png){showToast('The signature could not be read. Please pick it up again.','error');return;}
   var img=new Image();
   img.onload=function(){
-    var canvas=document.createElement('canvas');var ratio=Math.min(600/img.width,240/img.height);
+    var canvas=document.createElement('canvas');var ratio=Math.min(900/img.width,260/img.height);
     canvas.width=Math.max(1,Math.round(img.width*ratio));canvas.height=Math.max(1,Math.round(img.height*ratio));
     canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
     var cfg=getCfg();if(!cfg.signature)cfg.signature={};
