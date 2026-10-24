@@ -1529,7 +1529,7 @@ html, body {
           <div class="fg"><label>School Name</label><input class="inp" id="cfg-name"/></div>
           <div class="fg"><label>Address</label><input class="inp" id="cfg-addr"/></div>
           <div class="fg"><label>Phone</label><input class="inp" id="cfg-phone"/></div>
-          <div class="fg"><label>Email</label><input class="inp" id="cfg-email"/></div>
+          <div class="fg"><label>School email (printed on report cards)</label><input class="inp" id="cfg-email" type="email"/><small style="display:block;color:var(--gray);font-size:.72rem;margin-top:5px">This is the school email. The admin account signs in with it, so keep it the same address the office uses.</small></div>
           <div class="fg-row">
             <div class="fg"><label>Current academic session</label><input class="inp" id="cfg-session"/><small style="display:block;color:var(--gray);font-size:.72rem;margin-top:5px">Changing this updates every class, assessment and result card.</small></div>
             <div class="fg"><label>Current term</label><select class="sel" id="cfg-term"><option>1st Term</option><option>2nd Term</option><option>3rd Term</option></select></div>
@@ -4443,6 +4443,14 @@ function openSheet(idx){
         scoreStatus(sid,idx,'Not saved — max '+max,'#991b1b');
         return;
       }
+      // Marks are whole numbers. A typed 12.5 would otherwise make a total like 63.5,
+      // which no grade band matches cleanly, so round it here and say so.
+      if(raw!==null&&Math.round(raw)!==raw){
+        var rounded=Math.round(raw);
+        raw=rounded;
+        inp.value=String(rounded);
+        showToast(raw>max?'Max '+(field==='exam'?'Exam':'CA')+' is '+max:'Rounded to '+rounded,'info');
+      }
       inp.classList.remove('over-limit');
       var key=scoreDraftKey(sid,idx);
       var draft=scoreDraft(sid,idx);
@@ -5248,7 +5256,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   var isCreative=theme.layout==='creative',isPremium=theme.layout==='premium';
   var P='-webkit-print-color-adjust:exact;print-color-adjust:exact';
 
-  var sigHTML=sig.image?('<img alt="" src="'+sig.image+'" style="max-height:56px;max-width:150px;object-fit:contain;display:block"/>')
+  var sigHTML=sig.image?('<img alt="Proprietor signature" src="'+sig.image+'" style="max-height:56px;max-width:150px;object-fit:contain;display:block"/>')
     :sig.name?('<div style="font-family:Dancing Script,cursive;font-size:1.3rem;color:'+NAVY+'">'+sig.name+'</div>'):'';
   var sigTitle=sig.title||'Proprietor';
 
@@ -5257,7 +5265,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   // HEADER
   if(sec.showHeader){
     var logo=window.SCHOOL_LOGO
-      ?'<img alt="" src="'+window.SCHOOL_LOGO+'" style="width:'+(isCreative?'78px':'68px')+';height:'+(isCreative?'78px':'68px')+';object-fit:contain;border-radius:8px;background:#fff;padding:3px;'+P+'"/>'
+      ?'<img alt="School logo" src="'+window.SCHOOL_LOGO+'" style="width:'+(isCreative?'78px':'68px')+';height:'+(isCreative?'78px':'68px')+';object-fit:contain;border-radius:8px;background:#fff;padding:3px;'+P+'"/>'
       :'<div style="font-weight:900;font-size:16pt;line-height:1;color:'+WHITE+'">'+(school.name?school.name.charAt(0):'★')+'</div>';
     var motto=school.motto||'';
     var contactParts=[school.addr, school.phone, school.email].filter(Boolean);
@@ -5322,7 +5330,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
       +'<td style="padding:4px 8px;border:1px solid '+BORDER+'">Overall performance: <strong style="color:'+gc(avg)+'">'+overallPerf+'</strong></td>'
       +'<td style="padding:4px 8px;border:1px solid '+BORDER+'">Term: <strong>'+term+'</strong></td>'
       +'</tr>'
-      +(sec.showAttendance!==false?'<tr><td colspan="4" style="padding:4px 8px;border:1px solid '+BORDER+';background:'+MINT+'">Attendance: <strong>Days school opened:</strong> '+(att.opened||'--')+' &nbsp; <strong>Present:</strong> '+(att.present||'--')+' &nbsp; <strong>Absent:</strong> '+(att.absent||'--')+'</td></tr>':'')
+      +(sec.showAttendance!==false?'<tr><td colspan="4" style="padding:4px 8px;border:1px solid '+BORDER+';background:'+MINT+'">Attendance: <strong>Days school opened:</strong> '+(att.opened===''?'--':att.opened)+' &nbsp; <strong>Present:</strong> '+(att.present===''?'--':att.present)+' &nbsp; <strong>Absent:</strong> '+(att.absent===''?'--':att.absent)+'</td></tr>':''))
       +'</table>';
   }
 
