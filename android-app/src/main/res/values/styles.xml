@@ -7,5 +7,6 @@
         <item name="android:statusBarColor">#13254a</item>
         <item name="android:navigationBarColor">#13254a</item>
         <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/school_navy</item>
     </style>
 </resources>

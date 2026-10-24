@@ -63,6 +63,9 @@ public class MainActivity extends Activity {
         }
 
         webView = new WebView(this);
+        // The page starts white until the first paint, which flashes on every launch.
+        // Paint the WebView canvas in the school's navy so the launch looks continuous.
+        webView.setBackgroundColor(schoolNavy);
         setContentView(webView);
 
         WebSettings settings = webView.getSettings();

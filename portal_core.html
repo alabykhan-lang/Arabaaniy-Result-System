@@ -423,6 +423,24 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 .form-grp{display:flex;flex-direction:column;gap:4px}
 .form-grp label{font-size:.75rem;font-weight:700;color:#374151}
 
+/* ── SETTINGS: one setting per row, name left, control right (matches the remarks list) ── */
+.settings-grid{grid-template-columns:1fr}
+#page-settings .settings-grid>.tbl-wrap{grid-column:1/-1!important}
+#page-settings .tbl-wrap>div[style*="padding"]{padding:6px 16px 18px!important}
+#page-settings .fg{display:grid;grid-template-columns:minmax(150px,250px) minmax(0,1fr);align-items:center;
+  gap:14px;padding:11px 0;margin:0!important;max-width:none!important;border-bottom:1px solid var(--border)}
+#page-settings .fg>label{font-size:.78rem;font-weight:700;color:var(--g1);margin:0}
+#page-settings .fg>small{grid-column:2;margin:2px 0 0!important;font-size:.7rem!important}
+#page-settings .fg-row{display:block;margin:0!important}
+#page-settings .fg input.inp,#page-settings .fg select.sel{width:100%}
+#page-settings .tbl-wrap>div[style*="padding"]>div[style*="display:flex"][style*="flex-wrap"]{display:block!important;margin:0!important;padding:0!important}
+#page-settings .tbl-wrap>div[style*="padding"]>div[style*="display:flex"][style*="flex-wrap"]>label{display:grid!important;
+  grid-template-columns:minmax(150px,250px) auto;align-items:center;gap:14px;padding:11px 0;
+  border-bottom:1px solid var(--border);margin:0!important;font-size:.78rem!important;font-weight:600}
+@media(max-width:600px){
+  #page-settings .settings-dashboard-tabs{grid-template-columns:1fr}
+  #page-settings .fg,#page-settings .tbl-wrap>div[style*="padding"]>div[style*="display:flex"][style*="flex-wrap"]>label{grid-template-columns:1fr;gap:6px}
+}
 /* ── RESPONSIVE ── */
 @media(max-width:900px){
   #main{margin-left:0}
@@ -1949,14 +1967,14 @@ html, body {
           <div id="pf-psy"></div>
         </div>
       </div>
-      <p class="sec-title">Attendance</p>
+      <p class="sec-title" id="pf-att-title" style="display:none">Attendance</p>
       <div class="profile-promotion-control" style="padding:12px;border:1px solid #cfe8d8;border-radius:12px;background:#faf5ea;margin:0 0 16px">
         <p class="sec-title" style="margin:0 0 8px">Promotion / class transfer</p>
         <label style="font-size:.76rem;font-weight:700;color:var(--gray)">Management destination override</label>
         <select class="sel" id="pf-promotion-target" onchange="saveProfilePromotionTarget(this)"><option value="">Use promotion calculation</option></select>
         <small style="display:block;color:var(--gray);font-size:.7rem;margin-top:5px">Use this only when management needs to retain or transfer this individual student to a different class.</small>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div id="profile-attendance" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div class="fee-field"><label>Days Opened</label><input class="inp" type="number" id="pf-att-open"/></div>
         <div class="fee-field"><label>Days Present</label><input class="inp" type="number" id="pf-att-present" oninput="pfAbsent()"/></div>
         <div class="fee-field"><label>Days Absent</label><input class="inp" type="number" id="pf-att-absent" readonly style="background:#f3f4f6"/></div>
@@ -2462,6 +2480,9 @@ var DEFAULT_SESSION='2026/2027';
 var DEFAULT_TERM='1st Term';
 var DEFAULT_SIGNATURE_IMAGE='proprietor-signature.png?v=3';
 var DEFAULT_SIGNATURE_VERSION=3;
+// Attendance is switched off for now: hidden on the profile and not printed on the card.
+// Flip this back to true to bring it back (the data stays in the database).
+var SHOW_ATTENDANCE=false;
 
 function getActiveSession(){
   if(CONTEXT_EXPLICIT&&SELECTED_SESSION)return SELECTED_SESSION;
@@ -5330,7 +5351,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
       +'<td style="padding:4px 8px;border:1px solid '+BORDER+'">Overall performance: <strong style="color:'+gc(avg)+'">'+overallPerf+'</strong></td>'
       +'<td style="padding:4px 8px;border:1px solid '+BORDER+'">Term: <strong>'+term+'</strong></td>'
       +'</tr>'
-      +(sec.showAttendance!==false?'<tr><td colspan="4" style="padding:4px 8px;border:1px solid '+BORDER+';background:'+MINT+'">Attendance: <strong>Days school opened:</strong> '+(att.opened===''?'--':att.opened)+' &nbsp; <strong>Present:</strong> '+(att.present===''?'--':att.present)+' &nbsp; <strong>Absent:</strong> '+(att.absent===''?'--':att.absent)+'</td></tr>':'')
+      +(SHOW_ATTENDANCE&&sec.showAttendance!==false?'<tr><td colspan="4" style="padding:4px 8px;border:1px solid '+BORDER+';background:'+MINT+'">Attendance: <strong>Days school opened:</strong> '+(att.opened===''?'--':att.opened)+' &nbsp; <strong>Present:</strong> '+(att.present===''?'--':att.present)+' &nbsp; <strong>Absent:</strong> '+(att.absent===''?'--':att.absent)+'</td></tr>':'')
       +'</table>';
   }
 
