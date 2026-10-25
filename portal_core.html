@@ -3276,9 +3276,48 @@ function flushOutbox(){
   });
 }
 function retryOutboxNow(){showToast('Trying to send the marks held on this phone…');flushOutbox();}
+// ── SCREENS THAT OPEN WITH NO NETWORK ────────────────────────────────
+// The last good roster for a class/term is kept on the phone so a dead network
+// still opens the class instead of an empty screen. Marks then ride the outbox.
+var ROSTER_PREFIX='arq_roster_v1|';
+function rosterCacheKey(key){return ROSTER_PREFIX+key+'|'+TERM+'|'+SELECTED_SESSION;}
+function cacheRoster(key,payload){
+  try{localStorage.setItem(rosterCacheKey(key),JSON.stringify(payload));}catch(e){}
+}
+function cachedRoster(key){
+  try{var raw=localStorage.getItem(rosterCacheKey(key));return raw?JSON.parse(raw):null;}catch(e){return null;}
+}
+function restoreRosterFromCache(key){
+  var c=cachedRoster(key);
+  if(!c)return false;
+  DB_STUDENTS[key]=Array.isArray(c.students)?c.students:[];
+  (DB_STUDENTS[key]||[]).forEach(function(student){
+    delete DB_SCORES[student.id];delete DB_TRAITS[student.id];delete DB_FEES[student.id];delete DB_REMARKS[student.id];
+  });
+  (c.scores||[]).forEach(function(score){
+    if(!DB_SCORES[score.student_id])DB_SCORES[score.student_id]={};
+    DB_SCORES[score.student_id][score.subject_index]={ca1:score.ca1,ca2:score.ca2,ca3:score.ca3,exam:score.exam};
+  });
+  (c.traits||[]).forEach(function(t){
+    if(!DB_TRAITS[t.student_id])DB_TRAITS[t.student_id]={affective:{},psychomotor:{}};
+    DB_TRAITS[t.student_id][t.trait_type==='affective'?'affective':'psychomotor'][t.trait_name]=t.rating;
+  });
+  (c.fees||[]).forEach(function(f){DB_FEES[f.student_id]=f;});
+  (c.remarks||[]).forEach(function(r){DB_REMARKS[r.student_id]=r;});
+  (c.pub||[]).forEach(function(r){PUB_CACHE[pubKey(key,r.term,r.subject_index)]=true;});
+  return true;
+}
+function offlineNotice(){
+  showToast('No network — showing the copy saved on this phone.','error');
+}
+
 setInterval(function(){if(outboxCount())flushOutbox();},12000);
 window.addEventListener('online',function(){showToast('Network is back — sending the marks held on this phone.');flushOutbox();});
 window.addEventListener('load',function(){renderOutboxBar();setTimeout(function(){if(outboxCount())flushOutbox();},4000);});
+// Keep the app itself on the phone so it opens with no network at all.
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(e){console.warn('Offline shell not registered:',e);});});
+}
 function clearScoreDrafts(){
   Object.keys(SCORE_SAVE_TIMERS).forEach(function(key){clearTimeout(SCORE_SAVE_TIMERS[key]);});
   SCORE_DRAFTS={};
@@ -3349,19 +3388,20 @@ function loadClass(key,cb,silent){
       (Array.isArray(res[4])?res[4]:[]).forEach(function(row){
         PUB_CACHE[pubKey(key,row.term,row.subject_index)]=true;
       });
+      cacheRoster(key,{students:DB_STUDENTS[key],scores:res[0],traits:res[1],fees:res[2],remarks:res[3],pub:res[4]});
       if(!silent)hideLoad();
       if(cb)cb();
       return true;
     })
     .catch(function(error){
-      if(!silent){
-        hideLoad();
-        showToast('Connection error - check your internet','error');
-      }
+      if(!silent)hideLoad();
+      var restored=restoreRosterFromCache(key);
+      if(restored){offlineNotice();}
+      else if(!silent){showToast('Connection error - check your internet','error');}
       console.error('Class refresh failed:',error);
       DB_STUDENTS[key]=DB_STUDENTS[key]||[];
       if(cb)cb();
-      return false;
+      return restored;
     });
   return promise;
 }
@@ -3578,7 +3618,11 @@ function applyClassContext(key,selectedSession,selectedTerm,readOnly){
   CONTEXT_EXPLICIT=true;
   CONTEXT_READ_ONLY=!!readOnly;
   showLoad('Validating academic context...');
-  setResultContext(key,selectedSession,selectedTerm,readOnly).then(function(){
+  setResultContext(key,selectedSession,selectedTerm,readOnly).catch(function(error){
+    if(!cachedRoster(key))throw error;
+    offlineNotice();
+    return true;
+  }).then(function(){
     closeModal('modal-term');
     DB_SCORES={};DB_TRAITS={};DB_FEES={};DB_REMARKS={};
     clearScoreDrafts();
