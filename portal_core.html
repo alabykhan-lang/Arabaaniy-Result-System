@@ -3322,6 +3322,12 @@ function restoreRosterFromCache(key){
   (c.pub||[]).forEach(function(r){PUB_CACHE[pubKey(key,r.term,r.subject_index)]=true;});
   return true;
 }
+function cacheRosterStudents(){
+  if(!CLS)return;
+  var c=cachedRoster(CLS)||{students:[],scores:[],traits:[],fees:[],remarks:[],pub:[]};
+  c.students=DB_STUDENTS[CLS]||[];
+  cacheRoster(CLS,c);
+}
 function offlineNotice(){
   showToast('No network — showing the copy saved on this phone.','error');
 }
@@ -4139,6 +4145,7 @@ function renderDash(){
 // ============================================================
 function renderStudents(){
   var students=DB_STUDENTS[CLS]||[];
+  cacheRosterStudents();
   var tbody=document.getElementById('stu-tbody');
   if(!students.length){
     tbody.innerHTML='<tr><td colspan="5"><div class="empty"><h3>No Students</h3><p>Add students to get started</p></div></td></tr>';
