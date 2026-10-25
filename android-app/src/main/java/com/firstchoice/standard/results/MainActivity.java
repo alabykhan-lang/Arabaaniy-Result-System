@@ -16,13 +16,19 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.LinearInterpolator;
+import android.view.animation.OvershootInterpolator;
+import android.graphics.drawable.GradientDrawable;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -58,6 +64,11 @@ public class MainActivity extends Activity {
     // Splash shown over the WebView until the page has painted its first frame.
     private View splash;
     private boolean splashDismissed = false;
+    private boolean splashQueued = false;
+    private long splashStart = 0L;
+    private static final long SPLASH_MIN_MS = 5200;   // stay up at least this long
+    private static final long SPLASH_HARD_MS = 9000;  // ...but never longer than this
+    private final Handler splashHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,8 +103,8 @@ public class MainActivity extends Activity {
         root.addView(buildSplash(schoolNavy), new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         setContentView(root);
-        // Never leave the splash covering the portal if the network hangs.
-        new Handler(Looper.getMainLooper()).postDelayed(this::dismissSplash, 3000);
+        // The splash is a fixed 5-second show; the portal may finish sooner, but it waits.
+        splashHandler.postDelayed(() -> dismissSplash(splashStart == 0L || splashDismissed), SPLASH_HARD_MS);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -375,57 +386,163 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Navy backdrop with the crest, flipped in on the Z axis so it reads as motion. */
+    private View ring(float strokeDp) {
+        View v = new View(this);
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setStroke((int) (strokeDp * getResources().getDisplayMetrics().density),
+                Color.parseColor("#88C99A3B"));
+        v.setBackground(g);
+        v.setAlpha(0f);
+        return v;
+    }
+
+    /** Navy backdrop, crest on a gold halo, name underneath: a ~5 second show, not a flicker. */
     private View buildSplash(int schoolNavy) {
+        splashStart = SystemClock.uptimeMillis();
+
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
         box.setBackgroundColor(schoolNavy);
 
+        float d = getResources().getDisplayMetrics().density;
+
+        FrameLayout wrap = new FrameLayout(this);
+        View ringOuter = ring(1.5f);
+        View ringInner = ring(3f);
+        int ringSize = (int) (260 * d);
+        wrap.addView(ringOuter, new FrameLayout.LayoutParams(ringSize, ringSize, Gravity.CENTER));
+        wrap.addView(ringInner, new FrameLayout.LayoutParams((int) (190 * d), (int) (190 * d), Gravity.CENTER));
+
         ImageView crest = new ImageView(this);
         crest.setImageResource(R.drawable.school_logo);
-        int size = (int) (140 * getResources().getDisplayMetrics().density);
-        box.addView(crest, new LinearLayout.LayoutParams(size, size));
+        int crestSize = (int) (128 * d);
+        wrap.addView(crest, new FrameLayout.LayoutParams(crestSize, crestSize, Gravity.CENTER));
+        box.addView(wrap, new LinearLayout.LayoutParams(ringSize, ringSize));
 
         TextView name = new TextView(this);
         name.setText("ARRABAANIY STANDARD SCHOOL");
-        name.setTextColor(Color.parseColor("#C99A3B"));
+        name.setTextColor(Color.parseColor("#F1D9A0"));
         name.setTypeface(Typeface.DEFAULT_BOLD);
-        name.setLetterSpacing(0.14f);
+        name.setLetterSpacing(0.16f);
         name.setTextSize(12f);
         name.setGravity(Gravity.CENTER);
+        name.setAlpha(0f);
         LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        nameParams.topMargin = (int) (18 * getResources().getDisplayMetrics().density);
+        nameParams.topMargin = (int) (6 * d);
         box.addView(name, nameParams);
 
-        splash = box;
-        crest.setCameraDistance(8000 * getResources().getDisplayMetrics().density);
-        crest.setRotationY(-110f);
-        crest.setAlpha(0f);
-        crest.setScaleX(0.8f);
-        crest.setScaleY(0.8f);
+        TextView tagline = new TextView(this);
+        tagline.setText("RESULT MANAGEMENT SYSTEM");
+        tagline.setTextColor(Color.parseColor("#8FA3C8"));
+        tagline.setLetterSpacing(0.22f);
+        tagline.setTextSize(9.5f);
+        tagline.setGravity(Gravity.CENTER);
+        tagline.setAlpha(0f);
+        LinearLayout.LayoutParams tagParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        tagParams.topMargin = (int) (10 * d);
+        box.addView(tagline, tagParams);
 
-        ObjectAnimator flip = ObjectAnimator.ofFloat(crest, "rotationY", -110f, 0f);
-        ObjectAnimator fade = ObjectAnimator.ofFloat(crest, "alpha", 0f, 1f);
-        ObjectAnimator grow = ObjectAnimator.ofFloat(crest, "scaleX", 0.8f, 1f);
-        ObjectAnimator growY = ObjectAnimator.ofFloat(crest, "scaleY", 0.8f, 1f);
-        for (Animator a : new Animator[]{flip, fade, grow, growY}) {
-            a.setDuration(650);
-            a.setInterpolator(new AccelerateDecelerateInterpolator());
+        splash = box;
+
+        // Crest: turned away on the Z axis, flipped to face the user, settling with a spring.
+        crest.setCameraDistance(9000 * d);
+        crest.setRotationY(-150f);
+        crest.setRotation(-9f);
+        crest.setAlpha(0f);
+        crest.setScaleX(0.55f);
+        crest.setScaleY(0.55f);
+
+        ObjectAnimator flip = ObjectAnimator.ofFloat(crest, "rotationY", -150f, 0f);
+        flip.setDuration(900);
+        flip.setInterpolator(new DecelerateInterpolator(1.6f));
+        ObjectAnimator tilt = ObjectAnimator.ofFloat(crest, "rotationZ", -9f, 0f);
+        tilt.setDuration(900);
+        tilt.setInterpolator(new DecelerateInterpolator());
+        ObjectAnimator fadeIn = ObjectAnimator.ofFloat(crest, "alpha", 0f, 1f);
+        fadeIn.setDuration(420);
+        ObjectAnimator growX = ObjectAnimator.ofFloat(crest, "scaleX", 0.55f, 1f);
+        ObjectAnimator growY = ObjectAnimator.ofFloat(crest, "scaleY", 0.55f, 1f);
+        for (Animator a : new Animator[]{growX, growY}) {
+            a.setDuration(820);
+            a.setInterpolator(new OvershootInterpolator(1.8f));
+        }
+
+        // Halo: two rings that swell out of the crest and dissolve.
+        ObjectAnimator ringOut = swell(ringOuter, 2100, 0);
+        ObjectAnimator ringIn = swell(ringInner, 1700, 260);
+
+        // Name and tagline rise in behind the crest.
+        ObjectAnimator nameIn = ObjectAnimator.ofFloat(name, "alpha", 0f, 1f);
+        nameIn.setDuration(600);
+        nameIn.setStartDelay(680);
+        ObjectAnimator nameUp = ObjectAnimator.ofFloat(name, "translationY", 22f * d, 0f);
+        nameUp.setDuration(600);
+        nameUp.setStartDelay(680);
+        nameUp.setInterpolator(new DecelerateInterpolator());
+        ObjectAnimator tagIn = ObjectAnimator.ofFloat(tagline, "alpha", 0f, 1f);
+        tagIn.setDuration(600);
+        tagIn.setStartDelay(980);
+
+        // Slow breathing while the portal loads, so the screen is never static.
+        ObjectAnimator breathe = ObjectAnimator.ofFloat(crest, "scaleX", 1f, 1.05f);
+        breathe.setDuration(1500);
+        breathe.setStartDelay(900);
+        breathe.setRepeatMode(ValueAnimator.REVERSE);
+        breathe.setRepeatCount(ValueAnimator.INFINITE);
+        breathe.setInterpolator(new AccelerateDecelerateInterpolator());
+        ObjectAnimator breatheY = breathe.clone();
+        breatheY.setTarget(crest);
+        breatheY.setPropertyName("scaleY");
+
+        for (Animator a : new Animator[]{flip, tilt, fadeIn, growX, growY, ringOut, ringIn,
+                nameIn, nameUp, tagIn, breathe, breatheY}) {
             a.start();
         }
         return box;
     }
 
+    private ObjectAnimator swell(View target, long duration, long delay) {
+        target.setScaleX(0.45f);
+        target.setScaleY(0.45f);
+        target.setAlpha(0.85f);
+        ObjectAnimator scaleX = ObjectAnimator.ofFloat(target, "scaleX", 0.45f, 1.45f);
+        ObjectAnimator scaleY = ObjectAnimator.ofFloat(target, "scaleY", 0.45f, 1.45f);
+        ObjectAnimator fade = ObjectAnimator.ofFloat(target, "alpha", 0.85f, 0f);
+        for (Animator a : new Animator[]{scaleX, scaleY, fade}) {
+            a.setDuration(duration);
+            a.setStartDelay(delay);
+            a.setInterpolator(new LinearInterpolator());
+            a.start();
+        }
+        return scaleX;
+    }
+
     private void dismissSplash() {
-        if (splashDismissed || splash == null) return;
+        dismissSplash(false);
+    }
+
+    /** Leaves after the fixed show, or straight away when the hard cap has passed. */
+    private void dismissSplash(boolean force) {
+        if (splash == null || splashDismissed) return;
+        long elapsed = SystemClock.uptimeMillis() - splashStart;
+        if (!force && elapsed < SPLASH_MIN_MS) {
+            if (!splashQueued) {
+                splashQueued = true;
+                splashHandler.postDelayed(() -> dismissSplash(false), SPLASH_MIN_MS - elapsed);
+            }
+            return;
+        }
         splashDismissed = true;
         splash.animate()
                 .alpha(0f)
-                .scaleX(1.06f)
-                .scaleY(1.06f)
-                .setDuration(320)
+                .scaleX(1.12f)
+                .scaleY(1.12f)
+                .setDuration(520)
+                .setInterpolator(new DecelerateInterpolator())
                 .setListener(new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animation) {
