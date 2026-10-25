@@ -2,7 +2,7 @@
    The portal is one HTML file, so keeping it (and the images it uses) on the phone
    is enough for the app to open with no network. Data comes from the roster cache
    and the mark outbox in the page itself. */
-var CACHE = 'arq-shell-v2';
+var CACHE = 'arq-shell-v3';
 var SHELL = ['./portal_core.html', './school-logo.png', './proprietor-signature.png',
              './signature-placeholder.png', './manifest.webmanifest'];
 
