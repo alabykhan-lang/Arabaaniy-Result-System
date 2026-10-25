@@ -2141,6 +2141,12 @@ function storeAuthSession(session){
   MEMORY_AUTH_SESSION=session||null;
 }
 function clearAuthSession(){MEMORY_AUTH_SESSION=null;}
+// The signed-in user is remembered on the phone so an offline open lands in the app
+// instead of a sign-in screen that cannot reach the server.
+var SESSION_STORE='arq_session_v1';
+function rememberUser(user){try{localStorage.setItem(SESSION_STORE,JSON.stringify(user));}catch(e){}}
+function forgetUser(){try{localStorage.removeItem(SESSION_STORE);}catch(e){}}
+function recalledUser(){try{return JSON.parse(localStorage.getItem(SESSION_STORE)||'null');}catch(e){return null;}}
 function authMessage(payload){
   var code=payload&&payload.code;
   if(code==='INVITE_CODE_INVALID')return 'That invite code is not valid.';
@@ -2244,6 +2250,7 @@ function authErrClear(id){document.getElementById(id).className='auth-err';}
 
 function loginSuccess(user,mode){
   CURRENT_USER=user;
+  if(user)rememberUser(user);
   CURRENT_AUTH_MODE='local';
   CURRENT_PERMISSIONS=Array.isArray(user._permissions)?user._permissions:[];
   CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
@@ -2318,7 +2325,7 @@ function restorePortalPageAfterLogin(){
 
 function doLogout(){
   resultAuthRequest('POST',{action:'logout'}).catch(function(){}).then(function(){
-    clearAuthSession();
+    clearAuthSession();forgetUser();
     CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
     showAuthScreen();
     navTo('home',document.getElementById('ni-home'));
@@ -2332,7 +2339,15 @@ function checkSession(){
   resultAuthRequest('GET').then(function(payload){
     if(!payload||!payload.user)throw {code:'AUTH_SESSION_INVALID'};
     loginSuccess(localUserFromPayload(payload),'local');
-  }).catch(function(){clearAuthSession();showAuthScreen();});
+  }).catch(function(){
+    var known=recalledUser();
+    if(known&&known.id){
+      showToast('No network — signed in from this phone.', 'error');
+      loginSuccess(known,'local');
+      return;
+    }
+    clearAuthSession();showAuthScreen();
+  });
 }
 
 function setAuthMode(mode){
