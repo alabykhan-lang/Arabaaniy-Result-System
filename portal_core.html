@@ -6432,7 +6432,12 @@ function requestAIScan(payload){
     refreshAIUsage();
     return data;
   }).catch(function(error){
-    if(error&&error.code==='AI_CREDITS_EXHAUSTED')throw new Error('School AI credits are finished. Contact the developer to renew.');
+    var code=error&&error.code;
+    if(code==='AI_CREDITS_EXHAUSTED')throw new Error('School AI credits are finished. Contact the developer to renew.');
+    if(code==='RESULT_PERMISSION_DENIED')throw new Error('This account is not attached to the school yet. Ask the administrator to save the account again.');
+    if(code==='AI_PROVIDER_NOT_CONFIGURED')throw new Error('The AI key has not been set up. Ask the developer to add it.');
+    if(code==='AI_PROVIDER_KEY_REJECTED')throw new Error('The AI service rejected the key. Ask the developer to replace it.');
+    if(code&&code!=='AI_REQUEST_FAILED'&&error.message)throw new Error(error.message);
     throw new Error('The AI scanner could not read this photo. Try a clearer picture, or type the marks in by hand.');
   });
 }
