@@ -177,6 +177,7 @@ async function handleAction(action, payload, token) {
       throw Object.assign(new Error('An account with that email already exists.'), { payload: { code: 'RESULT_STAFF_EXISTS' } });
     }
     let created = null;
+    let alreadyRegistered = false;
     try {
       created = await supabaseAuthRequest('signup', {
         email,
@@ -186,11 +187,33 @@ async function handleAction(action, payload, token) {
     } catch (error) {
       const msg = String(error?.message || '');
       if (/already registered|already exists/i.test(msg)) {
-        throw Object.assign(new Error('An account with that email already exists.'), { payload: { code: 'RESULT_STAFF_EXISTS' } });
+        alreadyRegistered = true;
+      } else {
+        throw Object.assign(new Error('The account could not be created. Please try again.'), { payload: { code: 'RESULT_STAFF_CREATE_FAILED' } });
       }
-      throw Object.assign(new Error('The account could not be created. Please try again.'), { payload: { code: 'RESULT_STAFF_CREATE_FAILED' } });
     }
     const authUser = created?.user || created;
+    // Supabase answers a taken email with an obfuscated user that carries no identities,
+    // and its id is not a real row in auth.users — a profile written against it breaks the FK.
+    if (Array.isArray(authUser?.identities) && authUser.identities.length === 0) {
+      alreadyRegistered = true;
+    }
+    if (alreadyRegistered) {
+      // The login already exists (they registered before), so attach a profile to the real user.
+      const attached = await supabaseRest('rpc/portal_attach_staff', {
+        method: 'POST',
+        body: {
+          p_email: email,
+          p_display_name: displayName,
+          p_role: role,
+          p_school_id: manager.profile.school_id || null,
+        },
+      }, token);
+      if (!attached) {
+        throw Object.assign(new Error('The account could not be created. Please try again.'), { payload: { code: 'RESULT_STAFF_CREATE_FAILED' } });
+      }
+      return { ok: true, staff: attached, existing_login: true };
+    }
     if (!authUser?.id) {
       throw Object.assign(new Error('The account could not be created. Please try again.'), { payload: { code: 'RESULT_STAFF_CREATE_FAILED' } });
     }
@@ -203,11 +226,20 @@ async function handleAction(action, payload, token) {
       is_developer: false,
       school_id: manager.profile.school_id || null,
     };
-    const saved = await supabaseRest('staff_profiles', {
-      method: 'POST',
-      prefer: 'resolution=merge-duplicates,return=representation',
-      body: profile,
-    }, token);
+    let saved = null;
+    try {
+      saved = await supabaseRest('staff_profiles', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates,return=representation',
+        body: profile,
+      }, token);
+    } catch (error) {
+      if (!/foreign key|duplicate key/i.test(String(error?.message || ''))) throw error;
+      saved = [await supabaseRest('rpc/portal_attach_staff', {
+        method: 'POST',
+        body: { p_email: email, p_display_name: displayName, p_role: role, p_school_id: manager.profile.school_id || null },
+      }, token)];
+    }
     return { ok: true, staff: saved?.[0] || profile };
   }
   if (action === 'management.staff.update') {

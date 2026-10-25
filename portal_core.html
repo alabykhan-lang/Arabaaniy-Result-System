@@ -3906,13 +3906,18 @@ function createStaffProfile(){
       hideLoad();
       nameEl.value='';emailEl.value='';pwEl.value='';
       var who=((res&&res.staff)||{}).display_name||name;
-      if(status)status.textContent='Created '+who+'. Give them the password you set, and ask them to change it after signing in.';
-      showToast(who+' can now sign in.');
+      if(status){
+        status.textContent=res&&res.existing_login
+          ?('Added '+who+' to the staff list. They already had a login, so the password they have now still applies.')
+          :('Created '+who+'. Give them the password you set, and ask them to change it after signing in.');
+      }
+      showToast(res&&res.existing_login?who+' added — existing login kept.':who+' can now sign in.');
       renderStaffOverview();
     })
     .catch(function(error){
       hideLoad();
       var m=(error&&error.message)||'The account could not be created.';
+      if(/foreign key|duplicate key|violates|null value/i.test(m))m='The account could not be created. Check the name, email and password, then try again.';
       if(status)status.textContent=m;
       showToast(m,'error');
     });
