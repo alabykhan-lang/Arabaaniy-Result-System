@@ -1218,6 +1218,10 @@ html, body {
   <p id="loading-text">Loading...</p>
 </div>
 <div id="toast"></div>
+<div id="outbox-bar" style="display:none;position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:9998;align-items:center;gap:10px;background:#fff8e6;border:1.5px solid #e0b45c;border-radius:12px;padding:10px 12px;box-shadow:0 8px 22px rgba(12,24,48,.18)">
+  <span id="outbox-text" style="flex:1;font-size:.74rem;font-weight:700;color:#8a5a12">Marks are held on this phone and not sent yet</span>
+  <button type="button" class="btn btn-primary" style="padding:6px 12px;font-size:.72rem" onclick="retryOutboxNow()">Send now</button>
+</div>
 <div id="sb-overlay" onclick="closeSidebar()"></div>
 
 <!-- BOTTOM NAV -->
@@ -3193,6 +3197,88 @@ function scoreCellValue(value){
 function scoreDraftKey(studentId,subjectIdx){
   return String(studentId)+'|'+String(subjectIdx);
 }
+
+// ── OFFLINE SAFETY NET ───────────────────────────────────────────────
+// Every mark written is copied to the phone first and only removed once the
+// server confirms it. A lost network can slow a save down, never lose it.
+var OUTBOX_KEY='arq_score_outbox_v1';
+function outboxAll(){try{return JSON.parse(localStorage.getItem(OUTBOX_KEY))||{};}catch(e){return {};}}
+function outboxStore(map){try{localStorage.setItem(OUTBOX_KEY,JSON.stringify(map));}catch(e){}}
+function outboxKey(studentId,subjectIdx){
+  return [CLS,TERM,getActiveSession(),studentId,subjectIdx].join('|');
+}
+function outboxPut(studentId,subjectIdx,score){
+  var all=outboxAll();
+  all[outboxKey(studentId,subjectIdx)]={student_id:studentId,subject_index:Number(subjectIdx),
+    class_key:dbClassKey(CLS),term:TERM,session:getActiveSession(),
+    score:{ca1:score.ca1,ca2:score.ca2,ca3:score.ca3,exam:score.exam},at:Date.now()};
+  outboxStore(all);renderOutboxBar();
+}
+function outboxDrop(studentId,subjectIdx){
+  var all=outboxAll();delete all[outboxKey(studentId,subjectIdx)];outboxStore(all);renderOutboxBar();
+}
+function outboxRows(){
+  var all=outboxAll();
+  return Object.keys(all).map(function(k){return all[k];});
+}
+function outboxCount(){return outboxRows().length;}
+function renderOutboxBar(){
+  var bar=document.getElementById('outbox-bar');if(!bar)return;
+  var n=outboxCount();
+  bar.style.display=n?'flex':'none';
+  var label=document.getElementById('outbox-text');
+  if(label)label.textContent=n===1?'1 mark is recorded here and not sent yet'
+    :n+' marks are recorded here and not sent yet';
+}
+var OUTBOX_BUSY=false;
+function flushOutbox(){
+  if(OUTBOX_BUSY||!navigator.onLine)return Promise.resolve(0);
+  var rows=outboxRows().filter(function(r){
+    return r.class_key===dbClassKey(CLS)&&r.term===TERM&&r.session===getActiveSession();
+  });
+  if(!rows.length)return Promise.resolve(0);
+  OUTBOX_BUSY=true;
+  var done=0;
+  var chain=Promise.resolve();
+  rows.forEach(function(r){
+    chain=chain.then(function(){
+      var draft=r.score||{};
+      return dbUpsertScore(r.student_id,r.subject_index,draft.ca1,draft.ca2,draft.ca3,draft.exam)
+        .then(function(response){
+          if(response&&response.ok===true&&response.persisted===true){
+            outboxDrop(r.student_id,r.subject_index);done++;
+            if(!DB_SCORES[r.student_id])DB_SCORES[r.student_id]={};
+            DB_SCORES[r.student_id][r.subject_index]={
+              ca1:scoreCellValue(response.score&&response.score.ca1),
+              ca2:scoreCellValue(response.score&&response.score.ca2),
+              ca3:scoreCellValue(response.score&&response.score.ca3),
+              exam:scoreCellValue(response.score&&response.score.exam)};
+            var key=r.student_id+'|'+r.subject_index;
+            delete SCORE_DRAFTS[key];
+            if(currentSheetIdx===r.subject_index){
+              scoreStatus(r.student_id,r.subject_index,'Saved','var(--g1)');
+              syncScoreInputs(r.student_id,DB_SCORES[r.student_id][r.subject_index]);
+            }
+          }else{throw response||{code:'RESULT_SCORE_SAVE_FAILED'};}
+        })
+        .catch(function(error){
+          if(currentSheetIdx===r.subject_index&&SCORE_SAVE_VERSIONS[r.student_id+'|'+r.subject_index]){
+            scoreStatus(r.student_id,r.subject_index,'Not sent — no network','#b45309');
+          }
+          console.error('Outbox retry failed:',error);
+        });
+    });
+  });
+  return chain.then(function(){
+    OUTBOX_BUSY=false;renderOutboxBar();
+    if(done)showToast(done+(done===1?' mark sent':' marks sent'));
+    return done;
+  });
+}
+function retryOutboxNow(){showToast('Trying to send the marks held on this phone…');flushOutbox();}
+setInterval(function(){if(outboxCount())flushOutbox();},12000);
+window.addEventListener('online',function(){showToast('Network is back — sending the marks held on this phone.');flushOutbox();});
+window.addEventListener('load',function(){renderOutboxBar();setTimeout(function(){if(outboxCount())flushOutbox();},4000);});
 function clearScoreDrafts(){
   Object.keys(SCORE_SAVE_TIMERS).forEach(function(key){clearTimeout(SCORE_SAVE_TIMERS[key]);});
   SCORE_DRAFTS={};
@@ -4395,6 +4481,7 @@ function confirmedScoreResponse(studentId,subjectIdx,response,version){
   var key=scoreDraftKey(studentId,subjectIdx);
   if(SCORE_SAVE_VERSIONS[key]===version){
     delete SCORE_DRAFTS[key];
+    outboxDrop(studentId,subjectIdx);
     syncScoreInputs(studentId,score);
     updateScoreDisplay(studentId,subjectIdx,score);
     scoreStatus(studentId,subjectIdx,'Saved','var(--g1)');
@@ -4420,15 +4507,26 @@ function queueScoreSave(studentId,subjectIdx){
   SCORE_SAVE_TIMERS[key]=setTimeout(function(){
     var version=SCORE_SAVE_VERSIONS[key]||0;
     var score=scoreDraft(studentId,subjectIdx);
+    outboxPut(studentId,subjectIdx,score);
+    if(navigator.onLine===false){
+      scoreStatus(studentId,subjectIdx,'Held on phone — no network','#b45309');
+      return;
+    }
     scoreStatus(studentId,subjectIdx,'Saving…','var(--gold2)');
     dbUpsertScore(studentId,subjectIdx,score.ca1,score.ca2,score.ca3,score.exam)
       .then(function(response){
         return confirmedScoreResponse(studentId,subjectIdx,response,version);
       })
       .catch(function(error){
+        var offline=navigator.onLine===false||/Failed to fetch|NetworkError|load failed/i.test(String((error&&error.message)||''));
         if(SCORE_SAVE_VERSIONS[key]===version){
-          scoreStatus(studentId,subjectIdx,'Save failed — not recorded','#991b1b');
-          showToast(scoreSaveMessage(error),'error');
+          if(offline){
+            scoreStatus(studentId,subjectIdx,'Held on phone — not sent','#b45309');
+            showToast('No network. This mark is held on the phone and will send by itself.','error');
+          }else{
+            scoreStatus(studentId,subjectIdx,'Not sent — will retry','#b45309');
+            showToast(scoreSaveMessage(error),'error');
+          }
         }
         console.error('Score save failed:',error);
       });
@@ -4438,6 +4536,12 @@ function openSheet(idx){
   var students=DB_STUDENTS[CLS]||[];
   var subjs=subjects();
   currentSheetIdx=idx;
+  // Marks still held on this phone must reappear on the sheet, not look lost.
+  outboxRows().forEach(function(r){
+    if(Number(r.subject_index)!==Number(idx))return;
+    if(r.class_key!==dbClassKey(CLS)||r.term!==TERM||r.session!==getActiveSession())return;
+    SCORE_DRAFTS[String(r.student_id)+'|'+String(idx)]=r.score||{};
+  });
   try{
     sessionStorage.setItem('wts_page','scores');
     sessionStorage.setItem('wts_sheet_idx',String(idx));
@@ -4472,6 +4576,11 @@ function openSheet(idx){
       +'</div>';
   });
   document.getElementById('sheet-rows').innerHTML=html;
+  Object.keys(SCORE_DRAFTS).forEach(function(k){
+    var parts=k.split('|');
+    if(Number(parts[1])!==Number(idx))return;
+    scoreStatus(parts[0],idx,'Held on phone — not sent','#b45309');
+  });
   document.querySelectorAll('#sheet-rows .sc-inp').forEach(function(inp){
     inp.addEventListener('input',function(){
       var sid=inp.getAttribute('data-sid');
@@ -4507,6 +4616,7 @@ function openSheet(idx){
       var draft=scoreDraft(sid,idx);
       draft[field]=raw;
       SCORE_DRAFTS[key]=draft;
+      outboxPut(sid,idx,draft);          // on the phone first, whatever the network does
       SCORE_SAVE_VERSIONS[key]=(SCORE_SAVE_VERSIONS[key]||0)+1;
       scoreStatus(sid,idx,'Saving…','var(--gold2)');
       updateScoreDisplay(sid,idx,draft);
