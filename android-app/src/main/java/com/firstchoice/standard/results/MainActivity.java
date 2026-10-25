@@ -13,7 +13,20 @@ import android.os.ParcelFileDescriptor;
 import android.os.Build;
 import android.provider.MediaStore;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.Gravity;
+import android.view.View;
 import android.view.Window;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
@@ -42,6 +55,9 @@ public class MainActivity extends Activity {
     private File pendingCameraFile;
     private boolean printInProgress = false;
     private boolean reportCardPrintInProgress = false;
+    // Splash shown over the WebView until the page has painted its first frame.
+    private View splash;
+    private boolean splashDismissed = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,7 +82,18 @@ public class MainActivity extends Activity {
         // The page starts white until the first paint, which flashes on every launch.
         // Paint the WebView canvas in the school's navy so the launch looks continuous.
         webView.setBackgroundColor(schoolNavy);
-        setContentView(webView);
+
+        // A branded splash sits on top of the WebView instead of a bare navy screen:
+        // the school crest flips in, breathes once, then fades away as the portal paints.
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(schoolNavy);
+        root.addView(webView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        root.addView(buildSplash(schoolNavy), new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        setContentView(root);
+        // Never leave the splash covering the portal if the network hangs.
+        new Handler(Looper.getMainLooper()).postDelayed(this::dismissSplash, 3000);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -97,8 +124,15 @@ public class MainActivity extends Activity {
             }
 
             @Override
+            public void onPageCommitVisible(WebView view, String url) {
+                super.onPageCommitVisible(view, url);
+                dismissSplash();
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                dismissSplash();
                 view.evaluateJavascript(
                     "(function(){if(!window.__wtsAndroidPrint){window.__wtsAndroidPrint=true;window.print=function(){AndroidPrint.printPage();};}})();",
                     null
@@ -339,5 +373,68 @@ public class MainActivity extends Activity {
                 }
             });
         }
+    }
+
+    /** Navy backdrop with the crest, flipped in on the Z axis so it reads as motion. */
+    private View buildSplash(int schoolNavy) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER);
+        box.setBackgroundColor(schoolNavy);
+
+        ImageView crest = new ImageView(this);
+        crest.setImageResource(R.drawable.school_logo);
+        int size = (int) (140 * getResources().getDisplayMetrics().density);
+        box.addView(crest, new LinearLayout.LayoutParams(size, size));
+
+        TextView name = new TextView(this);
+        name.setText("ARRABAANIY STANDARD SCHOOL");
+        name.setTextColor(Color.parseColor("#C99A3B"));
+        name.setTypeface(Typeface.DEFAULT_BOLD);
+        name.setLetterSpacing(0.14f);
+        name.setTextSize(12f);
+        name.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        nameParams.topMargin = (int) (18 * getResources().getDisplayMetrics().density);
+        box.addView(name, nameParams);
+
+        splash = box;
+        crest.setCameraDistance(8000 * getResources().getDisplayMetrics().density);
+        crest.setRotationY(-110f);
+        crest.setAlpha(0f);
+        crest.setScaleX(0.8f);
+        crest.setScaleY(0.8f);
+
+        ObjectAnimator flip = ObjectAnimator.ofFloat(crest, "rotationY", -110f, 0f);
+        ObjectAnimator fade = ObjectAnimator.ofFloat(crest, "alpha", 0f, 1f);
+        ObjectAnimator grow = ObjectAnimator.ofFloat(crest, "scaleX", 0.8f, 1f);
+        ObjectAnimator growY = ObjectAnimator.ofFloat(crest, "scaleY", 0.8f, 1f);
+        for (Animator a : new Animator[]{flip, fade, grow, growY}) {
+            a.setDuration(650);
+            a.setInterpolator(new AccelerateDecelerateInterpolator());
+            a.start();
+        }
+        return box;
+    }
+
+    private void dismissSplash() {
+        if (splashDismissed || splash == null) return;
+        splashDismissed = true;
+        splash.animate()
+                .alpha(0f)
+                .scaleX(1.06f)
+                .scaleY(1.06f)
+                .setDuration(320)
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        if (splash != null && splash.getParent() != null) {
+                            ((FrameLayout) splash.getParent()).removeView(splash);
+                        }
+                        splash = null;
+                    }
+                })
+                .start();
     }
 }

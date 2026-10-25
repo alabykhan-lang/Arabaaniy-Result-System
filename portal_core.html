@@ -1084,6 +1084,28 @@ html, body {
                          letter-spacing:.04em; display:block; }
 .bulk-row-fields .sel, .bulk-row-fields .inp { margin-top:3px; width:100%; }
 .bulk-empty { font-size:.76rem; color:var(--gray); padding:8px 2px; }
+
+/* ── SETTINGS: final override — category pills in a card grid, fields stacked ── */
+#page-settings .settings-layout{display:block!important}
+#page-settings aside.settings-dashboard-tabs{display:grid!important;grid-template-columns:1fr 1fr!important;
+  gap:10px!important;position:static!important;height:auto!important;width:auto!important;overflow:visible!important;
+  white-space:normal!important;padding:12px!important;margin:0 0 16px!important;border-radius:16px!important;
+  background:var(--white)!important;border:1px solid var(--border)!important;box-shadow:var(--shadow)!important;
+  align-self:stretch!important;box-sizing:border-box!important}
+#page-settings aside.settings-dashboard-tabs button{display:block!important;width:auto!important;flex:none!important;
+  min-height:46px!important;padding:12px 8px!important;border:1px solid var(--border)!important;border-radius:999px!important;
+  background:var(--white)!important;color:var(--g1)!important;text-align:center!important;white-space:normal!important;
+  font-size:.74rem!important;font-weight:700!important;line-height:1.25!important;box-sizing:border-box!important}
+#page-settings aside.settings-dashboard-tabs button.active{
+  background:linear-gradient(100deg,var(--g1),var(--gold2))!important;color:#fff!important;
+  border-color:transparent!important;box-shadow:0 6px 16px rgba(19,37,74,.22)!important}
+#page-settings .settings-grid{padding-bottom:100px}
+#page-settings .fg{display:block!important;margin:0 0 14px!important;max-width:none!important;
+  padding:0!important;border:0!important;grid-template-columns:none!important}
+#page-settings .fg>label{display:block!important;margin:0 0 6px!important;font-size:.74rem!important;
+  font-weight:700!important;color:var(--g1)!important}
+#page-settings .fg-row{display:block!important}
+#page-settings .fg input.inp,#page-settings .fg select.sel{width:100%!important}
 </style>
 </head>
 <body>
@@ -3370,6 +3392,8 @@ function navTo(id,el){
           DEPTS[CLS]?DEPTS[CLS].label+' - '+titles[id]:'';
   if(IN_CLASS&&DEPTS[CLS]&&id!=='home')sub=DEPTS[CLS].label+' - '+titles[id]+' · '+TERM+' · '+getActiveSession();
   document.getElementById('tb-sub').textContent=sub;
+  var tbTitle=document.getElementById('tb-title');
+  if(tbTitle)tbTitle.textContent=titles[id]||'Home';
   syncContextDisplay();
   if(id==='home'){setMode(false);renderHome();}
   if(id==='history'){setMode(false);loadHistoryDashboard();}
