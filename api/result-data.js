@@ -251,7 +251,7 @@ async function handleAction(action, payload, token) {
 
   if (action === 'management.staff.list') {
     await requireManagement(token);
-    const rows = await supabaseRest('staff_profiles?is_developer=eq.false&order=last_seen_at.desc.nullslast,created_at.asc', {}, token);
+    const rows = await supabaseRest('staff_profiles?order=last_seen_at.desc.nullslast,created_at.asc', {}, token);
     return { ok: true, staff: rows || [] };
   }
   if (action === 'management.staff.create') {
