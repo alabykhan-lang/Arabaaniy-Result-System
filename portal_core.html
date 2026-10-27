@@ -612,7 +612,7 @@ body.central-management-mode .central-management-only{display:flex}
 .result-history-picker small{display:block;margin-top:7px;color:var(--gray);font-size:.7rem;line-height:1.4}
 body.result-context-read-only #sheet-rows .sc-inp{pointer-events:none;opacity:.62;background:#f3f4f6}
 body.result-context-read-only #save-draft-btn,body.result-context-read-only #publish-btn,body.result-context-read-only #scan-record-btn{opacity:.5;pointer-events:none}
-.result-read-only-note{display:none;margin:0 0 13px;padding:10px 12px;border-left:3px solid var(--gold);border-radius:8px;background:#fff8e9;color:#725d37;font-size:.75rem;line-height:1.45}
+.result-read-only-note{display:none;margin:0 0 13px;padding:9px 12px;border-left:3px solid #7d93b2;border-radius:8px;background:#eef3f9;color:#3f5570;font-size:.75rem;line-height:1.45}
 body.result-context-read-only .result-read-only-note{display:block}
 
 /* Read-only archive browser */
@@ -2201,7 +2201,7 @@ function resultDataRequest(action,payload){
   return requestData().catch(function(error){
     var code=String(error&&error.code||'');
     var message=String(error&&error.message||'');
-    if(error&&error.http_status===401&&(code==='RESULT_SESSION_NOT_ACTIVE'||/jwt expired|token.*expired/i.test(message))){
+    if(error&&error.http_status===401&&(code==='RESULT_SESSION_NOT_ACTIVE'||code==='RESULT_SESSION_REQUIRED'||/jwt expired|token.*expired/i.test(message))){
       return resultAuthRequest('GET').then(function(session){
         if(!session||!session.user)throw error;
         var refreshed=localUserFromPayload(session);
@@ -2285,8 +2285,10 @@ function loginSuccess(user,mode){
   try{history.replaceState({page:'home'},'',window.location.pathname);}catch(e){}
   loadRemoteSettings({force:true}).then(function(){
     restorePortalPageAfterLogin();
+    renderStaffOverview();
   }).catch(function(){
     restorePortalPageAfterLogin();
+    renderStaffOverview();
   });
 }
 
@@ -2569,6 +2571,9 @@ function updateContextLock(){
 }
 function resultContextMessage(error){
   var code=error&&error.code;
+  if(code==='RESULT_SESSION_REQUIRED'||code==='RESULT_SESSION_NOT_ACTIVE')return 'Your session had not finished restoring. Refresh the page, or sign in again if it keeps happening.';
+  if(code==='RESULT_DATA_UNAVAILABLE'||code==='RESULT_API_INVALID_RESPONSE'||code==='SUPABASE_REQUEST_FAILED')return 'The server could not be reached just now. Refresh the page and try again.';
+  if(code==='RESULT_PERMISSION_DENIED')return 'This account does not have permission to read that record.';
   if(code==='RESULT_ACADEMIC_CONTEXT_READ_ONLY'||code==='RESULT_ACADEMIC_TERM_READ_ONLY'){
     return 'This academic history is read-only. Return to the official current term to make changes.';
   }
@@ -3801,7 +3806,10 @@ function saveAssessmentScope(){
 
 function renderStaffOverview(){
   var el=document.getElementById('staff-overview');if(!el)return;
-  var role=CURRENT_USER&&CURRENT_USER._role||'staff';
+  // _role is only populated once the session has been restored; fall back to the
+  // permission map so an administrator never sees the "normal staff" note (and no
+  // staff directory) just because the page painted a moment too early.
+  var role=CURRENT_USER&&CURRENT_USER._role||(hasResultPermission('management.review')?'admin':'staff');
   var label=role==='staff'?'Staff access':'School management access';
   if(role==='staff'){
     el.innerHTML='<div class="staff-access-note"><strong>'+label+'</strong><br>Normal Staff account: You have full access to enter marks, manage students, scan scores, and generate report cards. System configuration and staff account management are reserved for School Administrators.</div>';
@@ -3846,7 +3854,7 @@ function loadStaffDirectory(){
     }).join('');
   }).catch(function(error){
     if(status)status.textContent='Unavailable';
-    el.innerHTML='<div class="staff-access-note"><strong>Staff directory could not be loaded.</strong><br>Check the signed-in management account and refresh this overview.</div>';
+    el.innerHTML='<div class="staff-access-note"><strong>Staff directory could not be loaded.</strong><br>'+escapeHtml(resultContextMessage(error))+'</div>';
   });
 }
 function changeStaffRole(id,role,suspended){
@@ -3958,7 +3966,10 @@ function loadHistoryDashboard(){
   var contextEl=document.getElementById('history-contexts');
   if(contextEl)contextEl.innerHTML='<div class="empty"><h3>Loading archive</h3><p>Reading saved academic history…</p></div>';
   return historyRequest('read',{}).then(function(payload){
-    HISTORY_DATA=payload||{contexts:[],transitions:[]};
+    // The server answers { contexts: [...] }; stay usable if an older deployment
+    // still answers { rows: [...] } so the page never falls over on shape.
+    var list=(payload&&Array.isArray(payload.contexts))?payload.contexts:(payload&&Array.isArray(payload.rows)?payload.rows:[]);
+    HISTORY_DATA={contexts:list,transitions:(payload&&payload.transitions)||[]};
     renderHistoryContexts();
     var section=document.getElementById('history-sections');
     var students=document.getElementById('history-students');
@@ -4005,7 +4016,7 @@ function renderHistoryContexts(){
       var countText=Number(item.enrolled_students||0)+' preserved student'+(Number(item.enrolled_students||0)===1?'':'s');
       if(Number(item.graduating_students||0))countText+=' · '+Number(item.graduating_students||0)+' graduating';
       return '<button type="button" class="archive-term-button" data-history-term-index="'+entry.index+'">'
-        +'<span><strong>'+escapeHtml(term)+'</strong><small>'+escapeHtml(countText)+' · Read only</small></span>'
+        +'<span><strong>'+escapeHtml(term)+'</strong><small>'+escapeHtml(countText)+' · '+escapeHtml(item.term_status==='open'?'Open':'Read only')+'</small></span>'
         +'<span class="archive-term-arrow">&#8594;</span>'
         +'</button>';
     }).join('');
@@ -4029,7 +4040,7 @@ function renderHistoryContexts(){
       +'<small>Read-only alumni record</small>'
       +'</button>';
   }
-  el.innerHTML=html||'<div class="empty"><h3>No saved history yet</h3><p>Closed sessions will appear here after school management archives them.</p></div>';
+  el.innerHTML=html||'<div class="empty"><h3>No past sessions are saved yet</h3><p>Terms appear here once marks or archived students exist for a session.</p></div>';
   el.querySelectorAll('[data-history-session-toggle]').forEach(function(toggle){
     toggle.onclick=function(){
       var id=toggle.getAttribute('data-history-session-toggle');

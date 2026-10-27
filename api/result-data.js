@@ -99,6 +99,103 @@ async function readResource(resource, payload, token) {
   return supabaseRest(`${resource}?${query.toString()}`, {}, token);
 }
 
+// ------------------------------------------------------------
+// READ-ONLY ARCHIVE
+// Contexts and rosters are derived from the normal record tables (scores,
+// students). Nothing here writes.
+// ------------------------------------------------------------
+const HISTORY_TERMS = ['1st Term', '2nd Term', '3rd Term'];
+
+function historyTermIndex(term) {
+  const index = HISTORY_TERMS.indexOf(String(term || '').trim());
+  return index === -1 ? 99 : index;
+}
+
+function historyIsGraduated(row) {
+  return Boolean(row?.archived) && /graduat|alumni|left/i.test(String(row?.archived_reason || ''));
+}
+
+async function historyContexts(token) {
+  const [currentRows, scoreRows, studentRows] = await Promise.all([
+    supabaseRest('academic_context?id=eq.1&select=academic_session,term,term_status&limit=1', {}, token),
+    supabaseRest('scores?select=academic_session,term', {}, token),
+    supabaseRest('students?select=academic_session,archived,archived_reason', {}, token),
+  ]);
+  const current = currentRows?.[0] || {};
+  const openSession = String(current.academic_session || '');
+  const openTerm = String(current.term || '');
+
+  const counts = {};
+  const combos = [];
+  const seen = {};
+  function addCombo(session, term) {
+    if (!session) return;
+    const identity = `${session}|${term || ''}`;
+    if (seen[identity]) return;
+    seen[identity] = true;
+    combos.push({ academic_session: session, term: term || '' });
+  }
+  function bucket(session) {
+    if (!session) return null;
+    if (!counts[session]) counts[session] = { enrolled: 0, graduating: 0 };
+    return counts[session];
+  }
+
+  (scoreRows || []).forEach((row) => addCombo(row.academic_session, row.term));
+  // A session that only survives as a roster (no scores) still has to be listed;
+  // students carry no term, so it is filed under the closing term of the year.
+  const sessionsWithScores = {};
+  (scoreRows || []).forEach((row) => { if (row.academic_session) sessionsWithScores[row.academic_session] = true; });
+  (studentRows || []).forEach((row) => {
+    const tally = bucket(row.academic_session);
+    if (tally) {
+      if (row.archived) tally.graduating += 1;
+      else tally.enrolled += 1;
+    }
+    if (row.academic_session && !sessionsWithScores[row.academic_session]) addCombo(row.academic_session, '3rd Term');
+  });
+
+  return combos
+    .sort((a, b) => (a.academic_session === b.academic_session
+      ? historyTermIndex(a.term) - historyTermIndex(b.term)
+      : String(b.academic_session).localeCompare(String(a.academic_session))))
+    .map((combo) => {
+      const tally = counts[combo.academic_session] || { enrolled: 0, graduating: 0 };
+      const isOpen = combo.academic_session === openSession && combo.term === openTerm;
+      return {
+        academic_session: combo.academic_session,
+        term: combo.term,
+        term_status: isOpen ? 'open' : 'read only',
+        enrolled_students: tally.enrolled,
+        graduating_students: tally.graduating,
+      };
+    });
+}
+
+async function historyRoster(payload = {}, token, graduatesOnly) {
+  const query = new URLSearchParams();
+  query.set('select', 'id,class_key,academic_session,name,gender,admno,house,age,photo,archived,archived_reason');
+  if (payload.academic_session) query.set('academic_session', `eq.${payload.academic_session}`);
+  if (payload.class_key) query.set('class_key', `eq.${payload.class_key}`);
+  query.set('archived', graduatesOnly ? 'eq.true' : 'eq.false');
+  query.set('order', 'name.asc');
+  const rows = await supabaseRest(`students?${query.toString()}`, {}, token);
+  return (rows || []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    gender: row.gender,
+    admno: row.admno,
+    house: row.house,
+    age: row.age,
+    photo: row.photo,
+    academic_session: row.academic_session,
+    class_key: row.class_key,
+    historical_class_key: row.class_key,
+    archived: Boolean(row.archived),
+    enrollment_status: historyIsGraduated(row) ? 'graduated' : row.archived ? 'archived' : 'enrolled',
+  }));
+}
+
 async function readSettings(token) {
   const [configRows, contextRows] = await Promise.all([
     supabaseRest('app_config?id=eq.1&limit=1', {}, token),
@@ -298,9 +395,13 @@ async function handleAction(action, payload, token) {
     return { ok: true, rows: await readResource(action.slice(5), payload, token) };
   }
   if (action.startsWith('history.')) {
+    // The archive is strictly read-only: it only ever issues GET requests.
     if (action === 'history.context.set') return { ok: true, read_only: true };
     const historyResource = action.slice('history.'.length);
-    if (['read', 'students', 'graduates'].includes(historyResource) || READ_RESOURCES.has(historyResource)) return { ok: true, rows: [] };
+    if (historyResource === 'read') return { ok: true, contexts: await historyContexts(token) };
+    if (historyResource === 'students') return { ok: true, rows: await historyRoster(payload, token, false) };
+    if (historyResource === 'graduates') return { ok: true, rows: await historyRoster(payload, token, true) };
+    if (READ_RESOURCES.has(historyResource)) return { ok: true, rows: [] };
     return unsupportedAction();
   }
   if (action === 'context.set') {
