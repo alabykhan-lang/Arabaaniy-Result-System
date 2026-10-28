@@ -459,7 +459,7 @@ async function handleAction(action, payload, token) {
   if (action === 'students.archive') {
     const rows = await supabaseRest(`students?id=eq.${encodeURIComponent(payload.student_id)}`, {
       method: 'PATCH',
-      body: { archived: true, archived_reason: payload.reason || null },
+      body: { archived: true, archived_reason: payload.reason || null, updated_at: new Date().toISOString() },
     }, token);
     return { ok: true, student: rows?.[0] || null };
   }

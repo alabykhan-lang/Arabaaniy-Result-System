@@ -4513,7 +4513,12 @@ function deleteStu(id){
         DB_STUDENTS[CLS]=(DB_STUDENTS[CLS]||[]).filter(function(s){return s.id!==id;});
         hideLoad();showToast('Student archived');renderStudents();renderDash();
       }).catch(function(error){
-        hideLoad();console.error('Protected student archive error:',error);showToast('Student archive denied','error');
+        hideLoad();console.error('Protected student archive error:',error);
+        // "Denied" used to cover every failure, including a dead session; say the real
+        // thing so an expired cookie is not read as a permissions bug.
+        var code=String(error&&error.code||'');
+        var known=['RESULT_SESSION_REQUIRED','RESULT_SESSION_NOT_ACTIVE','RESULT_PERMISSION_DENIED','RESULT_DATA_UNAVAILABLE','RESULT_API_INVALID_RESPONSE','RESULT_ACADEMIC_CONTEXT_READ_ONLY','RESULT_ACADEMIC_TERM_READ_ONLY'];
+        showToast(known.indexOf(code)>-1?resultContextMessage(error):('Student was not archived: '+((error&&error.message)||'database error')),'error');
       });
     return;
   }
