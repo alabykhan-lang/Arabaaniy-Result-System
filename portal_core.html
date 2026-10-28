@@ -2144,6 +2144,10 @@ function isResultMutationAction(action){return RESULT_MUTATING_ACTIONS.indexOf(S
 function getStoredAuthSession(){
   return MEMORY_AUTH_SESSION;
 }
+// Called once the first real frame is on screen; the Android shell drops its splash on it.
+function signalAppPainted(){
+  try{if(window.AndroidSplash&&AndroidSplash.painted)AndroidSplash.painted();}catch(e){}
+}
 function getAuthHeaders(){
   var session=getStoredAuthSession();
   return session&&session.access_token?{Authorization:'Bearer '+session.access_token}:{};
@@ -2182,6 +2186,23 @@ function resultAuthRequest(method,body){
   });
 }
 
+var SESSION_EXPIRED_SHOWN=false;
+// A dead session used to dump a red bar over a cached home screen with no way back;
+// this sends the reader to the sign-in screen, email filled, copy still behind it.
+function sessionExpired(){
+  if(SESSION_EXPIRED_SHOWN)return;
+  SESSION_EXPIRED_SHOWN=true;
+  clearAuthSession();
+  CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
+  showAuthScreen();
+  setAuthMode('login');
+  var known=recalledUser();
+  var email=document.getElementById('auth-email');
+  if(email&&!email.value&&known&&known.email)email.value=known.email;
+  authErr('auth-err','Your session has ended. Sign in again to continue.');
+  setTimeout(function(){SESSION_EXPIRED_SHOWN=false;},4000);
+}
+
 function resultDataRequest(action,payload){
   if(CONTEXT_READ_ONLY&&isResultMutationAction(action))return Promise.reject({code:'RESULT_ACADEMIC_CONTEXT_READ_ONLY'});
   function requestData(){return fetch('/api/result-data',{
@@ -2203,12 +2224,15 @@ function resultDataRequest(action,payload){
     var message=String(error&&error.message||'');
     if(error&&error.http_status===401&&(code==='RESULT_SESSION_NOT_ACTIVE'||code==='RESULT_SESSION_REQUIRED'||/jwt expired|token.*expired/i.test(message))){
       return resultAuthRequest('GET').then(function(session){
-        if(!session||!session.user)throw error;
+        if(!session||!session.user){sessionExpired();throw error;}
         var refreshed=localUserFromPayload(session);
         CURRENT_USER=refreshed;
         CURRENT_AUTH_MODE='local';
         CURRENT_PERMISSIONS=Array.isArray(refreshed._permissions)?refreshed._permissions:CURRENT_PERMISSIONS;
         return requestData();
+      },function(){
+        sessionExpired();
+        throw error;
       });
     }
     throw error;
@@ -2352,14 +2376,25 @@ function checkSession(){
   resultAuthRequest('GET').then(function(payload){
     if(!payload||!payload.user)throw {code:'AUTH_SESSION_INVALID'};
     loginSuccess(localUserFromPayload(payload),'local');
-  }).catch(function(){
+  }).catch(function(error){
     var known=recalledUser();
-    if(known&&known.id){
+    // No network: keep the offline entry that opens the phone's saved copy.
+    // Server answered but the session is gone: go to sign-in instead of a home
+    // screen where every read fails.
+    var unreachable=!navigator.onLine||!error||!error.code;
+    if(known&&known.id&&unreachable){
       showToast('No network — signed in from this phone.', 'error');
       loginSuccess(known,'local');
       return;
     }
-    clearAuthSession();showAuthScreen();
+    clearAuthSession();
+    showAuthScreen();
+    if(known&&known.email){
+      var mail=document.getElementById('auth-email');
+      if(mail&&!mail.value)mail.value=known.email;
+      setAuthMode('login');
+      authErr('auth-err','Your session has ended. Sign in again to continue.');
+    }
   });
 }
 
@@ -2571,7 +2606,7 @@ function updateContextLock(){
 }
 function resultContextMessage(error){
   var code=error&&error.code;
-  if(code==='RESULT_SESSION_REQUIRED'||code==='RESULT_SESSION_NOT_ACTIVE')return 'Your session had not finished restoring. Refresh the page, or sign in again if it keeps happening.';
+  if(code==='RESULT_SESSION_REQUIRED'||code==='RESULT_SESSION_NOT_ACTIVE')return 'Your session has ended. Sign in again to continue.';
   if(code==='RESULT_DATA_UNAVAILABLE'||code==='RESULT_API_INVALID_RESPONSE'||code==='SUPABASE_REQUEST_FAILED')return 'The server could not be reached just now. Refresh the page and try again.';
   if(code==='RESULT_PERMISSION_DENIED')return 'This account does not have permission to read that record.';
   if(code==='RESULT_ACADEMIC_CONTEXT_READ_ONLY'||code==='RESULT_ACADEMIC_TERM_READ_ONLY'){
@@ -6290,6 +6325,9 @@ window.addEventListener('DOMContentLoaded',function(){
   // Start on home page
   setMode(false);
   renderHome();
+  // Tell the Android shell the first real frame is on screen, so its splash can
+  // leave on paint instead of on commit and the canvas never flashes white.
+  requestAnimationFrame(function(){requestAnimationFrame(signalAppPainted);});
   // Check for existing session
   checkSession();
 

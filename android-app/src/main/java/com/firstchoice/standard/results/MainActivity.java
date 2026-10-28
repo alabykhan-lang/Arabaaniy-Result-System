@@ -66,8 +66,10 @@ public class MainActivity extends Activity {
     private boolean splashDismissed = false;
     private boolean splashQueued = false;
     private long splashStart = 0L;
+    private boolean pagePainted = false;
     private static final long SPLASH_MIN_MS = 5200;   // stay up at least this long
     private static final long SPLASH_HARD_MS = 9000;  // ...but never longer than this
+    private static final long SPLASH_PAINT_GRACE_MS = 1500; // then leave even if unpainted
     private final Handler splashHandler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -122,6 +124,7 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
         webView.addJavascriptInterface(new PrintBridge(), "AndroidPrint");
+        webView.addJavascriptInterface(new SplashBridge(), "AndroidSplash");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -137,13 +140,23 @@ public class MainActivity extends Activity {
             @Override
             public void onPageCommitVisible(WebView view, String url) {
                 super.onPageCommitVisible(view, url);
-                dismissSplash();
+                // Commit is not paint: the page can commit as a blank frame. Wait for the
+                // page's own painted() signal, and only force it after a short grace.
+                if (pagePainted) {
+                    dismissSplash();
+                } else {
+                    splashHandler.postDelayed(MainActivity.this::dismissSplash, SPLASH_PAINT_GRACE_MS);
+                }
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                dismissSplash();
+                if (pagePainted) {
+                    dismissSplash();
+                } else {
+                    splashHandler.postDelayed(() -> dismissSplash(true), SPLASH_PAINT_GRACE_MS);
+                }
                 view.evaluateJavascript(
                     "(function(){if(!window.__wtsAndroidPrint){window.__wtsAndroidPrint=true;window.print=function(){AndroidPrint.printPage();};}})();",
                     null
@@ -381,6 +394,23 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     detectPageAndPrint();
+                }
+            });
+        }
+    }
+
+    /**
+     * The page calls AndroidSplash.painted() on its first real frame. Until then the
+     * splash stays, so the transition is splash → page with no white canvas between.
+     */
+    private class SplashBridge {
+        @JavascriptInterface
+        public void painted() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    pagePainted = true;
+                    dismissSplash();
                 }
             });
         }

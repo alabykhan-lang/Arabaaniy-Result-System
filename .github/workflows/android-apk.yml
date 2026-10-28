@@ -1,0 +1,38 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "android-app/**"
+      - "build.gradle"
+      - "settings.gradle"
+      - ".github/workflows/android-apk.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Build signed APK
+        run: gradle :android-app:assembleRelease
+
+      - name: Name the artifact after the version
+        run: |
+          version=$(grep -m1 'versionName' android-app/build.gradle | sed -E 's/.*"(.*)".*/\1/')
+          cp android-app/build/outputs/apk/release/android-app-release.apk "Arrabaaniy-Standard-School-v${version}.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Arrabaaniy-Result-App
+          path: Arrabaaniy-Standard-School-v*.apk
