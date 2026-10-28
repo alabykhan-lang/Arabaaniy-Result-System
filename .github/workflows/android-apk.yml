@@ -29,10 +29,10 @@ jobs:
       - name: Name the artifact after the version
         run: |
           version=$(grep -m1 'versionName' android-app/build.gradle | sed -E 's/.*"(.*)".*/\1/')
-          cp android-app/build/outputs/apk/release/android-app-release.apk "Arrabaaniy-Standard-School-v${version}.apk"
+          cp android-app/build/outputs/apk/release/android-app-release.apk "app-Arrabaaniy-v${version}.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Arrabaaniy-Result-App
-          path: Arrabaaniy-Standard-School-v*.apk
+          path: app-Arrabaaniy-v*.apk
