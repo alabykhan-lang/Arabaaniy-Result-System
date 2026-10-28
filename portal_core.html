@@ -5944,7 +5944,10 @@ function renderSettings(targetTab){
   if(el('cfg-sig-title'))el('cfg-sig-title').value=sig.title||'';
   previewSig();
   var cardTog=document.getElementById('card-toggles');
-  if(cardTog) cardTog.innerHTML=CARD_SECTIONS.map(function(s){
+  if(cardTog) cardTog.innerHTML=CARD_SECTIONS.filter(function(s){
+    // Attendance rows are off portal-wide for now; do not offer a toggle that does nothing.
+    return SHOW_ATTENDANCE||s.key!=='showAttendance';
+  }).map(function(s){
     return'<div class="toggle-row"><div><div style="font-size:.85rem;font-weight:600">'+s.label+'</div></div>'
       +'<label class="toggle"><input type="checkbox" id="tog-'+s.key+'" '+(secs[s.key]?'checked':'')+' onchange="saveSectionToggle(\''+s.key+'\',this.checked)"/><span class="toggle-slider"></span></label></div>';
   }).join('');
