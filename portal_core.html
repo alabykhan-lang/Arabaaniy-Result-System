@@ -4511,7 +4511,7 @@ function deleteStu(id){
     resultDataRequest('students.archive',{student_id:id,reason:'Archived through Result Portal'})
       .then(function(){
         DB_STUDENTS[CLS]=(DB_STUDENTS[CLS]||[]).filter(function(s){return s.id!==id;});
-        hideLoad();showToast('Student archived');renderStudents();renderDash();
+        hideLoad();showToast('Student archived and taken off the active roster');renderStudents();renderDash();
       }).catch(function(error){
         hideLoad();console.error('Protected student archive error:',error);
         // "Denied" used to cover every failure, including a dead session; say the real
