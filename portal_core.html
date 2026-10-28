@@ -1325,7 +1325,7 @@ html, body {
   <div class="page" id="page-history">
     <div style="max-width:1050px;margin:0 auto">
       <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px">
-        <div><p class="sec-title" style="margin:0 0 5px;border:0">READ-ONLY SCHOOL ARCHIVE</p><h2 style="font-family:'Fraunces',serif;color:var(--g1);font-size:1.45rem">Past sessions and graduating students</h2><p style="font-size:.8rem;color:var(--gray);margin-top:6px;max-width:650px">Previous terms, sections and graduating records are preserved here for reading. The archive never writes to scores, students or promotion decisions.</p></div>
+        <div><p class="sec-title" style="margin:0 0 5px;border:0">READ-ONLY SCHOOL ARCHIVE</p><h2 style="font-family:'Fraunces',serif;color:var(--g1);font-size:1.45rem">Sessions and graduating students</h2><p style="font-size:.8rem;color:var(--gray);margin-top:6px;max-width:650px">Every session that holds marks or pupils is kept here for reading. The open session shows as <strong>Open</strong>; closed ones show as read only. The archive never writes to scores, students or promotion decisions.</p></div>
         <button class="btn btn-outline btn-sm" type="button" onclick="loadHistoryDashboard()">&#8635; Refresh archive</button>
       </div>
       <div class="result-read-only-note" style="display:block">Archive mode: all records on this page are read-only. The official current session and term are controlled by school management.</div>
@@ -4014,7 +4014,8 @@ function renderHistoryContexts(){
     var terms=group.terms.map(function(entry){
       var item=entry.item;
       var term=String(item.term||'');
-      var countText=Number(item.enrolled_students||0)+' preserved student'+(Number(item.enrolled_students||0)===1?'':'s');
+      var countText=Number(item.enrolled_students||0)+' active student'+(Number(item.enrolled_students||0)===1?'':'s');
+      if(Number(item.archived_students||0))countText+=' · '+Number(item.archived_students||0)+' archived';
       if(Number(item.graduating_students||0))countText+=' · '+Number(item.graduating_students||0)+' graduating';
       return '<button type="button" class="archive-term-button" data-history-term-index="'+entry.index+'">'
         +'<span><strong>'+escapeHtml(term)+'</strong><small>'+escapeHtml(countText)+' · '+escapeHtml(item.term_status==='open'?'Open':'Read only')+'</small></span>'

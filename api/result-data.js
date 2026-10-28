@@ -112,7 +112,9 @@ function historyTermIndex(term) {
 }
 
 function historyIsGraduated(row) {
-  return Boolean(row?.archived) && /graduat|alumni|left/i.test(String(row?.archived_reason || ''));
+  // Only an explicit graduation reason makes a row a graduate. A student removed with
+  // the delete button is archived, not graduated, and must not inflate that count.
+  return Boolean(row?.archived) && /graduat|alumni/i.test(String(row?.archived_reason || ''));
 }
 
 async function historyContexts(token) {
@@ -137,7 +139,7 @@ async function historyContexts(token) {
   }
   function bucket(session) {
     if (!session) return null;
-    if (!counts[session]) counts[session] = { enrolled: 0, graduating: 0 };
+    if (!counts[session]) counts[session] = { enrolled: 0, graduating: 0, archived: 0 };
     return counts[session];
   }
 
@@ -149,8 +151,9 @@ async function historyContexts(token) {
   (studentRows || []).forEach((row) => {
     const tally = bucket(row.academic_session);
     if (tally) {
-      if (row.archived) tally.graduating += 1;
-      else tally.enrolled += 1;
+      if (!row.archived) tally.enrolled += 1;
+      else if (historyIsGraduated(row)) tally.graduating += 1;
+      else tally.archived += 1;
     }
     if (row.academic_session && !sessionsWithScores[row.academic_session]) addCombo(row.academic_session, '3rd Term');
   });
@@ -160,7 +163,7 @@ async function historyContexts(token) {
       ? historyTermIndex(a.term) - historyTermIndex(b.term)
       : String(b.academic_session).localeCompare(String(a.academic_session))))
     .map((combo) => {
-      const tally = counts[combo.academic_session] || { enrolled: 0, graduating: 0 };
+      const tally = counts[combo.academic_session] || { enrolled: 0, graduating: 0, archived: 0 };
       const isOpen = combo.academic_session === openSession && combo.term === openTerm;
       return {
         academic_session: combo.academic_session,
@@ -168,19 +171,24 @@ async function historyContexts(token) {
         term_status: isOpen ? 'open' : 'read only',
         enrolled_students: tally.enrolled,
         graduating_students: tally.graduating,
+        archived_students: tally.archived,
       };
     });
 }
 
 async function historyRoster(payload = {}, token, graduatesOnly) {
+  // A preserved roster keeps every student of that session, including the ones archived
+  // since; the graduate view narrows it down to real graduations only.
   const query = new URLSearchParams();
   query.set('select', 'id,class_key,academic_session,name,gender,admno,house,age,photo,archived,archived_reason');
   if (payload.academic_session) query.set('academic_session', `eq.${payload.academic_session}`);
   if (payload.class_key) query.set('class_key', `eq.${payload.class_key}`);
-  query.set('archived', graduatesOnly ? 'eq.true' : 'eq.false');
+  if (graduatesOnly) query.set('archived', 'eq.true');
   query.set('order', 'name.asc');
   const rows = await supabaseRest(`students?${query.toString()}`, {}, token);
-  return (rows || []).map((row) => ({
+  return (rows || [])
+    .filter((row) => !graduatesOnly || historyIsGraduated(row))
+    .map((row) => ({
     id: row.id,
     name: row.name,
     gender: row.gender,
