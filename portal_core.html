@@ -1470,6 +1470,8 @@ body.developer-account .developer-command-center-only#dev-home-card{display:flex
     display:flex!important;flex-direction:column;
     max-height:none;box-shadow:none;
   }
+  /* The chat card is fixed at z-index 400 on a phone, so a modal must sit above it. */
+  body.developer-account .overlay{z-index:600}
   .dev-ws-bar{padding:calc(12px + env(safe-area-inset-top,0px)) 12px 11px;gap:8px;flex:0 0 auto}
   .dev-ws-main{flex:1 1 auto;min-height:0}
   .dev-ws-logo{width:30px;height:30px;border-radius:9px}
