@@ -402,6 +402,26 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
   pointer-events:none;z-index:9998;white-space:nowrap}
 #toast.show{opacity:1}
 #toast.error{background:#dc2626}
+/* A saved document is a real file on the phone. The card stays until it is
+   dismissed and gives one-tap ways to open the file or the Downloads folder,
+   so a long filename can never hide the confirmation. */
+#saved-file{position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(80px + env(safe-area-inset-bottom,0px));
+  width:min(430px,calc(100vw - 24px));box-sizing:border-box;
+  display:none;gap:10px;align-items:center;padding:11px 13px;
+  background:#fff;border:1px solid #d6dfeb;border-radius:14px;
+  box-shadow:0 12px 30px rgba(19,37,74,.16);z-index:9997}
+#saved-file.show{display:flex}
+#saved-file .sf-main{min-width:0;flex:1}
+#saved-file .sf-main b{display:block;font:700 .78rem/1.2 'Plus Jakarta Sans',sans-serif;color:#13254a;margin-bottom:2px}
+#saved-file .sf-name{display:block;font:500 .67rem/1.3 'Plus Jakarta Sans',sans-serif;color:#5a6577;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#saved-file .sf-actions{display:flex;gap:5px;align-items:center;flex:0 0 auto}
+#saved-file button{border:1px solid #c8d4e4;background:#f2f6fb;color:#13254a;
+  font:700 .68rem/1 'Plus Jakarta Sans',sans-serif;padding:8px 9px;border-radius:8px;cursor:pointer;white-space:nowrap}
+#saved-file button:hover{background:#e6edf5}
+#saved-file button.sf-close{border:0;background:transparent;color:#7b8698;font-size:1rem;padding:6px 2px}
+@media(max-width:900px){#saved-file{bottom:calc(150px + env(safe-area-inset-bottom,0px))}}
 #sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
 
 /* ── MISC ── */
@@ -1686,6 +1706,17 @@ body.result-context-read-only .results-history-readable{display:flex}
   <p id="loading-text">Loading...</p>
 </div>
 <div id="toast"></div>
+<div id="saved-file" role="status" aria-live="polite">
+  <div class="sf-main">
+    <b>Saved to Downloads</b>
+    <span class="sf-name" id="saved-file-name"></span>
+  </div>
+  <div class="sf-actions">
+    <button type="button" onclick="openSavedFile()">Open file</button>
+    <button type="button" onclick="openDownloadsFolder()">Downloads</button>
+    <button type="button" class="sf-close" onclick="hideSavedFile()" aria-label="Close">&times;</button>
+  </div>
+</div>
 <div id="outbox-bar" style="display:none;position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:9998;align-items:center;gap:10px;background:#fff8e6;border:1.5px solid #e0b45c;border-radius:12px;padding:10px 12px;box-shadow:0 8px 22px rgba(12,24,48,.18)">
   <span id="outbox-text" style="flex:1;font-size:.74rem;font-weight:700;color:#8a5a12">Marks are held on this phone and not sent yet</span>
   <button type="button" class="btn btn-primary" style="padding:6px 12px;font-size:.72rem" onclick="retryOutboxNow()">Send now</button>
@@ -2409,6 +2440,109 @@ body.result-context-read-only .results-history-readable{display:flex}
   </div>
 </div>
 
+<div class="overlay" id="modal-dev-settings" style="display:none">
+  <div class="modal dev-set-modal" style="max-width:760px">
+    <div class="modal-hdr"><h3>Assistant settings</h3><button class="modal-x" onclick="closeModal('modal-dev-settings')">&#215;</button></div>
+    <div class="modal-body">
+      <div class="dev-set-note" id="dev-set-keynote" hidden></div>
+
+      <div class="dev-set-block">
+        <div class="dev-set-title">This month</div>
+        <div id="dev-set-summary" class="dev-set-summary">Loading…</div>
+        <p class="dev-set-help">The school sees these work counts. Tokens and cost stay in the developer log only.</p>
+      </div>
+
+      <div class="dev-set-block">
+        <div class="dev-set-title">Model routes</div>
+        <p class="dev-set-help">Primary serves the assistant. Secondary takes over when primary errors, times out or the month is over its included usage. Vision reads photos and passes structured lines to the main model.</p>
+        <div id="dev-set-routes"></div>
+      </div>
+
+      <div class="dev-set-block">
+        <div class="dev-set-title">Subscription</div>
+        <p class="dev-set-help">Suspending stops chat, voice and in-portal help only. Recording, publishing, search and export stay on.</p>
+        <div class="dev-set-grid">
+          <label>Status
+            <select id="dev-sub-status">
+              <option value="active">Active</option>
+              <option value="grace">Grace</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </label>
+          <label>Tier
+            <select id="dev-sub-tier">
+              <option value="entry">Entry</option>
+              <option value="standard">Standard</option>
+              <option value="large">Large</option>
+            </select>
+          </label>
+          <label>Price (naira / month)
+            <input id="dev-sub-price" type="number" min="0" step="500">
+          </label>
+          <label>Due date
+            <input id="dev-sub-due" type="date">
+          </label>
+          <label>Included tokens (internal)
+            <input id="dev-sub-allowance" type="number" min="0" step="100000">
+          </label>
+          <label>Grace days
+            <input id="dev-sub-grace" type="number" min="0" max="60" step="1">
+          </label>
+        </div>
+        <label class="dev-set-wide">Note
+          <input id="dev-sub-note" type="text" maxlength="300" placeholder="Shown to the developer only">
+        </label>
+        <div class="dev-set-actions">
+          <button class="btn btn-primary" type="button" onclick="saveDevSubscription()">Save subscription</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-dev-chat-rename" style="display:none">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hdr"><h3>Rename chat</h3><button class="modal-x" onclick="closeModal('modal-dev-chat-rename')">&#215;</button></div>
+    <div class="modal-body">
+      <label style="display:block;font-size:.72rem;font-weight:700;color:#5a6577;margin-bottom:6px">Chat name</label>
+      <input class="dev-rename-field" id="dev-chat-rename-input" maxlength="80" aria-label="Chat name" onkeydown="if(event.key==='Enter'){event.preventDefault();saveDevChatRename();}">
+      <p style="margin-top:9px;font-size:.68rem;line-height:1.5;color:#7b8698">A name only helps you find this chat. The conversation and the school records do not change.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-dev-chat-rename')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDevChatRename()">Save name</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-dev-chat-purge" style="display:none">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-hdr"><h3>Delete this chat forever?</h3><button class="modal-x" onclick="closeModal('modal-dev-chat-purge')">&#215;</button></div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;line-height:1.6;color:#243349">The conversation will be permanently removed. This cannot be undone.</p>
+      <p style="margin-top:10px;font-size:.75rem;line-height:1.55;color:#5a6577">Scores, audit rows and write batches are kept. Only this chat transcript is removed.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-dev-chat-purge')">Keep it</button>
+      <button class="btn btn-primary" style="background:#b3261e;border-color:#b3261e" onclick="confirmPurgeDevChat()">Delete forever</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-dev-documents" style="display:none">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-hdr"><h3>Generated documents</h3><button class="modal-x" onclick="closeModal('modal-dev-documents')">&#215;</button></div>
+    <div class="modal-body">
+      <p style="font-size:.74rem;line-height:1.55;color:#5a6577;margin:0 0 12px">Every report card and broadsheet the assistant makes is kept against its class, term and template. A download stays in this tab and never signs you out.</p>
+      <div id="dev-documents-list" class="dev-doc-list" aria-live="polite"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" type="button" id="dev-doc-downloads-btn" onclick="openDownloadsFolder()" style="display:none">Downloads folder</button>
+      <button class="btn btn-outline" type="button" onclick="closeModal('modal-dev-documents')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="modal-ss-departments" style="display:none">
   <div class="modal" style="max-width:480px">
     <div class="modal-hdr"><h3 id="ss-department-title">Choose department</h3><button class="modal-x" onclick="closeModal('modal-ss-departments')">&#215;</button></div>
@@ -2692,6 +2826,8 @@ window.addEventListener('popstate',function(e){
       if(prev==='card'||prev==='broadsheet')pg.classList.add('print-active');
       var niEl=document.getElementById('ni-'+prev);
       if(niEl)niEl.classList.add('active');
+      var devCard=document.getElementById('developer-command-center-card');
+      if(devCard)devCard.classList.toggle('active-card',prev==='dashboard'&&(!CLS||!DEPTS[CLS]));
       // Render the page
       if(prev==='home'){setMode(false);renderHome();}
       if(prev==='history'){setMode(false);loadHistoryDashboard();}
@@ -4799,7 +4935,7 @@ function renderDash(){
   // aside, so nothing reads a class that is not open.
   var mainDashboard=!CLS||!DEPTS[CLS];
   var commandCenter=document.getElementById('developer-command-center-card');
-  if(commandCenter&&isDeveloperUser())commandCenter.classList.add('active-card');
+  if(commandCenter&&isDeveloperUser())commandCenter.classList.toggle('active-card',mainDashboard);
   var classSummary=document.getElementById('dashboard-class-summary');
   var classStudents=document.getElementById('dashboard-class-students');
   if(classSummary)classSummary.style.display=mainDashboard?'none':'';
