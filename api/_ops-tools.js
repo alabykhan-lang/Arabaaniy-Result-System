@@ -360,6 +360,24 @@ function classNames(context) {
   return (Array.isArray(context?.classes) ? context.classes : []).map((c) => c.label).filter(Boolean);
 }
 
+// The pupil form in the portal gives every new pupil the next free STU/####
+// in that class. The column is required downstream, so the assistant must
+// assign one too instead of leaving it empty.
+async function admissionNumbersInUse(ctx, classKey) {
+  const rows = await supabaseRest(
+    `students?class_key=eq.${encodeURIComponent(classKey)}&select=admno&limit=10000`, {}, ctx.token,
+  ).catch(() => []);
+  return new Set(rows.map((row) => String(row.admno || '').toUpperCase()).filter(Boolean));
+}
+
+function nextAdmissionNumber(used) {
+  for (let i = 1; i < 10000; i += 1) {
+    const candidate = `STU/${String(i).padStart(4, '0')}`;
+    if (!used.has(candidate)) return candidate;
+  }
+  return `STU/${String(Date.now()).slice(-6)}`;
+}
+
 async function addPupil(ctx, args, context) {
   const cls = classEntry(context, args.class);
   if (!cls) {
@@ -379,11 +397,12 @@ async function addPupil(ctx, args, context) {
   const { session } = await activeContext(ctx, context);
   const existing = (await listStudents(ctx, cls.key)).find((s) => normalise(s.name) === normalise(name));
   if (existing) return { error: `${existing.name} is already on the ${cls.label} list (${existing.admno || 'no admission number'}).` };
+  const admno = clean(args.admno, 60) || nextAdmissionNumber(await admissionNumbersInUse(ctx, cls.key));
   const saved = await handleAction('students.upsert', {
     class_key: cls.key,
     name,
     gender,
-    admno: clean(args.admno, 60) || undefined,
+    admno,
     academic_session: session || undefined,
   }, ctx.token);
   return {
@@ -757,6 +776,7 @@ async function addPupils(ctx, args, context) {
   if (!list.length) return { error: 'Give the pupils to add: names, and a gender for each.' };
   const { session } = await activeContext(ctx, context);
   const roster = await listStudents(ctx, cls.key);
+  const usedNumbers = await admissionNumbersInUse(ctx, cls.key);
   const added = [];
   const skipped = [];
   for (const item of list.slice(0, 100)) {
@@ -769,11 +789,13 @@ async function addPupils(ctx, args, context) {
     const gender = genderOf(typeof item === 'string' ? '' : item?.gender || args.gender);
     if (!gender) { skipped.push({ name, reason: 'no gender given' }); continue; }
     try {
+      const admno = clean(typeof item === 'string' ? '' : item?.admno, 60) || nextAdmissionNumber(usedNumbers);
+      usedNumbers.add(admno.toUpperCase());
       const saved = await handleAction('students.upsert', {
         class_key: cls.key,
         name,
         gender,
-        admno: clean(typeof item === 'string' ? '' : item?.admno, 60) || undefined,
+        admno,
         academic_session: session || undefined,
       }, ctx.token);
       added.push({ name: saved.student?.name || name, student_id: saved.student?.id || null, admno: saved.student?.admno || null });
@@ -2043,7 +2065,7 @@ const FUNCTION_DECLARATIONS = [
   },
   {
     name: 'manage_students',
-    description: 'Every pupil action: list a class, find one pupil, search the school, list archived pupils, add one or many, edit, archive, restore, permanently delete an archived record, or move pupils to another class. Archive, delete and move ask once.',
+    description: 'Every pupil action: list a class, find one pupil, search the school, list archived pupils, add one or many, edit, archive, restore, permanently delete an archived record, or move pupils to another class. Archive, delete and move ask once. On add, a gender is required for every pupil and the admission number is filled in automatically when omitted.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -2051,8 +2073,8 @@ const FUNCTION_DECLARATIONS = [
         class: { type: 'STRING' },
         name: { type: 'STRING' },
         student_id: { type: 'STRING' },
-        gender: { type: 'STRING' },
-        admno: { type: 'STRING' },
+        gender: { type: 'STRING', description: 'Required on add: male or female.' },
+        admno: { type: 'STRING', description: 'Optional. The next class number is used when omitted.' },
         new_name: { type: 'STRING' },
         new_class: { type: 'STRING' },
         from: { type: 'STRING' },
@@ -2065,8 +2087,8 @@ const FUNCTION_DECLARATIONS = [
             type: 'OBJECT',
             properties: {
               name: { type: 'STRING' },
-              gender: { type: 'STRING' },
-              admno: { type: 'STRING' },
+              gender: { type: 'STRING', description: 'Required: male or female.' },
+              admno: { type: 'STRING', description: 'Optional. The next class number is used when omitted.' },
             },
             required: ['name'],
           },
