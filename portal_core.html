@@ -1106,6 +1106,470 @@ html, body {
   font-weight:700!important;color:var(--g1)!important}
 #page-settings .fg-row{display:block!important}
 #page-settings .fg input.inp,#page-settings .fg select.sel{width:100%!important}
+#ni-main-dashboard,#bn-main-dashboard,#developer-command-center-card,.developer-command-center-only,.admin-command-center-only,#ai-command-center-card{display:none!important}
+body.developer-account #ni-main-dashboard{display:flex!important}
+body.developer-account #bn-main-dashboard{display:flex!important}
+body.developer-account #developer-command-center-card.active-card{display:grid!important}
+body.developer-account .developer-command-center-only#dev-home-card{display:flex!important}
+/* ── Developer Command Center: the portal’s light, calm chat ── */
+#developer-command-center-card.dev-workspace{
+  --ws-bg:#f8fafc;--ws-bg-soft:#eef3f9;--ws-panel:#ffffff;--ws-panel-2:#e6edf5;
+  --ws-text:#13254a;--ws-prose:#243349;--ws-muted:#5a6577;--ws-faint:#7b8698;
+  --ws-line:#d6dfeb;--ws-line-strong:#b7c6da;
+  --ws-mint:#13254a;--ws-mint-soft:rgba(29,58,107,.09);
+  --ws-gold:#8a6510;--ws-gold-soft:rgba(216,167,44,.14);
+  --ws-danger:#b3261e;
+  background:
+    radial-gradient(115% 85% at 100% 0%,rgba(216,167,44,.12),transparent 55%),
+    radial-gradient(90% 70% at 0% 100%,rgba(29,58,107,.10),transparent 62%),
+    linear-gradient(150deg,#eef2f8 0%,#faf5e6 56%,#e9eff6 100%);
+  border:1px solid #d6dfeb;border-radius:22px;
+  box-shadow:0 18px 44px rgba(19,37,74,.14),inset 0 1px 0 rgba(255,255,255,.9);
+  overflow:hidden!important;color:var(--ws-text);font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+  margin-bottom:22px;min-width:0;
+}
+.dev-ws-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#ffffff,#edf9f1);box-shadow:inset 0 -2px 0 rgba(216,167,44,.55)}
+.dev-ws-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.dev-ws-logo{width:33px;height:33px;border-radius:10px;background:linear-gradient(145deg,#1d3a6b,#13254a);border:1px solid #d8a72c;color:#ffffff;display:flex;align-items:center;justify-content:center;font:700 .74rem/1 'Plus Jakarta Sans',sans-serif;box-shadow:0 4px 12px rgba(19,37,74,0.121),inset 0 1px 0 rgba(19,37,74,0.21);flex:0 0 auto}
+.dev-ws-copy{min-width:0}
+.dev-ws-crumb{display:block;font-size:.8rem;font-weight:600;color:#1b2a21;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dev-ws-crumb span{color:#8a6510;font-weight:400;margin:0 4px}
+.dev-ws-sub{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:.63rem;color:var(--ws-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dev-ws-sub i{width:5px;height:5px;border-radius:50%;background:#1d3a6b;box-shadow:0 0 0 3px rgba(29,58,107,.14);flex:0 0 auto}
+.dev-ws-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.dev-ws-priv{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border:1px solid #e6cf92;border-radius:999px;background:#fdf8e8;color:#7a5c0c;font-size:.6rem;font-weight:600;letter-spacing:.02em}
+.dev-ws-priv svg{width:11px;height:11px;color:var(--ws-gold)}
+.dev-ws-new{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid #c8d4e4;border-radius:9px;background:#ffffff;color:#13254a;font:600 .68rem/1 'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.dev-ws-new:hover{background:rgba(19,37,74,0.09);border-color:rgba(14,111,70,0.402);color:#0b3d27}
+.dev-ws-new svg{width:13px;height:13px}
+
+/* ── Chat sections: a private rail of conversations ── */
+#developer-command-center-card.dev-workspace{
+  display:grid;grid-template-columns:252px minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);
+  position:relative;
+}
+.dev-ws-bar{grid-column:1 / -1}
+.dev-gate-banner{grid-column:1 / -1;display:flex;align-items:flex-start;gap:8px;padding:9px 16px;border-bottom:1px solid #e6cf92;background:#fdf8e8;color:#6d530d;font-size:.7rem;line-height:1.5}
+.dev-gate-banner[hidden]{display:none!important}
+.dev-gate-banner.is-blocked{background:#fdeceb;border-bottom-color:#f0b9b5;color:#8f1f18}
+.dev-gate-banner b{font-weight:700}
+.dev-ws-gear{width:32px;height:32px;flex:0 0 auto;border:1px solid #d6dfeb;border-radius:8px;background:#fff;color:#13254a;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.dev-ws-gear svg{width:15px;height:15px}
+.dev-ws-gear:hover{border-color:#b7c6da;background:#f2fbf6}
+.dev-ws-main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.dev-chat-rail{
+  display:flex;flex-direction:column;gap:9px;min-height:0;min-width:0;
+  padding:12px 10px 10px;border-right:1px solid var(--ws-line);
+  background:linear-gradient(180deg,#f2fbf6,#eaf6ef);
+}
+.dev-rail-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dev-rail-title{font-size:.66rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#5f7268}
+.dev-rail-close{display:none;width:26px;height:26px;border:1px solid var(--ws-line);border-radius:7px;background:#fff;color:#5a6577;font-size:1rem;line-height:1;cursor:pointer}
+.dev-rail-search{position:relative}
+.dev-rail-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:#77897e;pointer-events:none}
+.dev-rail-search input{width:100%;padding:8px 9px 8px 30px;border:1px solid #d6dfeb;border-radius:9px;background:#fff;color:#13254a;font:400 .72rem/1.2 'Plus Jakarta Sans',sans-serif;outline:none}
+.dev-rail-search input:focus{border-color:#8fc5a4;box-shadow:0 0 0 3px rgba(29,58,107,.08)}
+.dev-rail-search input::placeholder{color:#8a9a90}
+.dev-rail-tags{display:flex;flex-wrap:wrap;gap:4px;max-height:72px;overflow-y:auto}
+.dev-rtag{padding:4px 8px;border:1px solid #d6dfeb;border-radius:999px;background:#fff;color:#5a6577;font:600 .58rem/1 'Plus Jakarta Sans',sans-serif;cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.dev-rtag:hover{border-color:#b7c6da;color:#13254a}
+.dev-rtag.is-on{background:#13254a;border-color:#13254a;color:#fff}
+.dev-rail-list{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:2px;padding-right:2px;scrollbar-width:thin;scrollbar-color:#c9d8cf transparent}
+.dev-rail-list::-webkit-scrollbar{width:6px}
+.dev-rail-list::-webkit-scrollbar-thumb{background:#c9d8cf;border-radius:99px}
+.dev-rail-group{margin:9px 3px 3px;font-size:.56rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8a9a90}
+.dev-rail-empty{padding:14px 6px;color:#7b8698;font-size:.68rem;line-height:1.5;text-align:center}
+.dev-chat-row{position:relative;display:flex;align-items:flex-start;gap:6px;padding:8px 7px;border:1px solid transparent;border-radius:10px;cursor:pointer;min-width:0;transition:background .14s,border-color .14s}
+.dev-chat-row:hover{background:rgba(19,37,74,.055)}
+.dev-chat-row.is-active{background:#fff;border-color:#c8d4e4;box-shadow:0 2px 8px rgba(19,37,74,.07)}
+.dev-chat-main{min-width:0;flex:1}
+.dev-chat-name{display:block;font-size:.72rem;font-weight:600;color:#1b2a21;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dev-chat-row.is-active .dev-chat-name{color:#13254a}
+.dev-chat-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+.dev-chat-tag{padding:2px 5px;border-radius:5px;background:rgba(29,58,107,.08);color:#5a6577;font:600 .52rem/1.3 'Plus Jakarta Sans',sans-serif;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dev-chat-meta{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:.56rem;color:#8a9a90}
+.dev-chat-pin{color:#8a6510}
+.dev-chat-more{width:24px;height:24px;flex:0 0 auto;border:1px solid transparent;border-radius:6px;background:transparent;color:#7b8698;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .14s,background .14s}
+.dev-chat-more svg{width:13px;height:13px}
+.dev-chat-row:hover .dev-chat-more,.dev-chat-row.is-active .dev-chat-more,.dev-chat-row.is-menu .dev-chat-more{opacity:1}
+.dev-chat-more:hover{background:rgba(19,37,74,.08);color:#243349}
+.dev-chat-menu{position:absolute;right:4px;top:30px;z-index:8;min-width:120px;padding:4px;border:1px solid #d6dfeb;border-radius:9px;background:#fff;box-shadow:0 10px 26px rgba(19,37,74,.16)}
+.dev-chat-menu button{display:block;width:100%;padding:6px 8px;border:0;border-radius:6px;background:transparent;color:#243349;font:500 .68rem/1.2 'Plus Jakarta Sans',sans-serif;text-align:left;cursor:pointer}
+.dev-chat-menu button:hover{background:rgba(19,37,74,.07)}
+.dev-chat-menu button.is-danger{color:#b3261e}
+.dev-chat-menu button:disabled{opacity:.45;cursor:default}
+.dev-rail-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:7px;border-top:1px solid var(--ws-line)}
+.dev-rail-deleted{padding:5px 8px;border:1px solid #d6dfeb;border-radius:7px;background:transparent;color:#5a6577;font:600 .6rem/1 'Plus Jakarta Sans',sans-serif;cursor:pointer}
+.dev-rail-deleted:hover{border-color:#b7c6da;color:#13254a}
+.dev-rail-deleted.is-on{background:#fdf8e8;border-color:#e6cf92;color:#7a5c0c}
+.dev-rail-count{font-size:.56rem;color:#8a9a90}
+.dev-rail-toggle{display:none;width:32px;height:32px;border:1px solid #d6dfeb;border-radius:8px;background:#fff;color:#13254a;align-items:center;justify-content:center;cursor:pointer}
+.dev-rail-toggle svg{width:15px;height:15px}
+.dev-rail-backdrop{display:none}
+.dev-chat-hint{margin:8px 2px 0;padding:7px 9px;border:1px solid #e6cf92;border-radius:9px;background:#fdf8e8;color:#7a5c0c;font-size:.6rem;line-height:1.4}
+.dev-rename-field{width:100%;padding:9px 10px;border:1px solid #c8d4e4;border-radius:9px;font:500 .82rem/1.4 'Plus Jakarta Sans',sans-serif;color:#13254a;outline:none}
+.dev-rename-field:focus{border-color:#8fc5a4;box-shadow:0 0 0 3px rgba(29,58,107,.08)}
+.dev-voice-foot{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dev-voice-toggle{padding:0;border:0;background:none;color:#13254a;font:600 .6rem/1.2 'Plus Jakarta Sans',sans-serif;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.dev-voice-toggle[aria-pressed="true"]{color:#8a6510}
+.dev-mic-btn.is-recording{color:#b3261e;background:#fdeceb;border-color:#f0b9b5;animation:devMicPulse 1.1s ease-in-out infinite}
+@keyframes devMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(179,38,30,.25)}50%{box-shadow:0 0 0 4px rgba(179,38,30,.12)}}
+.dev-set-modal .modal-body{max-height:min(74vh,720px)}
+.dev-set-block{padding:12px 0;border-top:1px solid #e2eee7}
+.dev-set-block:first-of-type{border-top:0;padding-top:4px}
+.dev-set-title{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#5a6577;margin-bottom:6px}
+.dev-set-help{margin:0 0 10px;font-size:.7rem;line-height:1.55;color:#7b8698}
+.dev-set-note{padding:9px 11px;margin-bottom:10px;border:1px solid #e6cf92;border-radius:9px;background:#fdf8e8;color:#7a5c0c;font-size:.7rem;line-height:1.5}
+.dev-set-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.dev-set-stat{padding:9px 10px;border:1px solid #d6dfeb;border-radius:10px;background:#f7fcf9}
+.dev-set-stat b{display:block;font-size:1.05rem;color:#13254a;font-family:'Fraunces',serif}
+.dev-set-stat span{display:block;margin-top:2px;font-size:.58rem;letter-spacing:.04em;text-transform:uppercase;color:#7b8698}
+.dev-route{border:1px solid #d6dfeb;border-radius:11px;padding:10px 11px;margin-bottom:9px;background:#fff}
+.dev-route.is-primary{box-shadow:inset 3px 0 0 #1d3a6b}
+.dev-route-head{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.dev-route-role{font-size:.66rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#13254a}
+.dev-route-badge{padding:2px 6px;border-radius:999px;background:rgba(29,58,107,.1);color:#13254a;font-size:.54rem;font-weight:700}
+.dev-route-state{margin-left:auto;font-size:.58rem;color:#8a9a90}
+.dev-route-state.is-bad{color:#b3261e}
+.dev-route-state.is-good{color:#1d3a6b}
+.dev-route-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:7px}
+.dev-route-grid label,.dev-set-grid label{display:flex;flex-direction:column;gap:3px;font-size:.6rem;font-weight:600;color:#5a6577}
+.dev-route-grid input,.dev-route-grid select,.dev-set-grid input,.dev-set-grid select,.dev-set-wide input{padding:7px 8px;border:1px solid #d6dfeb;border-radius:8px;background:#fff;color:#13254a;font:400 .72rem/1.3 'Plus Jakarta Sans',sans-serif;outline:none;min-width:0}
+.dev-route-grid input:focus,.dev-set-grid input:focus,.dev-set-grid select:focus,.dev-set-wide input:focus{border-color:#8fc5a4;box-shadow:0 0 0 3px rgba(29,58,107,.08)}
+.dev-route-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.dev-route-actions button{padding:6px 9px;border:1px solid #d6dfeb;border-radius:7px;background:#fff;color:#13254a;font:600 .62rem/1.1 'Plus Jakarta Sans',sans-serif;cursor:pointer}
+.dev-route-actions button:hover{border-color:#b7c6da;background:#f2fbf6}
+.dev-route-actions button.is-main{background:#13254a;border-color:#13254a;color:#fff}
+.dev-route-actions button:disabled{opacity:.5;cursor:default}
+.dev-set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:9px}
+.dev-set-wide{display:flex;flex-direction:column;gap:3px;font-size:.6rem;font-weight:600;color:#5a6577;margin-bottom:9px}
+.dev-set-actions{display:flex;justify-content:flex-end}
+.dev-ws-main.is-paused .dev-composer-wrap{opacity:.5;pointer-events:none}
+
+@media(max-width:900px){
+  #developer-command-center-card.dev-workspace{grid-template-columns:minmax(0,1fr)}
+  .dev-chat-rail{position:absolute;top:0;left:0;bottom:0;width:min(84vw,300px);z-index:9;transform:translateX(-104%);transition:transform .22s cubic-bezier(.22,1,.36,1);box-shadow:18px 0 40px rgba(19,37,74,.18)}
+  .dev-chat-rail.is-open{transform:none}
+  .dev-rail-close{display:flex;align-items:center;justify-content:center}
+  .dev-rail-toggle{display:inline-flex}
+  .dev-rail-backdrop{display:block;position:absolute;inset:0;z-index:8;background:rgba(19,37,74,.24);opacity:0;pointer-events:none;transition:opacity .2s}
+  .dev-rail-backdrop.is-open{opacity:1;pointer-events:auto}
+  .dev-ws-main{grid-column:1}
+}
+
+.dev-thread-stage{position:relative;min-width:0;background:transparent}
+#dev-chat-thread.dev-thread{display:flex;flex-direction:column;gap:24px;height:clamp(420px,62vh,760px);min-height:420px;overflow-y:auto;overflow-x:hidden;padding:26px 26px 20px;scroll-behavior:smooth;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#c9d8cf transparent}
+#dev-chat-thread.dev-thread::-webkit-scrollbar{width:7px}
+#dev-chat-thread.dev-thread::-webkit-scrollbar-thumb{background:#c9d8cf;border-radius:99px}
+#dev-chat-thread.dev-thread::-webkit-scrollbar-track{background:transparent}
+#dev-chat-thread.dev-thread.is-welcome{height:auto;min-height:0;overflow:visible}
+
+.dev-msg{display:flex;flex-direction:column;min-width:0;animation:devMsgIn .28s cubic-bezier(.22,1,.36,1) both}
+@keyframes devMsgIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.dev-msg-assistant{width:100%;max-width:840px;align-self:flex-start}
+.dev-msg-user{align-items:flex-end;align-self:flex-end;max-width:min(82%,560px);gap:6px}
+.dev-msg-user .dev-bubble{background:linear-gradient(160deg,#e4f6ea,#f2fbf0);border:1px solid #c8d4e4;border-radius:18px 18px 5px 18px;padding:11px 15px;color:#13254a;font-size:.98rem;line-height:1.6;box-shadow:0 2px 10px rgba(19,37,74,0.077);overflow-wrap:anywhere}
+.dev-msg-user .dev-bubble div+div{margin-top:6px}
+.dev-attach-note{font-size:.66rem;line-height:1.4;color:#5f7268;padding-top:5px;border-top:1px solid rgba(19,37,74,.1)}
+.dev-user-photo{max-width:220px;max-height:220px;border-radius:16px 16px 5px 16px;object-fit:cover;border:1px solid rgba(19,37,74,0.12);box-shadow:0 6px 18px rgba(19,37,74,0.121);display:block}
+.dev-prose{font-family:'Source Serif 4',Georgia,'Times New Roman',serif;font-size:1.08rem;line-height:1.78;color:var(--ws-prose);letter-spacing:.002em;overflow-wrap:anywhere}
+.dev-prose>div{margin:0 0 .62em}
+.dev-prose>div:last-child{margin-bottom:0}
+.dev-prose strong{font-weight:600;color:#13254a}
+.dev-prose em{font-style:italic;color:#243349}
+.dev-prose ul,.dev-prose ol{margin:.55em 0 .85em;padding-left:1.2rem}
+.dev-prose li{margin:.3em 0;padding-left:.12rem}
+.dev-prose li::marker{color:#77897e}
+.dev-prose code{background:rgba(19,37,74,0.105);border:1px solid rgba(19,37,74,0.09);padding:1px 5px;border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82em;color:#243349}
+.dev-prose a{color:var(--ws-mint);text-decoration:none;border-bottom:1px solid rgba(14,111,70,0.402)}
+.dev-prose a:hover{border-bottom-color:var(--ws-mint)}
+.dev-prose-h{font-family:'Plus Jakarta Sans',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ws-muted);margin:.2em 0 .55em}
+.dev-gap{height:6px}
+
+.dev-welcome{max-width:640px;padding:2px 0 4px}
+/* The greeting is for an empty chat. Once a turn exists it steps out of the way. */
+.dev-thread:not(.is-welcome) .dev-welcome{display:none}
+.dev-welcome h4{font-family:'Fraunces',Georgia,serif;font-size:1.5rem;font-weight:700;color:#13254a;letter-spacing:-.01em;margin-bottom:7px}
+.dev-welcome p{font-family:'Source Serif 4',Georgia,serif;font-size:1.04rem;line-height:1.66;color:#5f7268;max-width:560px}
+.dev-ws-suggest{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:18px}
+.dev-sg{display:flex;align-items:center;gap:10px;min-width:0;text-align:left;padding:10px 11px;border:1px solid var(--border);border-radius:13px;background:#ffffff;color:#13254a;box-shadow:0 2px 6px rgba(19,37,74,.05);font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:background .15s,border-color .15s,transform .15s}
+.dev-sg:hover{background:rgba(19,37,74,0.078);border-color:rgba(14,111,70,0.345);transform:translateY(-1px)}
+.dev-sg:active{transform:none}
+.dev-sg-icon{width:27px;height:27px;border-radius:8px;background:#e6f5ec;color:#13254a;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.dev-sg-icon svg{width:14px;height:14px}
+.dev-sg-txt{min-width:0;flex:1}
+.dev-sg b{display:block;font-size:.76rem;font-weight:600;line-height:1.28;color:#243349;white-space:normal;overflow-wrap:anywhere}
+.dev-sg small{display:block;margin-top:2px;font-size:.63rem;color:var(--ws-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dev-sg-arrow{margin-left:auto;color:#b98f1b;font-size:.9rem;line-height:1;flex:0 0 auto}
+
+.dev-tool-row{display:flex;align-items:center;gap:9px;width:100%;padding:2px 0;color:var(--ws-muted);font-size:.74rem;font-weight:500;animation:devMsgIn .22s ease both}
+.dev-tool-icon{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;background:rgba(19,37,74,0.053);color:var(--ws-mint);flex:0 0 auto}
+.dev-tool-icon svg{width:14px;height:14px}
+.dev-tool-row.is-live .dev-tool-icon svg{animation:devSpin 2s linear infinite}
+.dev-tool-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dev-tool-dots{display:inline-flex;gap:2px;margin-left:1px}
+.dev-tool-dots i{width:3px;height:3px;border-radius:50%;background:#77897e;animation:devDot 1.4s infinite ease-in-out}
+.dev-tool-dots i:nth-child(2){animation-delay:.18s}
+.dev-tool-dots i:nth-child(3){animation-delay:.36s}
+@keyframes devSpin{to{transform:rotate(360deg)}}
+@keyframes devDot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-1.5px)}}
+
+.dev-runs{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:14px}
+.dev-run{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:6px 10px;border:1px solid var(--ws-line);border-radius:9px;background:rgba(19,37,74,0.042);color:#5f7268;font-size:.69rem;line-height:1.35}
+.dev-run svg{width:12px;height:12px;color:var(--ws-mint);flex:0 0 auto}
+.dev-run.is-error{color:#a5372f;border-color:rgba(179,38,30,0.23)}
+.dev-run.is-error svg{color:var(--ws-danger)}
+
+.dev-actions{display:flex;align-items:center;gap:1px;margin-top:9px;margin-left:-6px}
+.dev-act{width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:#77897e;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:color .15s,background .15s}
+.dev-act:hover{color:#243349;background:rgba(19,37,74,0.083)}
+.dev-act svg{width:15px;height:15px}
+.dev-act.is-on{color:var(--ws-mint);background:rgba(14,111,70,0.092)}
+
+.dev-confirm{margin-top:14px;padding:12px 13px;border:1px solid rgba(154,117,20,0.322);border-radius:13px;background:linear-gradient(155deg,rgba(154,117,20,0.115),rgba(154,117,20,0.029))}
+.dev-confirm-head{display:flex;align-items:flex-start;gap:8px}
+.dev-confirm-head svg{width:14px;height:14px;color:var(--ws-gold);flex:0 0 auto;margin-top:2px}
+.dev-confirm-title{font-size:.78rem;font-weight:600;line-height:1.45;color:#6f560f}
+.dev-confirm-sub{margin-top:3px;font-size:.65rem;color:#5f7268;line-height:1.4}
+.dev-confirm-btns{display:flex;gap:7px;margin-top:10px}
+.dev-confirm-yes,.dev-confirm-no{padding:6px 13px;border-radius:8px;font:600 .7rem/1 'Plus Jakarta Sans',sans-serif;cursor:pointer}
+.dev-confirm-yes{border:1px solid var(--ws-mint);background:var(--ws-mint);color:#ffffff}
+.dev-confirm-yes:hover{background:#0b5c3a}
+.dev-confirm-no{border:1px solid var(--ws-line-strong);background:transparent;color:#243349}
+.dev-confirm-no:hover{background:rgba(19,37,74,0.09)}
+
+.dev-docs{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
+.dev-doc{display:inline-flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid var(--ws-line-strong);border-radius:10px;background:rgba(19,37,74,0.045);color:#243349;font:600 .69rem/1 'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:background .15s,border-color .15s;text-decoration:none}
+.dev-doc:hover{background:rgba(14,111,70,0.103);border-color:rgba(14,111,70,0.368)}
+.dev-doc svg{width:13px;height:13px;color:var(--ws-mint)}
+.dev-doc small{display:block;font-weight:500;font-size:.6rem;color:#7b8698;margin-top:3px;letter-spacing:.02em}
+.dev-doc-list{display:flex;flex-direction:column;gap:8px}
+.dev-doc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fbfffc}
+.dev-doc-row-main{min-width:0}
+.dev-doc-row-title{font:700 .78rem/1.3 'Plus Jakarta Sans',sans-serif;color:#13254a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dev-doc-row-meta{font-size:.66rem;color:#7b8698;margin-top:3px}
+.dev-doc-empty{padding:16px 4px;font-size:.78rem;color:#7b8698;line-height:1.55}
+
+.dev-qchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px}
+.dev-qchip{padding:6px 11px;border:1px solid var(--ws-line-strong);border-radius:999px;background:transparent;color:#243349;font:500 .68rem/1.25 'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.dev-qchip:hover{background:rgba(14,111,70,0.092);border-color:rgba(14,111,70,0.345);color:#13254a}
+
+.dev-notice{display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border:1px solid rgba(179,38,30,0.3);background:#fff7f6;border-left:3px solid rgba(179,38,30,0.6);border-radius:11px;background:rgba(179,38,30,0.063)}
+.dev-notice svg{width:15px;height:15px;color:var(--ws-danger);flex:0 0 auto;margin-top:1px}
+.dev-notice strong{display:block;font-size:.76rem;font-weight:600;color:#a5372f;margin-bottom:2px}
+.dev-notice p{font-size:.76rem;line-height:1.55;color:#a5372f}
+
+.dev-jump{position:absolute;right:18px;bottom:14px;width:34px;height:34px;border-radius:50%;border:1px solid var(--ws-line-strong);background:#ffffff;color:#243349;display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 20px rgba(19,37,74,0.165);z-index:2}
+.dev-thread-stage.is-scrolled .dev-jump{display:flex}
+.dev-jump svg{width:15px;height:15px}
+
+.dev-composer-wrap{padding:12px 16px 14px;border-top:1px solid var(--border);background:linear-gradient(180deg,#f4fcf8,#e0f2e8)}
+.dev-attach{display:flex;align-items:center;gap:10px;padding:8px 9px;margin-bottom:8px;border:1px solid var(--ws-line);border-radius:12px;background:var(--ws-panel)}
+.dev-attach img{width:40px;height:40px;object-fit:cover;border-radius:8px;border:1px solid rgba(19,37,74,0.15);flex:0 0 auto}
+.dev-attach-copy{flex:1;min-width:0}
+.dev-attach-name{font-size:.73rem;font-weight:600;color:#243349;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dev-attach-sub{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:.62rem;color:var(--ws-mint)}
+.dev-attach-sub i{width:4px;height:4px;border-radius:50%;background:var(--ws-mint)}
+.dev-attach-x{width:30px;height:30px;border:1px solid var(--ws-line);border-radius:8px;background:transparent;color:#6b7d72;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+.dev-attach-x:hover{background:rgba(19,37,74,0.09);color:#243349}
+.dev-attach-x svg{width:13px;height:13px}
+.dev-composer{display:flex;align-items:flex-end;gap:6px;padding:8px 8px;border:1px solid #c8d4e4;background:#fff;border-radius:18px;background:var(--ws-panel);box-shadow:0 10px 26px rgba(19,37,74,0.088),inset 0 1px 0 rgba(19,37,74,0.06);transition:border-color .16s,box-shadow .16s}
+.dev-composer:focus-within{border-color:rgba(14,111,70,0.517);box-shadow:0 0 0 3px rgba(14,111,70,0.081),0 10px 26px rgba(19,37,74,0.088)}
+.dev-icon-btn{width:40px;height:44px;border:1px solid transparent;border-radius:11px;background:transparent;color:#5a6577;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;transition:background .15s,color .15s}
+.dev-icon-btn:hover{background:rgba(19,37,74,0.09);color:#243349}
+.dev-icon-btn svg{width:19px;height:19px}
+.dev-composer-input{flex:1;min-width:0;position:relative}
+.dev-input{width:100%;display:block;background:transparent;border:0;outline:none;resize:none;color:#13254a;font:400 .95rem/1.5 'Plus Jakarta Sans',sans-serif;min-height:38px;max-height:160px;padding:9px 2px 8px}
+.dev-input::placeholder{color:#77897e}
+.dev-send{width:46px;height:46px;border:0;border-radius:14px;background:linear-gradient(150deg,#1d3a6b,#13254a);color:#ffffff;box-shadow:0 4px 12px rgba(19,37,74,.22);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;box-shadow:0 3px 10px rgba(14,111,70,0.207);transition:background .15s,transform .15s,opacity .15s}
+.dev-send:hover{background:#0b5c3a}
+.dev-send:active{transform:scale(.97)}
+.dev-send:disabled{opacity:.4;cursor:not-allowed}
+.dev-send svg{width:19px;height:19px}
+.dev-composer-foot{display:flex;justify-content:space-between;gap:12px;padding:8px 5px 0;font-size:.6rem;line-height:1.4;color:#77897e}
+.dev-composer-foot b{color:#5f7268;font-weight:600}
+
+/* The page map lives inside the assistant turn, so it uses the same dark surface. */
+.dev-map{margin-top:16px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#ffffff;box-shadow:0 4px 14px rgba(19,37,74,.07);font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+.dev-map.is-loading{opacity:.5;pointer-events:none}
+.dev-map-head{padding:12px 13px 11px;background:linear-gradient(135deg,#e9f7ee,#fdf9ec);border-bottom:1px solid var(--border)}
+.dev-map-title{font-size:.86rem;font-weight:700;color:#1b2a21;line-height:1.35}
+.dev-map-sub{font-size:.7rem;color:#6b7d72;margin-top:2px}
+.dev-map-counts{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.dev-map-chip{display:inline-flex;align-items:center;border:1px solid transparent;border-radius:999px;padding:4px 9px;font-size:.64rem;font-weight:700;white-space:nowrap}
+.dev-map-chip.a{background:rgba(14,111,70,0.138);border-color:rgba(14,111,70,0.184);color:#0b5c3a}
+.dev-map-chip.b{background:rgba(154,117,20,0.138);border-color:rgba(154,117,20,0.184);color:#6f560f}
+.dev-map-chip.c{background:rgba(179,38,30,0.115);border-color:rgba(179,38,30,0.161);color:#a5372f}
+.dev-map-chip.d{background:rgba(75,71,184,0.103);border-color:rgba(75,71,184,0.161);color:#4b47b8}
+.dev-map-sec{border-top:1px solid var(--ws-line)}
+.dev-map-sec>summary{display:flex;align-items:center;gap:8px;padding:11px 13px;cursor:pointer;background:#f7fcf8;font-size:.76rem;font-weight:600;color:#243349;list-style:none;user-select:none}
+.dev-map-sec>summary:hover{background:rgba(19,37,74,0.053)}
+.dev-map-sec>summary::-webkit-details-marker{display:none}
+.dev-map-sec>summary::before{content:"▸";font-size:.68rem;color:#77897e;transition:transform .15s}
+.dev-map-sec[open]>summary::before{transform:rotate(90deg)}
+.dev-map-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 auto}
+.dev-map-dot.a{background:#1d3a6b}.dev-map-dot.b{background:#8a6510}.dev-map-dot.c{background:#b3382e}.dev-map-dot.d{background:#4b47b8}
+.dev-map-n{font-weight:500;color:#77897e}
+.dev-map-body{max-height:460px;overflow:auto;background:#ffffff}
+.dev-map-note{padding:8px 13px 2px;font-size:.66rem;color:#6b7d72;line-height:1.45}
+.dev-map table{width:100%;min-width:480px;border-collapse:collapse;font-size:.76rem}
+.dev-map th{position:sticky;top:0;background:#eaf5ee;color:#5f7268;text-align:left;padding:8px 8px;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;z-index:1}
+.dev-map td{padding:9px 8px;border-top:1px solid rgba(19,37,74,0.083);vertical-align:top}
+.dev-map tr:first-child td{border-top:0}
+.dev-map-line{color:#77897e;width:28px;font-variant-numeric:tabular-nums}
+.dev-map-page{font-weight:600;color:#1b2a21;line-height:1.3}
+.dev-map-second{font-size:.64rem;color:#77897e;margin-top:2px;line-height:1.3}
+.dev-map-pupil{font-weight:600;color:#13254a;line-height:1.3}
+.dev-map-tag{display:inline-block;margin-top:5px;font-size:.6rem;font-weight:700;border-radius:5px;padding:2px 5px}
+.dev-map-tag.a{background:rgba(14,111,70,0.138);color:#0b5c3a}
+.dev-map-tag.b{background:rgba(154,117,20,0.138);color:#6f560f}
+.dev-map-tag.c{background:rgba(179,38,30,0.115);color:#a5372f}
+.dev-map-tag.manual{background:rgba(75,71,184,0.115);color:#4b47b8}
+.dev-map select{width:100%;min-width:96px;max-width:170px;font-size:.72rem;padding:7px 5px;border:1px solid rgba(19,37,74,0.225);border-radius:6px;background:#ffffff;color:#243349}
+.dev-map select:focus{outline:2px solid rgba(14,111,70,0.287);border-color:rgba(14,111,70,0.632)}
+.dev-map option{background:#ffffff;color:#243349}
+.dev-map-score{width:60px;padding:7px 4px;border:1px solid rgba(19,37,74,0.225);border-radius:7px;font-size:.8rem;font-weight:700;color:#13254a;text-align:center;background:#ffffff}
+.dev-map-score:focus{outline:2px solid rgba(14,111,70,0.287);border-color:rgba(14,111,70,0.69)}
+.dev-map-score.is-bad{border-color:#b3261e;background:rgba(179,38,30,0.092)}
+.dev-map-save{min-height:12px;font-size:.6rem;font-weight:600;color:#1d3a6b;margin-top:2px}
+.dev-map-save.is-error{color:#b3261e}
+.dev-map-hint{font-size:.62rem;color:#8a6510;margin-top:2px;line-height:1.3}
+.dev-map-add{display:inline-flex;align-items:center;gap:5px;margin-top:6px;padding:6px 9px;border:1px solid rgba(154,117,20,0.345);border-radius:8px;background:rgba(154,117,20,0.103);color:#6f560f;font-size:.64rem;font-weight:700;cursor:pointer}
+.dev-map-add:hover{background:rgba(154,117,20,0.184)}
+.dev-map-locked{padding:9px 13px;font-size:.68rem;color:#6f560f;background:rgba(154,117,20,0.081);border-top:1px solid rgba(154,117,20,0.184)}
+
+@media(max-width:600px){
+  .dev-hide-mobile{display:none!important}
+  /* On a phone the conversation is the screen, not a card on a dashboard. */
+  /* The chat owns the screen above the portal's bottom bar, and clears the
+     phone's status bar and home indicator. */
+  body.developer-account #developer-command-center-card.dev-workspace.active-card{
+    position:fixed;top:0;left:0;right:0;
+    bottom:calc(65px + env(safe-area-inset-bottom,0px));
+    z-index:400;margin:0;border:0;border-radius:0;
+    display:flex!important;flex-direction:column;
+    max-height:none;box-shadow:none;
+  }
+  .dev-ws-bar{padding:calc(12px + env(safe-area-inset-top,0px)) 12px 11px;gap:8px;flex:0 0 auto}
+  .dev-ws-main{flex:1 1 auto;min-height:0}
+  .dev-ws-logo{width:30px;height:30px;border-radius:9px}
+  .dev-ws-crumb{font-size:.78rem}
+  .dev-ws-sub{font-size:.6rem}
+  .dev-ws-priv{display:none}
+  .dev-ws-new{padding:7px 8px}
+  .dev-ws-new span{display:none}
+  .dev-thread-stage{flex:1 1 auto;min-height:0}
+  #dev-chat-thread.dev-thread{height:100%;min-height:0;padding:18px 14px 14px;gap:22px}
+  .dev-composer-wrap{flex:0 0 auto;padding:12px 10px 12px}
+  .dev-composer{padding:8px 9px;border-radius:20px;box-shadow:0 6px 20px rgba(19,37,74,.12)}
+  .dev-input{min-height:54px;font-size:1.02rem;padding:15px 2px 14px;line-height:1.5}
+  .dev-send{width:50px;height:50px;border-radius:16px}
+  .dev-icon-btn{width:40px;height:50px}
+  .dev-composer-foot{padding:9px 6px 0;font-size:.62rem}
+  .dev-prose{font-size:1.06rem;line-height:1.74}
+  .dev-welcome h4{font-size:1.32rem}
+  .dev-welcome p{font-size:1rem}
+  .dev-ws-suggest{gap:7px;margin-top:15px}
+  .dev-sg{padding:9px 9px;gap:8px}
+  .dev-sg-icon{width:24px;height:24px;border-radius:7px}
+  .dev-sg b{font-size:.64rem}
+  .dev-sg small{font-size:.54rem}
+  .dev-msg-user{max-width:88%}
+  .dev-user-photo{max-width:190px;max-height:190px}
+  .dev-composer-wrap{padding:8px 10px 10px}
+  .dev-composer-foot span:last-child{display:none}
+  .dev-composer-foot{font-size:.58rem;padding-top:7px}
+  .dev-map{margin-top:14px;border-radius:12px}
+  .dev-map-body{max-height:60vh;overflow-x:hidden}
+  .dev-map table{min-width:0;font-size:.74rem}
+  .dev-map-sec-a table,.dev-map-sec-b table,.dev-map-sec-c table{table-layout:fixed;width:100%}
+  .dev-map-sec-a th:nth-child(1),.dev-map-sec-a td:nth-child(1),
+  .dev-map-sec-b th:nth-child(1),.dev-map-sec-b td:nth-child(1),
+  .dev-map-sec-c th:nth-child(1),.dev-map-sec-c td:nth-child(1){width:22px;padding-left:6px;padding-right:2px}
+  .dev-map-sec-a th:nth-child(2),.dev-map-sec-a td:nth-child(2),
+  .dev-map-sec-b th:nth-child(2),.dev-map-sec-b td:nth-child(2),
+  .dev-map-sec-c th:nth-child(2),.dev-map-sec-c td:nth-child(2){width:30%}
+  .dev-map-sec-a th:nth-child(4),.dev-map-sec-a td:nth-child(4),
+  .dev-map-sec-b th:nth-child(4),.dev-map-sec-b td:nth-child(4),
+  .dev-map-sec-c th:nth-child(4),.dev-map-sec-c td:nth-child(4){width:64px;padding-left:4px;padding-right:6px}
+  .dev-map-sec-d table{table-layout:fixed;width:100%}
+  .dev-map-sec-d th:nth-child(1),.dev-map-sec-d td:nth-child(1){width:58%}
+  .dev-map td,.dev-map th{padding:6px 5px}
+  .dev-map select{max-width:100%;font-size:.74rem;padding:8px 4px}
+  .dev-map-score{width:54px;font-size:.82rem;padding:8px 4px}
+}
+.staff-read-only #page-analytics,.staff-read-only #ni-analytics,.staff-read-only #bn-analytics{display:none!important}
+.staff-read-only #page-card,.staff-read-only #ni-card,.staff-read-only #bn-card{display:none!important}
+.staff-read-only .report-card-print-only{display:none!important}
+.staff-read-only .edit-only,.staff-read-only #save-student-btn,.staff-read-only #save-profile-btn{display:none!important}
+.staff-access-note{padding:12px;border:1px solid #f0d58a;border-radius:10px;background:#fffaf0;color:#725500;font-size:.76rem;line-height:1.45}
+.staff-directory{display:grid;gap:10px}.staff-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fbfffd}.staff-row strong{display:block;color:var(--g1);font-size:.82rem}.staff-row small{display:block;color:var(--gray);font-size:.7rem;margin-top:3px}.staff-row-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}.staff-status{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 8px;font-size:.66rem;font-weight:800}.staff-status::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}.staff-status.active{color:#087443;background:#e4f8ed}.staff-status.idle{color:#8a6500;background:#fff7d6}.staff-status.suspended{color:#a51d2d;background:#fee8eb}.staff-role{border:1px solid var(--border);border-radius:7px;padding:6px 8px;background:#fff;color:var(--g1);font-size:.72rem}.staff-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}@media(max-width:600px){.staff-row{grid-template-columns:1fr}.staff-actions{justify-content:flex-start}}
+.result-context-current{padding:15px;border:1px solid rgba(125,212,176,.5);border-radius:12px;background:#f0fdf4;text-align:center}
+.result-context-current span{display:block;color:var(--g3);font-size:.65rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.result-context-current strong{display:block;margin-top:6px;color:var(--g1);font-size:1rem}
+.result-context-current small{display:block;margin-top:5px;color:var(--gray);font-size:.72rem;line-height:1.4}
+.result-history-picker{margin-top:18px;padding-top:17px;border-top:1px solid var(--border)}
+.result-history-picker label{display:block;margin-bottom:7px;color:var(--gray);font-size:.74rem;font-weight:700}
+.result-history-picker select{width:100%;padding:11px 12px;border:2px solid var(--border);border-radius:9px;background:#fff;color:var(--g1);font:inherit;font-size:.82rem}
+.result-history-picker small{display:block;margin-top:7px;color:var(--gray);font-size:.7rem;line-height:1.4}
+body.result-context-read-only #sheet-rows .sc-inp{pointer-events:none;opacity:.62;background:#f3f4f6}
+body.result-context-read-only #save-draft-btn,body.result-context-read-only #publish-btn,body.result-context-read-only #scan-record-btn{opacity:.5;pointer-events:none}
+.result-read-only-note{display:none;margin:0 0 13px;padding:10px 12px;border-left:3px solid var(--gold);border-radius:8px;background:#fff8e9;color:#725d37;font-size:.75rem;line-height:1.45}
+body.result-context-read-only .result-read-only-note{display:block}
+
+/* Read-only archive browser */
+.archive-session-list{display:grid;gap:10px;padding:16px}
+.archive-session{border:1px solid var(--border);border-radius:14px;background:#fbfffd;overflow:hidden;transition:.18s}
+.archive-session.open{border-color:rgba(125,212,176,.8);box-shadow:0 5px 18px rgba(26,42,74,.08)}
+.archive-session-toggle{width:100%;display:flex;align-items:center;gap:12px;padding:15px 16px;background:transparent;border:0;color:var(--g1);font:inherit;text-align:left;cursor:pointer}
+.archive-session-toggle:hover{background:#f0fdf4}
+.archive-session-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--g1);color:var(--gold2);font-weight:800;font-size:.72rem;flex-shrink:0}
+.archive-session-copy{flex:1;min-width:0}
+.archive-session-copy strong{display:block;font-size:.96rem}
+.archive-session-copy small{display:block;margin-top:3px;color:var(--gray);font-size:.7rem}
+.archive-session-chevron{font-size:1.1rem;color:var(--g1);transition:transform .18s}
+.archive-session.open .archive-session-chevron{transform:rotate(180deg)}
+.archive-session-terms{display:none;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;padding:0 12px 12px;border-top:1px solid var(--border)}
+.archive-session.open .archive-session-terms{display:grid}
+.archive-term-button{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--g1);font:inherit;text-align:left;cursor:pointer}
+.archive-term-button:hover,.archive-term-button.active{border-color:var(--g3);background:#f0fdf4}
+.archive-term-button strong{font-size:.8rem}
+.archive-term-button small{display:block;margin-top:2px;color:var(--gray);font-size:.67rem}
+.archive-term-arrow{font-size:1rem;color:var(--g3);font-weight:800}
+.archive-class-browser{display:grid;gap:20px;padding:16px}
+.archive-class-group{display:grid;gap:10px}
+.archive-class-group-title{display:flex;align-items:center;gap:9px;color:var(--gray);font-family:'Fraunces',serif;font-size:.86rem;text-transform:uppercase;letter-spacing:.06em}
+.archive-class-group-title::before{content:"";width:3px;height:18px;border-radius:3px;background:var(--gold)}
+.archive-class-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px}
+.archive-class-card{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-height:110px;padding:14px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--g1);text-align:left;cursor:pointer;box-shadow:var(--shadow);transition:.18s}
+.archive-class-card:hover{border-color:var(--g3);background:#f0fdf4;transform:translateY(-1px)}
+.archive-class-card strong{font-size:.86rem;line-height:1.25}
+.archive-class-card small{color:var(--gray);font-size:.68rem;line-height:1.35}
+body.result-context-read-only #page-students .tbl-head .btn,
+body.result-context-read-only #page-students th:last-child,
+body.result-context-read-only #page-students td:last-child{display:none}
+body.result-context-read-only #page-students .data-table{table-layout:auto}
+body.result-context-read-only #page-scores .sec-title{color:var(--g1)}
+body.result-context-read-only #page-profile .btn-primary,
+body.result-context-read-only #page-profile .btn-danger{display:none}
+.results-history-readable{display:none}
+body.results-management-mode .results-history-readable,
+body.result-context-read-only .results-history-readable{display:flex}
+@media(max-width:600px){
+  .archive-session-terms{grid-template-columns:1fr}
+  .archive-class-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* Settings navigation: segmented, focused and presentation-ready. */
+.settings-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:22px;align-items:start}.settings-dashboard-tabs{display:grid;gap:9px;overflow:visible;padding:12px;position:sticky;top:84px;align-self:start;border:1px solid rgba(125,212,176,.45);border-radius:18px;background:linear-gradient(180deg,#f4fff8,#fff);box-shadow:0 12px 28px rgba(5,105,65,.08)}.settings-dashboard-tabs button{display:flex;align-items:center;width:100%;border:1px solid transparent;border-radius:12px;padding:13px 14px;text-align:left;white-space:normal;background:transparent;color:var(--g1);font-weight:800;cursor:pointer;transition:.2s}.settings-dashboard-tabs button:hover{background:#eaf9f0;border-color:#b7e7ca;transform:translateX(2px)}.settings-dashboard-tabs button.active{background:linear-gradient(135deg,var(--g1),var(--g3));color:#fff;box-shadow:0 8px 16px rgba(5,105,65,.18)}
+.settings-grid{align-items:start}.settings-grid>.tbl-wrap{border:1px solid rgba(125,212,176,.35);border-radius:18px;overflow:hidden;box-shadow:0 10px 24px rgba(5,105,65,.06);background:#fff}.settings-grid>.tbl-wrap .tbl-head{background:linear-gradient(135deg,#f0fcf4,#fff);border-bottom:1px solid #d7eee0;padding:15px 18px}.settings-grid>.tbl-wrap .tbl-head h3{color:var(--g1);font-size:.9rem}.settings-grid>.tbl-wrap[style*="display: none"]{display:none!important}
+@media(max-width:900px){.settings-layout{grid-template-columns:1fr}.settings-dashboard-tabs{position:static;grid-template-columns:1fr 1fr}}
+/* Phone tap targets: keep small controls at least 40px so they are thumb-friendly. */
+@media(max-width:600px){
+  .btn-sm,.btn-xs{min-height:40px;display:inline-flex;align-items:center}
+  .tb-right .btn{min-height:38px}
+  #hamburger{min-height:40px;min-width:40px;align-items:center;justify-content:center}
+}
 </style>
 </head>
 <body>
@@ -1157,6 +1621,10 @@ html, body {
     <div class="ni" id="ni-history" onclick="navTo('history',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/><path d="M12 7v5l3 2"/></svg>
       Archive &amp; History
+    </div>
+    <div class="ni" id="ni-main-dashboard" onclick="openMainDashboard(this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
     </div>
     <div class="ni results-management-only" onclick="navTo('settings',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -1233,6 +1701,8 @@ html, body {
     <div class="bn-item" onclick="mobileNav('history',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/><path d="M12 7v5l3 2"/></svg>History
     </div>
+    <div class="bn-item" id="bn-main-dashboard" onclick="openMainDashboard(this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Command Center</div>
     <div class="bn-item results-management-only-bn" onclick="mobileNav('settings',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings
     </div>
@@ -1301,6 +1771,23 @@ html, body {
         <div><span class="context-kicker">CURRENT ACADEMIC WORKING CONTEXT</span><strong id="home-context-term">1st Term</strong><small id="home-context-note">All classes, assessments and result cards follow this active term.</small></div>
         <div class="context-pill"><b id="home-context-session">2026/2027</b><span>Active session</span></div>
       </div>
+      <!-- DEVELOPER COMMAND CENTER QUICK ACCESS CARD (DEVELOPER ACCOUNT ONLY) -->
+      <div class="developer-command-center-only" id="dev-home-card" style="display:none;margin-bottom:20px;padding:14px 18px;border-radius:14px;background:linear-gradient(135deg,rgba(19,37,74,0.07),rgba(216,167,44,0.14));border:1px solid #dfe5ef;box-shadow:0 2px 10px rgba(19,37,74,0.06);align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:8px;background:var(--g1);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;box-shadow:0 2px 6px rgba(13,92,58,0.25)">AS</div>
+          <div>
+            <div style="font-weight:700;color:var(--g1);font-size:.9rem;display:flex;align-items:center;gap:6px">
+              Developer Command Center
+              <span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;font-size:.62rem;font-weight:600;padding:2px 7px;border-radius:999px">Private</span>
+            </div>
+            <div style="font-size:.72rem;color:var(--gray)">AI operational assistant, roster analytics &amp; score sheet reader</div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" type="button" onclick="openMainDashboard(this)" style="font-size:.76rem;padding:8px 14px;display:flex;align-items:center;gap:6px">
+          <span>Open Command Center</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
       <p style="font-family:'Fraunces',serif;font-size:1rem;color:var(--g1);text-align:center;margin-bottom:20px;font-weight:700">Select a Class to Continue</p>
       <div class="home-level">
         <div class="home-level-title">Early Years</div>
@@ -1346,13 +1833,113 @@ html, body {
 
   <!-- DASHBOARD -->
   <div class="page" id="page-dashboard">
-    <div class="stats-row">
+    <div class="stats-row" id="dashboard-class-summary">
       <div class="stat-card"><span class="stat-icon">&#127891;</span><h3 id="d-stu">0</h3><p>Students</p></div>
       <div class="stat-card gold"><span class="stat-icon">&#128221;</span><h3 id="d-ent">0</h3><p>Scores Entered</p></div>
       <div class="stat-card blue"><span class="stat-icon">&#128202;</span><h3 id="d-avg">--</h3><p>Class Average</p></div>
       <div class="stat-card red"><span class="stat-icon">&#10003;</span><h3 id="d-pass">--</h3><p>Pass Rate</p></div>
     </div>
-    <div class="tbl-wrap">
+    <div class="tbl-wrap developer-command-center-only dev-workspace" id="developer-command-center-card" style="display:none">
+      <div class="dev-ws-bar">
+        <div class="dev-ws-brand">
+          <div class="dev-ws-logo" aria-hidden="true">AS</div>
+          <div class="dev-ws-copy">
+            <div class="dev-ws-crumb">Command Center <span>/</span> School records</div>
+            <div class="dev-ws-sub"><i aria-hidden="true"></i> Developer workspace · private</div>
+          </div>
+        </div>
+        <div class="dev-ws-actions">
+          <button class="dev-rail-toggle" type="button" onclick="toggleDevChatRail()" title="Your chats" aria-label="Open your chats">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          </button>
+          <span class="dev-ws-priv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg> Developer only</span>
+          <button class="dev-ws-gear" type="button" onclick="openDevDocuments()" title="Generated documents" aria-label="Generated documents" data-doc-count="0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+          </button>
+          <button class="dev-ws-gear" type="button" onclick="openDevSettings()" title="Model and subscription settings" aria-label="Model and subscription settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.56V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1.11-1.56 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.56-1H3a2 2 0 110-4h.09a1.7 1.7 0 001.56-1.11 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.56V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.56 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V9a1.7 1.7 0 001.56 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg>
+          </button>
+          <button class="dev-ws-new" type="button" onclick="startNewDevChat()" title="Start a new chat. The chat you are in stays exactly as it is.">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 5v14M5 12h14"/></svg>
+            <span>New chat</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="dev-gate-banner" id="dev-gate-banner" hidden role="status"></div>
+
+      <aside class="dev-chat-rail" id="dev-chat-rail" aria-label="Your chats">
+        <div class="dev-rail-head">
+          <span class="dev-rail-title">Chats</span>
+          <button class="dev-rail-close" type="button" onclick="toggleDevChatRail(false)" title="Close chats" aria-label="Close chats">&#215;</button>
+        </div>
+        <div class="dev-rail-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="dev-chat-search" type="search" placeholder="Search chats" aria-label="Search chats" oninput="devChatSearchInput(this.value)" />
+        </div>
+        <div class="dev-rail-tags" id="dev-chat-tags" aria-label="Filter by tag"></div>
+        <div class="dev-rail-list" id="dev-chat-list" aria-live="polite"></div>
+        <div class="dev-rail-foot">
+          <button class="dev-rail-deleted" id="dev-chat-deleted-btn" type="button" onclick="toggleDevChatDeleted()">Deleted</button>
+          <span class="dev-rail-count" id="dev-chat-count"></span>
+        </div>
+      </aside>
+      <div class="dev-rail-backdrop" id="dev-rail-backdrop" onclick="toggleDevChatRail(false)"></div>
+
+      <div class="dev-ws-main">
+      <div class="dev-thread-stage" id="dev-thread-stage">
+        <div id="dev-chat-thread" class="dev-thread" role="log" aria-live="polite" aria-label="Command Center conversation"></div>
+        <button class="dev-jump" id="dev-chat-jump" type="button" title="Jump to the latest message" aria-label="Jump to the latest message" onclick="devChatJumpToLatest()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        </button>
+      </div>
+
+      <!-- Hidden photo inputs -->
+      <input type="file" id="dev-chat-camera" accept="image/*" capture="environment" style="display:none" onchange="handleDevChatPhoto(this.files)">
+      <input type="file" id="dev-chat-gallery" accept="image/*" style="display:none" onchange="handleDevChatPhoto(this.files)">
+
+      <div class="dev-composer-wrap">
+        <!-- Photo preview badge (if selected) -->
+        <div id="dev-chat-photo-preview" class="dev-attach" style="display:none">
+          <img id="dev-chat-photo-thumb" src="" alt="Photo preview">
+          <div class="dev-attach-copy">
+            <div id="dev-chat-photo-name" class="dev-attach-name">photo.jpg</div>
+            <div class="dev-attach-sub"><i aria-hidden="true"></i><span>Photo attached to message</span></div>
+          </div>
+          <button type="button" class="dev-attach-x" onclick="clearDevChatPhoto()" title="Remove photo" aria-label="Remove photo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Composer Form -->
+        <form id="dev-chat-form" class="dev-composer" onsubmit="event.preventDefault();submitDevCommandChat();">
+          <button class="dev-icon-btn" type="button" onclick="document.getElementById('dev-chat-camera').click()" title="Take a photo" aria-label="Take a photo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h3l2-2h6l2 2h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          </button>
+          <button class="dev-icon-btn" type="button" onclick="document.getElementById('dev-chat-gallery').click()" title="Attach a photo" aria-label="Attach a photo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          </button>
+          <div class="dev-composer-input">
+            <textarea id="dev-chat-input" class="dev-input" rows="1" maxlength="1000" placeholder="Ask anything, or attach a score sheet…" aria-label="Message the Command Center" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,150)+'px'"></textarea>
+          </div>
+          <button class="dev-icon-btn dev-mic-btn" id="dev-chat-mic" type="button" onclick="devChatMicToggle()" title="Speak instead of typing" aria-label="Speak instead of typing">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>
+          </button>
+          <button class="dev-send" id="dev-chat-send-btn" type="submit" title="Send message" aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          </button>
+        </form>
+        <div class="dev-composer-foot">
+          <span><b>Free to ask</b> · 1 credit only when you approve a page</span>
+          <span class="dev-voice-foot">
+            <button class="dev-voice-toggle" id="dev-voice-toggle" type="button" onclick="devChatVoiceToggle()" aria-pressed="false" title="Read answers aloud. Off by default.">Read aloud: off</button>
+            <span>Full school ledger &amp; student context enabled</span>
+          </span>
+        </div>
+      </div>
+      </div>
+    </div>
+    <div class="tbl-wrap" id="dashboard-class-students">
       <div class="tbl-head">
         <h3 id="d-tbl-title">Students</h3>
         <button class="btn btn-primary btn-sm" onclick="navTo('students',document.getElementById('ni-students'))">View All</button>
@@ -2193,7 +2780,7 @@ function sessionExpired(){
   if(SESSION_EXPIRED_SHOWN)return;
   SESSION_EXPIRED_SHOWN=true;
   clearAuthSession();
-  CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
+  CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;applyDeveloperAccountClass();
   showAuthScreen();
   setAuthMode('login');
   var known=recalledUser();
@@ -2228,6 +2815,7 @@ function resultDataRequest(action,payload){
         var refreshed=localUserFromPayload(session);
         CURRENT_USER=refreshed;
         CURRENT_AUTH_MODE='local';
+        applyDeveloperAccountClass();
         CURRENT_PERMISSIONS=Array.isArray(refreshed._permissions)?refreshed._permissions:CURRENT_PERMISSIONS;
         return requestData();
       },function(){
@@ -2283,11 +2871,20 @@ function authErr(id,msg){
 }
 function authErrClear(id){document.getElementById(id).className='auth-err';}
 
+function applyDeveloperAccountClass(){
+  var user=CURRENT_USER;
+  var dev=!!user&&(String(user.email||'').toLowerCase()==='alabykhan@gmail.com'||user._role==='developer');
+  document.body.classList.toggle('developer-account',dev);
+  var card=document.getElementById('dev-home-card');
+  if(card)card.style.display=dev?'flex':'none';
+}
+
 function loginSuccess(user,mode){
   CURRENT_USER=user;
   if(user)rememberUser(user);
   CURRENT_AUTH_MODE='local';
   CURRENT_PERMISSIONS=Array.isArray(user._permissions)?user._permissions:[];
+  applyDeveloperAccountClass();
   CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
   document.getElementById('auth-screen').style.display='none';
   // Set user info in sidebar
@@ -2363,7 +2960,7 @@ function restorePortalPageAfterLogin(){
 function doLogout(){
   resultAuthRequest('POST',{action:'logout'}).catch(function(){}).then(function(){
     clearAuthSession();forgetUser();
-    CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
+    CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;applyDeveloperAccountClass();
     showAuthScreen();
     navTo('home',document.getElementById('ni-home'));
   });
@@ -3573,6 +4170,8 @@ function navTo(id,el){
   var pg=document.getElementById('page-'+id);
   if(!pg)return;
   pg.classList.add('active');
+  var devCard=document.getElementById('developer-command-center-card');
+  if(devCard)devCard.classList.toggle('active-card',id==='dashboard');
   pushHistory(id);
   try{sessionStorage.setItem('wts_page',id);}catch(e){}
   if(IN_CLASS)persistSelectedContext();
@@ -3625,6 +4224,33 @@ function mobileNav(id,el){
   document.querySelectorAll('.bn-item').forEach(function(b){b.classList.remove('active');});
   if(el)el.classList.add('active');
   navTo(id,null);
+}
+
+function isDeveloperUser(user){
+  var u=user||CURRENT_USER;
+  if(!u)return false;
+  var r=String(u._role||u.role||'').toLowerCase();
+  var e=String(u.email||'').toLowerCase().trim();
+  return r==='developer'||e==='alabykhan@gmail.com';
+}
+
+function openMainDashboard(el){
+  if(!isDeveloperUser()){
+    showToast('Command Center is strictly restricted to the developer account.','error');
+    return;
+  }
+  document.querySelectorAll('.bn-item').forEach(function(b){b.classList.remove('active');});
+  var bnEl=document.getElementById('bn-main-dashboard');
+  if(bnEl)bnEl.classList.add('active');
+  if(el&&el!==bnEl)el.classList.add('active');
+  setMode(false);
+  CLS='';
+  SELECTED_SESSION=null;
+  CONTEXT_EXPLICIT=false;
+  CONTEXT_READ_ONLY=false;
+  TERM=officialAcademicContext().term;
+  updateContextLock();
+  navTo('dashboard',el||bnEl);
 }
 
 function goHome(){
@@ -4168,6 +4794,21 @@ function renderHistoryStudents(rows,session,classKey,graduates){
 // DASHBOARD
 // ============================================================
 function renderDash(){
+  // The Command Center opens the dashboard with no class chosen. That is the
+  // whole-school view: the card takes the screen and the class table steps
+  // aside, so nothing reads a class that is not open.
+  var mainDashboard=!CLS||!DEPTS[CLS];
+  var commandCenter=document.getElementById('developer-command-center-card');
+  if(commandCenter&&isDeveloperUser())commandCenter.classList.add('active-card');
+  var classSummary=document.getElementById('dashboard-class-summary');
+  var classStudents=document.getElementById('dashboard-class-students');
+  if(classSummary)classSummary.style.display=mainDashboard?'none':'';
+  if(classStudents)classStudents.style.display=mainDashboard?'none':'';
+  if(mainDashboard){
+    document.getElementById('d-tbl-title').textContent='School dashboard';
+    document.getElementById('d-tbody').innerHTML='<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--gray)">Open a class to see its dashboard.</td></tr>';
+    return;
+  }
   var students=DB_STUDENTS[CLS]||[];
   document.getElementById('d-stu').textContent=students.length;
   document.getElementById('d-tbl-title').textContent=DEPTS[CLS].label+' - Students';
@@ -6747,6 +7388,2452 @@ function applyOCRScores(){
     openSheet(idx);
     showToast('Scores applied. Tap Save Draft to sync.','error');
   });
+}
+// Developer Command Center State & Methods
+var DEV_CHAT_MESSAGES = [];
+var DEV_CHAT_PENDING_PHOTO = null;
+var DEV_CHAT_JOB_ID = null;
+var DEV_CHAT_BUSY = false;
+var DEV_CHAT_JOB_STORE = 'ara_dev_chat_job';
+var DEV_CHAT_STORE = 'ara_dev_chat_id';
+var DEV_CHAT_ID = null;
+var DEV_CHAT_SESSIONS = [];
+var DEV_CHAT_SEARCH = '';
+var DEV_CHAT_TAG = null;
+var DEV_CHAT_SHOW_DELETED = false;
+var DEV_CHAT_BOOTED = false;
+var DEV_CHAT_BOOTING = null;
+var DEV_CHAT_RENAME_ID = null;
+var DEV_CHAT_PURGE_ID = null;
+var DEV_CHAT_RETURN_ID = null;
+try { DEV_CHAT_ID = sessionStorage.getItem(DEV_CHAT_STORE) || null; } catch(e){}
+
+function setDevChatId(id){
+  DEV_CHAT_ID = id || null;
+  try {
+    if(DEV_CHAT_ID) sessionStorage.setItem(DEV_CHAT_STORE, DEV_CHAT_ID);
+    else sessionStorage.removeItem(DEV_CHAT_STORE);
+  } catch(e){}
+}
+
+function devChatJsonFetch(url, options){
+  var opts = options || {};
+  opts.credentials = 'same-origin';
+  opts.cache = 'no-store';
+  opts.headers = Object.assign({ 'Accept': 'application/json' }, opts.headers || {}, getAuthHeaders());
+  return devChatFetch(url, opts).then(function(res){
+    return res.json().catch(function(){ return { ok:false, message:'The server sent no answer.' }; })
+      .then(function(data){ return { ok: res.ok && data && data.ok !== false, status: res.status, data: data || {} }; });
+  });
+}
+
+function devChatCurrentTags(){
+  var tags = {};
+  try { if(typeof CLS !== 'undefined' && CLS) tags.class = CLS; } catch(e){}
+  try { if(typeof TERM !== 'undefined' && TERM) tags.term = TERM; } catch(e){}
+  try {
+    if(typeof currentSheetIdx !== 'undefined' && typeof subjects === 'function'
+      && currentSheetIdx >= 0 && subjects()[currentSheetIdx]) tags.subject = subjects()[currentSheetIdx];
+  } catch(e){}
+  return tags;
+}
+
+// The exact screen the user is looking at, including the error they can see.
+// "What is wrong here?" is then answered for that screen, not in general.
+function devChatVisibleError(){
+  try {
+    var toast = document.getElementById('toast');
+    if(toast && toast.classList.contains('show') && toast.classList.contains('error')){
+      var t = String(toast.textContent || '').trim();
+      if(t) return t.slice(0, 240);
+    }
+  } catch(e){}
+  try {
+    var alertEl = document.querySelector('.page.active [role="alert"], .page.active .field-error, .page.active .error-text');
+    if(alertEl && alertEl.offsetParent !== null){
+      var text = String(alertEl.textContent || '').trim();
+      if(text) return text.slice(0, 240);
+    }
+  } catch(e){}
+  return null;
+}
+
+function devChatScreenContext(){
+  var page = document.querySelector('.page.active');
+  var pageId = page ? String(page.id || '').replace(/^page-/, '') : null;
+  var pageTitle = '';
+  try { var h = page ? page.querySelector('h1, h2, .page-title') : null; if(h) pageTitle = String(h.textContent || '').trim().slice(0, 80); } catch(e){}
+  var out = { page: pageId, page_title: pageTitle || null, error: devChatVisibleError(), class_label: null, class_key: null, term: null, subject: null };
+  try { if(typeof CLS !== 'undefined' && CLS){ out.class_label = CLS; out.class_key = dbClassKey(CLS); } } catch(e){}
+  try { if(typeof TERM !== 'undefined' && TERM) out.term = TERM; } catch(e){}
+  try {
+    if(typeof currentSheetIdx !== 'undefined' && typeof subjects === 'function'
+      && currentSheetIdx >= 0 && subjects()[currentSheetIdx]) out.subject = subjects()[currentSheetIdx];
+  } catch(e){}
+  return out;
+}
+
+// ── Assistant state: subscription banner, voice, developer settings ─────────
+var DEV_GATE = null;
+var DEV_VOICE_ON = false;
+var DEV_MIC_REC = null;
+var DEV_SETTINGS_CACHE = null;
+
+function applyDevGate(gate){
+  DEV_GATE = gate || null;
+  var banner = document.getElementById('dev-gate-banner');
+  var main = document.querySelector('#developer-command-center-card .dev-ws-main');
+  if(!banner) return;
+  if(!gate || !gate.banner){
+    banner.hidden = true;
+    banner.innerHTML = '';
+    if(main) main.classList.remove('is-paused');
+    return;
+  }
+  var blocked = gate.allowed === false;
+  banner.hidden = false;
+  banner.classList.toggle('is-blocked', blocked);
+  var due = '';
+  try {
+    if(gate.grace_until) due = ' Restore by ' + new Date(gate.grace_until).toLocaleDateString(undefined, { day:'numeric', month:'short' }) + '.';
+    else if(gate.due_date && gate.status === 'grace') due = ' Payment was due ' + new Date(gate.due_date).toLocaleDateString(undefined, { day:'numeric', month:'short' }) + '.';
+  } catch(e){}
+  banner.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;flex:0 0 auto;margin-top:1px">'
+    + '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.7 17a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'
+    + '<div><b>' + (blocked ? 'Assistant paused' : 'Heads up') + '.</b> ' + escapeHtml(gate.banner || '') + escapeHtml(due) + '</div>';
+  if(main) main.classList.toggle('is-paused', blocked);
+}
+
+function loadDevGate(){
+  return devChatJsonFetch('/api/ops-jobs?summary=1', { method:'GET' }).then(function(res){
+    if(res.ok && res.data && res.data.gate) applyDevGate(res.data.gate);
+    return res.ok ? res.data : null;
+  }).catch(function(){ return null; });
+}
+
+function devChatVoiceToggle(){
+  DEV_VOICE_ON = !DEV_VOICE_ON;
+  var btn = document.getElementById('dev-voice-toggle');
+  if(btn){
+    btn.textContent = 'Read aloud: ' + (DEV_VOICE_ON ? 'on' : 'off');
+    btn.setAttribute('aria-pressed', DEV_VOICE_ON ? 'true' : 'false');
+  }
+  if(!DEV_VOICE_ON && window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
+function devChatSpeakText(text){
+  if(!DEV_VOICE_ON || !text) return;
+  if(!window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+  var clean = String(text).replace(/[*_`#>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 700);
+  if(!clean) return;
+  try {
+    window.speechSynthesis.cancel();
+    var speech = new SpeechSynthesisUtterance(clean);
+    speech.rate = 0.98;
+    speech.pitch = 1;
+    window.speechSynthesis.speak(speech);
+  } catch(e){}
+}
+
+function devChatMicToggle(){
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var btn = document.getElementById('dev-chat-mic');
+  if(DEV_MIC_REC){
+    try { DEV_MIC_REC.stop(); } catch(e){}
+    return;
+  }
+  if(!SR){ showToast('This browser cannot take voice input.', 'error'); return; }
+  var input = document.getElementById('dev-chat-input');
+  var base = input ? String(input.value || '') : '';
+  var rec = new SR();
+  DEV_MIC_REC = rec;
+  rec.lang = (document.documentElement.lang || 'en-NG');
+  rec.interimResults = true;
+  rec.continuous = false;
+  rec.onresult = function(e){
+    var said = '';
+    for(var i = e.resultIndex; i < e.results.length; i += 1) said += e.results[i][0].transcript;
+    if(!input) return;
+    input.value = (base ? base + ' ' : '') + said;
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 150) + 'px';
+  };
+  rec.onerror = function(){ showToast('Voice input stopped. Check the microphone permission.', 'error'); };
+  rec.onend = function(){
+    DEV_MIC_REC = null;
+    if(btn) btn.classList.remove('is-recording');
+  };
+  if(btn) btn.classList.add('is-recording');
+  try { rec.start(); } catch(e){ DEV_MIC_REC = null; if(btn) btn.classList.remove('is-recording'); }
+}
+
+function devSettingsNote(message, bad){
+  var box = document.getElementById('dev-set-keynote');
+  if(!box) return;
+  if(!message){ box.hidden = true; box.textContent = ''; return; }
+  box.hidden = false;
+  box.textContent = message;
+  box.style.background = bad ? '#fdeceb' : '#fdf8e8';
+  box.style.borderColor = bad ? '#f0b9b5' : '#e6cf92';
+  box.style.color = bad ? '#8f1f18' : '#7a5c0c';
+}
+
+function openDevSettings(){
+  var modal = document.getElementById('modal-dev-settings');
+  if(modal) modal.style.display = 'flex';
+  devSettingsNote(null);
+  loadDevSettings();
+}
+
+function loadDevSettings(){
+  Promise.all([
+    devChatJsonFetch('/api/ops-jobs?models=1', { method:'GET' }),
+    devChatJsonFetch('/api/ops-jobs?summary=1', { method:'GET' })
+  ]).then(function(results){
+    var models = results[0] && results[0].ok ? results[0].data : { routes: [] };
+    var summary = results[1] && results[1].ok ? results[1].data : {};
+    DEV_SETTINGS_CACHE = { models: models, summary: summary };
+    renderDevSettings();
+  }).catch(function(err){
+    devSettingsNote((err && err.message) || 'Settings could not be loaded.', true);
+  });
+}
+
+function devSettingsMoney(n){
+  var value = Number(n) || 0;
+  try { return '₦' + value.toLocaleString(); } catch(e){ return 'NGN ' + value; }
+}
+
+function renderDevSettings(){
+  var cache = DEV_SETTINGS_CACHE || { models:{routes:[]}, summary:{} };
+  var models = cache.models || {};
+  var summary = cache.summary || {};
+
+  if(models.key_encryption === false){
+    devSettingsNote('Key encryption is not configured on this deployment (OPS_SECRET_KEY). Existing env keys still work, but a new key cannot be saved from here.', true);
+  } else {
+    devSettingsNote(null);
+  }
+
+  var summaryBox = document.getElementById('dev-set-summary');
+  if(summaryBox){
+    var stats = [
+      ['Scores recorded', summary.scores_recorded],
+      ['Batches written', summary.write_batches],
+      ['Documents prepared', summary.documents_prepared],
+      ['Chats started', summary.chats_started],
+      ['Questions answered', summary.questions_answered]
+    ];
+    var html = stats.map(function(pair){
+      return '<div class="dev-set-stat"><b>' + escapeHtml(String(pair[1] == null ? 0 : pair[1])) + '</b><span>' + escapeHtml(pair[0]) + '</span></div>';
+    }).join('');
+    html += '<div class="dev-set-stat"><b>' + escapeHtml(String(summary.status || 'active')) + '</b><span>Subscription</span></div>';
+    html += '<div class="dev-set-stat"><b>' + escapeHtml(devSettingsMoney(summary.price_naira)) + '</b><span>' + escapeHtml(String(summary.tier || 'entry')) + ' tier</span></div>';
+    if(summary.usage_band && summary.usage_band !== 'ok'){
+      html += '<div class="dev-set-stat"><b>' + escapeHtml(String(summary.usage_band)) + '</b><span>This month\'s usage</span></div>';
+    }
+    summaryBox.innerHTML = html;
+  }
+
+  var routesBox = document.getElementById('dev-set-routes');
+  if(routesBox){
+    var routes = Array.isArray(models.routes) ? models.routes : [];
+    routesBox.innerHTML = routes.map(function(route){
+      var role = String(route.role || '');
+      var isPrimary = role === 'primary';
+      var state = route.enabled === false ? 'Disabled'
+        : (route.last_test_ok === false ? 'Last check failed'
+          : (route.last_test_ok === true ? 'Last check passed'
+            : (route.has_key ? 'Key stored' : 'Uses server key')));
+      var stateClass = route.enabled === false || route.last_test_ok === false ? ' is-bad'
+        : (route.last_test_ok === true ? ' is-good' : '');
+      return '<div class="dev-route' + (isPrimary ? ' is-primary' : '') + '">'
+        + '<div class="dev-route-head"><span class="dev-route-role">' + escapeHtml(role) + '</span>'
+        + (isPrimary ? '<span class="dev-route-badge">Serving now</span>' : '')
+        + '<span class="dev-route-state' + stateClass + '">' + escapeHtml(state) + '</span></div>'
+        + '<div class="dev-route-grid">'
+        + '<label>Provider<input id="dev-route-' + escapeHtml(role) + '-provider" value="' + escapeHtml(route.provider || '') + '" maxlength="40"></label>'
+        + '<label>Model<input id="dev-route-' + escapeHtml(role) + '-model" value="' + escapeHtml(route.model || '') + '" maxlength="120"></label>'
+        + '<label>Base URL (optional)<input id="dev-route-' + escapeHtml(role) + '-base" value="' + escapeHtml(route.base_url || '') + '" maxlength="300" placeholder="server default"></label>'
+        + '<label>API key<input id="dev-route-' + escapeHtml(role) + '-key" type="password" autocomplete="off" placeholder="' + (route.has_key ? 'stored ····' + escapeHtml(route.key_last4 || '') : 'uses server key') + '" maxlength="300"></label>'
+        + '</div>'
+        + '<div class="dev-route-actions">'
+        + '<button type="button" onclick="saveDevRoute(\'' + escapeHtml(role) + '\')">Save</button>'
+        + '<button type="button" onclick="testDevRoute(\'' + escapeHtml(role) + '\', this)">Test route</button>'
+        + (isPrimary ? '' : '<button type="button" onclick="switchDevRoute(\'' + escapeHtml(role) + '\')">Use as primary</button>')
+        + (route.has_key ? '<button type="button" onclick="clearDevRouteKey(\'' + escapeHtml(role) + '\')">Remove key</button>' : '')
+        + '</div></div>';
+    }).join('') || '<p class="dev-set-help">No routes are configured.</p>';
+  }
+
+  var statusEl = document.getElementById('dev-sub-status');
+  if(statusEl && summary.gate){ statusEl.value = summary.gate.status || 'active'; }
+  var sub = summary.gate || {};
+  var tierEl = document.getElementById('dev-sub-tier');
+  if(tierEl && sub.tier) tierEl.value = sub.tier;
+  var priceEl = document.getElementById('dev-sub-price');
+  if(priceEl && summary.price_naira != null) priceEl.value = String(summary.price_naira);
+  var dueEl = document.getElementById('dev-sub-due');
+  if(dueEl && sub.due_date){
+    try { dueEl.value = new Date(sub.due_date).toISOString().slice(0, 10); } catch(e){}
+  }
+  var allowEl = document.getElementById('dev-sub-allowance');
+  if(allowEl && sub.included_tokens != null) allowEl.value = String(sub.included_tokens);
+  var graceEl = document.getElementById('dev-sub-grace');
+  if(graceEl && sub.grace_days != null) graceEl.value = String(sub.grace_days);
+  var noteEl = document.getElementById('dev-sub-note');
+  if(noteEl && summary.note != null) noteEl.value = String(summary.note);
+}
+
+function devRouteBody(role, extra){
+  function value(id){ var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
+  var keyEl = document.getElementById('dev-route-' + role + '-key');
+  var body = Object.assign({
+    action: 'model_save',
+    role: role,
+    provider: value('dev-route-' + role + '-provider'),
+    model: value('dev-route-' + role + '-model'),
+    base_url: value('dev-route-' + role + '-base') || null,
+    enabled: true
+  }, extra || {});
+  if(keyEl && keyEl.value && !(extra && extra.api_key)) body.api_key = keyEl.value;
+  return body;
+}
+
+function devPost(body){
+  return devChatJsonFetch('/api/ops-jobs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
+function saveDevRoute(role){
+  devPost(devRouteBody(role)).then(function(res){
+    if(!res.ok) throw new Error((res.data && res.data.message) || 'The route could not be saved.');
+    showToast('Route saved.');
+    var keyEl = document.getElementById('dev-route-' + role + '-key');
+    if(keyEl) keyEl.value = '';
+    loadDevSettings();
+  }).catch(function(err){ showToast((err && err.message) || 'The route could not be saved.', 'error'); });
+}
+
+function testDevRoute(role, btn){
+  if(btn) btn.disabled = true;
+  devPost({ action: 'model_test', role: role }).then(function(res){
+    var acceptance = res.data && res.data.acceptance ? res.data.acceptance : (res.data || {});
+    if(!res.ok) throw new Error(acceptance.message || 'The route did not answer.');
+    showToast('Route answered: ' + (res.data.reply || 'OK'));
+    loadDevSettings();
+  }).catch(function(err){ showToast((err && err.message) || 'The route did not answer.', 'error'); })
+    .finally(function(){ if(btn) btn.disabled = false; });
+}
+
+function switchDevRoute(role){
+  var ok = window.confirm('Make the ' + role + ' route the primary assistant? The previous setting is recorded and can be reverted.');
+  if(!ok) return;
+  showToast('Checking the route before switching…');
+  devPost({ action: 'model_switch', role: role }).then(function(res){
+    if(!res.ok) throw new Error((res.data && res.data.message) || 'The switch did not pass.');
+    showToast('Primary route switched and recorded.');
+    loadDevSettings();
+  }).catch(function(err){ showToast((err && err.message) || 'The switch did not pass.', 'error'); });
+}
+
+function clearDevRouteKey(role){
+  var ok = window.confirm('Remove the stored key for the ' + role + ' route? The server key will be used instead.');
+  if(!ok) return;
+  // Keep the current provider and model, so clearing a key cannot blank the route.
+  devPost(devRouteBody(role, { api_key: '__clear__' })).then(function(res){
+    if(!res.ok) throw new Error((res.data && res.data.message) || 'The key could not be removed.');
+    showToast('Stored key removed.');
+    loadDevSettings();
+  }).catch(function(err){ showToast((err && err.message) || 'The key could not be removed.', 'error'); });
+}
+
+function saveDevSubscription(){
+  function val(id){ var el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; }
+  var body = {
+    action: 'subscription_set',
+    status: val('dev-sub-status') || null,
+    tier: val('dev-sub-tier') || null,
+    price_naira: val('dev-sub-price') ? Number(val('dev-sub-price')) : null,
+    due_date: val('dev-sub-due') || null,
+    included_tokens: val('dev-sub-allowance') ? Number(val('dev-sub-allowance')) : null,
+    grace_days: val('dev-sub-grace') ? Number(val('dev-sub-grace')) : null,
+    note: val('dev-sub-note') || null
+  };
+  devPost(body).then(function(res){
+    if(!res.ok) throw new Error((res.data && res.data.message) || 'The subscription could not be saved.');
+    showToast('Subscription saved.');
+    loadDevSettings();
+    loadDevGate();
+  }).catch(function(err){ showToast((err && err.message) || 'The subscription could not be saved.', 'error'); });
+}
+
+function devChatWhen(iso){
+  if(!iso) return '';
+  var d = new Date(iso);
+  if(isNaN(d.getTime())) return '';
+  var diff = Date.now() - d.getTime();
+  if(diff < 60000) return 'now';
+  if(diff < 3600000) return Math.floor(diff / 60000) + 'm';
+  if(diff < 86400000) return Math.floor(diff / 3600000) + 'h';
+  if(diff < 604800000) return Math.floor(diff / 86400000) + 'd';
+  try { return d.toLocaleDateString(undefined, { day:'numeric', month:'short' }); } catch(e){ return ''; }
+}
+
+function devChatDateGroup(iso){
+  var d = new Date(iso || Date.now());
+  var now = new Date();
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  var that = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  var days = Math.round((today - that) / 86400000);
+  if(days <= 0) return 'Today';
+  if(days === 1) return 'Yesterday';
+  if(days < 7) return 'Previous 7 days';
+  return 'Older';
+}
+
+function devChatTagList(session){
+  var tags = session && session.tags && typeof session.tags === 'object' ? session.tags : {};
+  var out = [];
+  if(tags.class) out.push(String(tags.class));
+  if(tags.subject) out.push(String(tags.subject));
+  if(tags.term) out.push(String(tags.term));
+  return out;
+}
+
+function devChatTagHtml(session){
+  var list = devChatTagList(session);
+  if(!list.length) return '';
+  var html = '';
+  list.slice(0, 3).forEach(function(tag){
+    html += '<span class="dev-chat-tag">' + escapeHtml(tag) + '</span>';
+  });
+  return '<div class="dev-chat-tags">' + html + '</div>';
+}
+
+function devChatRowHtml(session, activeId){
+  var pinned = Boolean(session.pinned);
+  var menu = DEV_CHAT_SHOW_DELETED
+    ? '<button type="button" onclick="event.stopPropagation();devChatMenuAction(this,\'restore\')">Restore chat</button>'
+      + '<button type="button" class="is-danger" onclick="event.stopPropagation();devChatMenuAction(this,\'purge\')">Delete forever</button>'
+    : (session.status === 'archived'
+      ? '<button type="button" onclick="event.stopPropagation();devChatMenuAction(this,\'unarchive\')">Reopen chat</button>'
+        + '<button type="button" class="is-danger" onclick="event.stopPropagation();devChatMenuAction(this,\'delete\')">Delete</button>'
+      : '<button type="button" onclick="event.stopPropagation();devChatMenuAction(this,\'rename\')">Rename</button>'
+        + '<button type="button" onclick="event.stopPropagation();devChatMenuAction(this,\'pin\')">' + (pinned ? 'Unpin' : 'Pin to top') + '</button>'
+        + '<button type="button" onclick="event.stopPropagation();devChatMenuAction(this,\'archive\')">Archive</button>'
+        + '<button type="button" class="is-danger" onclick="event.stopPropagation();devChatMenuAction(this,\'delete\')">Delete</button>');
+  return '<div class="dev-chat-row' + (session.id === activeId ? ' is-active' : '') + '" data-chat-id="' + escapeHtml(session.id) + '" onclick="openDevChat(this.getAttribute(\'data-chat-id\'))">'
+    + '<div class="dev-chat-main">'
+    + '<span class="dev-chat-name">' + escapeHtml(session.title || 'New chat') + '</span>'
+    + devChatTagHtml(session)
+    + '<div class="dev-chat-meta">'
+    + (pinned ? '<span class="dev-chat-pin" title="Pinned">&#9733;</span>' : '')
+    + '<span>' + escapeHtml(devChatWhen(session.last_active_at || session.updated_at)) + '</span>'
+    + '<span>&#183;</span><span>' + (Number(session.message_count) || 0) + '</span>'
+    + '</div></div>'
+    + '<button class="dev-chat-more" type="button" title="Chat actions" aria-label="Chat actions" onclick="event.stopPropagation();toggleDevChatMenu(this)">'
+    + '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>'
+    + '</button>'
+    + '<div class="dev-chat-menu" hidden>' + menu + '</div>'
+    + '</div>';
+}
+
+function renderDevChatTags(){
+  var box = document.getElementById('dev-chat-tags');
+  if(!box) return;
+  if(DEV_CHAT_SHOW_DELETED){ box.innerHTML = ''; return; }
+  var seen = {};
+  var chips = [];
+  DEV_CHAT_SESSIONS.forEach(function(session){
+    var tags = session.tags && typeof session.tags === 'object' ? session.tags : {};
+    ['class', 'subject', 'term'].forEach(function(key){
+      if(!tags[key]) return;
+      var id = key + ':' + tags[key];
+      if(seen[id]) return;
+      seen[id] = true;
+      chips.push({ key: key, value: String(tags[key]), id: id });
+    });
+  });
+  if(!chips.length){ box.innerHTML = ''; return; }
+  box.innerHTML = chips.slice(0, 12).map(function(chip){
+    var on = DEV_CHAT_TAG && DEV_CHAT_TAG.id === chip.id;
+    return '<button type="button" class="dev-rtag' + (on ? ' is-on' : '') + '" onclick="devChatSetTag(' + JSON.stringify(chip.key) + ',' + JSON.stringify(chip.value) + ')" title="Show only ' + escapeHtml(chip.value) + '">'
+      + escapeHtml(chip.value) + '</button>';
+  }).join('');
+}
+
+function renderDevChatRail(){
+  var list = document.getElementById('dev-chat-list');
+  var count = document.getElementById('dev-chat-count');
+  var deletedBtn = document.getElementById('dev-chat-deleted-btn');
+  if(deletedBtn) deletedBtn.classList.toggle('is-on', DEV_CHAT_SHOW_DELETED);
+  if(!list) return;
+
+  var rows = DEV_CHAT_SESSIONS.slice();
+  if(DEV_CHAT_TAG){
+    rows = rows.filter(function(session){
+      var tags = session.tags && typeof session.tags === 'object' ? session.tags : {};
+      return String(tags[DEV_CHAT_TAG.key] || '') === DEV_CHAT_TAG.value;
+    });
+  }
+  rows.sort(function(a, b){
+    if(Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1;
+    if((a.status === 'archived') !== (b.status === 'archived')) return a.status === 'archived' ? 1 : -1;
+    return new Date(b.last_active_at || b.updated_at || 0) - new Date(a.last_active_at || a.updated_at || 0);
+  });
+
+  if(count) count.textContent = rows.length ? String(rows.length) : '';
+
+  if(!rows.length){
+    list.innerHTML = '<div class="dev-rail-empty">'
+      + (DEV_CHAT_SHOW_DELETED
+        ? 'No deleted chats. Deleted chats rest here for 30 days.'
+        : (DEV_CHAT_SEARCH ? 'No chat matches that search.' : 'No chats yet. Start one and it will appear here.'))
+      + '</div>';
+    renderDevChatTags();
+    return;
+  }
+
+  var html = '';
+  var lastGroup = null;
+  rows.forEach(function(session){
+    var group = session.pinned ? 'Pinned'
+      : (session.status === 'archived' ? 'Archived' : devChatDateGroup(session.last_active_at || session.updated_at));
+    if(group !== lastGroup){
+      html += '<div class="dev-rail-group">' + escapeHtml(group) + '</div>';
+      lastGroup = group;
+    }
+    html += devChatRowHtml(session, DEV_CHAT_ID);
+  });
+  list.innerHTML = html;
+  renderDevChatTags();
+}
+
+function loadDevChatSessions(opts){
+  var options = opts || {};
+  var url = '/api/ops-jobs?chats=1&status=' + (DEV_CHAT_SHOW_DELETED ? 'deleted' : 'all');
+  if(DEV_CHAT_SEARCH) url += '&q=' + encodeURIComponent(DEV_CHAT_SEARCH);
+  return devChatJsonFetch(url, { method:'GET' }).then(function(res){
+    if(!res.ok) throw new Error(res.data && res.data.message ? res.data.message : 'The chat list could not be loaded.');
+    var list = Array.isArray(res.data.sessions) ? res.data.sessions : [];
+    DEV_CHAT_SESSIONS = list.filter(function(session){
+      return DEV_CHAT_SHOW_DELETED ? session.status === 'deleted' : session.status !== 'deleted';
+    });
+    renderDevChatRail();
+    return DEV_CHAT_SESSIONS;
+  }).catch(function(err){
+    if(!options.silent) showToast((err && err.message) || 'The chat list could not be loaded.', 'error');
+    renderDevChatRail();
+    return [];
+  });
+}
+
+var DEV_CHAT_SEARCH_TIMER = null;
+function devChatSearchInput(value){
+  DEV_CHAT_SEARCH = String(value || '').trim();
+  if(DEV_CHAT_SEARCH_TIMER) clearTimeout(DEV_CHAT_SEARCH_TIMER);
+  DEV_CHAT_SEARCH_TIMER = setTimeout(function(){
+    DEV_CHAT_SEARCH_TIMER = null;
+    loadDevChatSessions({ silent:true });
+  }, 260);
+}
+
+function devChatSetTag(key, value){
+  if(DEV_CHAT_TAG && DEV_CHAT_TAG.key === key && DEV_CHAT_TAG.value === value) DEV_CHAT_TAG = null;
+  else DEV_CHAT_TAG = { key: key, value: value, id: key + ':' + value };
+  renderDevChatRail();
+}
+
+function toggleDevChatRail(force){
+  var rail = document.getElementById('dev-chat-rail');
+  var backdrop = document.getElementById('dev-rail-backdrop');
+  if(!rail) return;
+  var open = typeof force === 'boolean' ? force : !rail.classList.contains('is-open');
+  rail.classList.toggle('is-open', open);
+  if(backdrop) backdrop.classList.toggle('is-open', open);
+}
+
+function toggleDevChatDeleted(){
+  DEV_CHAT_SHOW_DELETED = !DEV_CHAT_SHOW_DELETED;
+  DEV_CHAT_TAG = null;
+  if(DEV_CHAT_SHOW_DELETED){
+    DEV_CHAT_RETURN_ID = DEV_CHAT_ID;
+    setDevChatId(null);
+    resetDevCommandChat();
+    loadDevChatSessions();
+  } else {
+    loadDevChatSessions().then(function(){
+      if(DEV_CHAT_RETURN_ID){
+        var back = DEV_CHAT_RETURN_ID;
+        DEV_CHAT_RETURN_ID = null;
+        return openDevChat(back, { silent:true });
+      }
+    });
+  }
+}
+
+function toggleDevChatMenu(button){
+  var row = button && button.closest ? button.closest('.dev-chat-row') : null;
+  if(!row) return;
+  var menu = row.querySelector('.dev-chat-menu');
+  var wasOpen = menu && !menu.hidden;
+  closeDevChatMenus();
+  if(menu && !wasOpen){
+    menu.hidden = false;
+    row.classList.add('is-menu');
+  }
+}
+
+function closeDevChatMenus(){
+  document.querySelectorAll('#dev-chat-list .dev-chat-menu').forEach(function(menu){ menu.hidden = true; });
+  document.querySelectorAll('#dev-chat-list .dev-chat-row.is-menu').forEach(function(row){ row.classList.remove('is-menu'); });
+}
+
+document.addEventListener('click', function(e){
+  if(!e.target || !e.target.closest || !e.target.closest('#dev-chat-list')) closeDevChatMenus();
+});
+
+function devChatFindSession(id){
+  for(var i = 0; i < DEV_CHAT_SESSIONS.length; i += 1){
+    if(DEV_CHAT_SESSIONS[i].id === id) return DEV_CHAT_SESSIONS[i];
+  }
+  return null;
+}
+
+function devChatMenuAction(button, action){
+  var row = button && button.closest ? button.closest('.dev-chat-row') : null;
+  var id = row ? row.getAttribute('data-chat-id') : null;
+  closeDevChatMenus();
+  if(!id) return;
+  if(action === 'rename') return beginRenameDevChat(id);
+  if(action === 'pin') return devChatPin(id);
+  if(action === 'archive') return devChatArchive(id);
+  if(action === 'unarchive') return devChatUnarchive(id);
+  if(action === 'delete') return devChatDelete(id);
+  if(action === 'restore') return devChatRestore(id);
+  if(action === 'purge') return requestPurgeDevChat(id);
+}
+
+function devChatUpdateSession(id, patch){
+  return devChatJsonFetch('/api/ops-jobs', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify(Object.assign({ action:'chat_update', chat_id:id }, patch || {}))
+  });
+}
+
+function devChatPin(id){
+  var session = devChatFindSession(id);
+  if(!session) return;
+  devChatUpdateSession(id, { pinned: !session.pinned }).then(function(res){
+    if(!res.ok) throw new Error(res.data && res.data.message || 'The chat could not be changed.');
+    session.pinned = !session.pinned;
+    renderDevChatRail();
+    showToast(session.pinned ? 'Pinned to the top.' : 'Unpinned.');
+  }).catch(function(err){ showToast((err && err.message) || 'The chat could not be changed.', 'error'); });
+}
+
+function devChatArchive(id){
+  devChatUpdateSession(id, { status:'archived' }).then(function(res){
+    if(!res.ok) throw new Error(res.data && res.data.message || 'The chat could not be archived.');
+    var session = devChatFindSession(id);
+    if(session) session.status = 'archived';
+    if(DEV_CHAT_ID === id){ setDevChatId(null); resetDevCommandChat(); }
+    renderDevChatRail();
+    showToast('Chat archived. It stays in the list under Archived.');
+  }).catch(function(err){ showToast((err && err.message) || 'The chat could not be archived.', 'error'); });
+}
+
+function devChatUnarchive(id){
+  devChatUpdateSession(id, { status:'active' }).then(function(res){
+    if(!res.ok) throw new Error(res.data && res.data.message || 'The chat could not be reopened.');
+    var session = devChatFindSession(id);
+    if(session) session.status = 'active';
+    renderDevChatRail();
+    showToast('Chat reopened.');
+  }).catch(function(err){ showToast((err && err.message) || 'The chat could not be reopened.', 'error'); });
+}
+
+function devChatDelete(id){
+  devChatJsonFetch('/api/ops-jobs', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ action:'chat_delete', chat_id:id })
+  }).then(function(res){
+    if(!res.ok) throw new Error(res.data && res.data.message || 'The chat could not be deleted.');
+    DEV_CHAT_SESSIONS = DEV_CHAT_SESSIONS.filter(function(session){ return session.id !== id; });
+    if(DEV_CHAT_ID === id){ setDevChatId(null); resetDevCommandChat(); }
+    renderDevChatRail();
+    showToast('Moved to Deleted. Restore it within 30 days.');
+  }).catch(function(err){ showToast((err && err.message) || 'The chat could not be deleted.', 'error'); });
+}
+
+function devChatRestore(id){
+  devChatJsonFetch('/api/ops-jobs', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ action:'chat_restore', chat_id:id })
+  }).then(function(res){
+    if(!res.ok) throw new Error(res.data && res.data.message || 'The chat could not be restored.');
+    showToast('Chat restored.');
+    DEV_CHAT_SHOW_DELETED = false;
+    return loadDevChatSessions({ silent:true }).then(function(){ return openDevChat(id); });
+  }).catch(function(err){ showToast((err && err.message) || 'The chat could not be restored.', 'error'); });
+}
+
+function requestPurgeDevChat(id){
+  DEV_CHAT_PURGE_ID = id;
+  var modal = document.getElementById('modal-dev-chat-purge');
+  if(modal) modal.style.display = 'flex';
+}
+
+function confirmPurgeDevChat(){
+  var id = DEV_CHAT_PURGE_ID;
+  closeModal('modal-dev-chat-purge');
+  if(!id) return;
+  devChatJsonFetch('/api/ops-jobs', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ action:'chat_purge', chat_id:id, force:true })
+  }).then(function(res){
+    if(!res.ok) throw new Error(res.data && res.data.message || 'The chat could not be removed.');
+    DEV_CHAT_SESSIONS = DEV_CHAT_SESSIONS.filter(function(session){ return session.id !== id; });
+    if(DEV_CHAT_ID === id){ setDevChatId(null); resetDevCommandChat(); }
+    renderDevChatRail();
+    showToast('Chat deleted permanently. School records were kept.');
+  }).catch(function(err){ showToast((err && err.message) || 'The chat could not be removed.', 'error'); })
+    .finally(function(){ DEV_CHAT_PURGE_ID = null; });
+}
+
+function beginRenameDevChat(id){
+  var session = devChatFindSession(id);
+  if(!session) return;
+  DEV_CHAT_RENAME_ID = id;
+  var input = document.getElementById('dev-chat-rename-input');
+  if(input){ input.value = session.title || 'New chat'; }
+  var modal = document.getElementById('modal-dev-chat-rename');
+  if(modal) modal.style.display = 'flex';
+  setTimeout(function(){ if(input){ input.focus(); input.select(); } }, 60);
+}
+
+function saveDevChatRename(){
+  var id = DEV_CHAT_RENAME_ID;
+  var input = document.getElementById('dev-chat-rename-input');
+  var title = String(input ? input.value : '').trim();
+  if(!id || !title){ showToast('Type a name for the chat.', 'error'); return; }
+  devChatUpdateSession(id, { title:title }).then(function(res){
+    if(!res.ok) throw new Error(res.data && res.data.message || 'The name could not be saved.');
+    var session = devChatFindSession(id);
+    if(session && res.data && res.data.session) session.title = res.data.session.title;
+    else if(session) session.title = title;
+    closeModal('modal-dev-chat-rename');
+    DEV_CHAT_RENAME_ID = null;
+    renderDevChatRail();
+    showToast('Chat renamed.');
+  }).catch(function(err){ showToast((err && err.message) || 'The name could not be saved.', 'error'); });
+}
+
+function ensureDevChatSession(){
+  if(DEV_CHAT_ID) return Promise.resolve(DEV_CHAT_ID);
+  if(DEV_CHAT_BOOTING) return DEV_CHAT_BOOTING;
+  DEV_CHAT_BOOTING = devChatJsonFetch('/api/ops-jobs', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ action:'chat_new', title:'New chat', tags:devChatCurrentTags() })
+  }).then(function(res){
+    DEV_CHAT_BOOTING = null;
+    if(!res.ok || !res.data.session) return null;
+    var session = res.data.session;
+    DEV_CHAT_SESSIONS.unshift(session);
+    setDevChatId(session.id);
+    resetDevCommandChat();
+    renderDevChatRail();
+    if(DEV_CHAT_SHOW_DELETED){
+      DEV_CHAT_SHOW_DELETED = false;
+      loadDevChatSessions({ silent:true });
+    }
+    return session.id;
+  }).catch(function(){ DEV_CHAT_BOOTING = null; return null; });
+  return DEV_CHAT_BOOTING;
+}
+
+function startNewDevChat(){
+  if(DEV_CHAT_BUSY) return;
+  closeDevChatMenus();
+  devChatJsonFetch('/api/ops-jobs', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ action:'chat_new', title:'New chat', tags:devChatCurrentTags() })
+  }).then(function(res){
+    if(!res.ok || !res.data.session) throw new Error(res.data && res.data.message || 'A new chat could not be started.');
+    var session = res.data.session;
+    DEV_CHAT_SESSIONS.unshift(session);
+    setDevChatId(session.id);
+    resetDevCommandChat();
+    DEV_CHAT_SHOW_DELETED = false;
+    DEV_CHAT_TAG = null;
+    renderDevChatRail();
+    loadDevChatSessions({ silent:true });
+    toggleDevChatRail(false);
+    var input = document.getElementById('dev-chat-input');
+    if(input) input.focus();
+  }).catch(function(err){ showToast((err && err.message) || 'A new chat could not be started.', 'error'); });
+}
+
+function devChatStoredUserHtml(message){
+  var refs = Array.isArray(message.attachment_refs) ? message.attachment_refs : [];
+  var html = '<div class="dev-msg dev-msg-user"><div class="dev-bubble">';
+  if(message.content) html += '<div>' + escapeHtml(message.content).replace(/\n/g, '<br>') + '</div>';
+  refs.forEach(function(ref){
+    if(ref && (ref.description || ref.name)){
+      html += '<div class="dev-attach-note">' + escapeHtml(ref.description || ref.name) + '</div>';
+    }
+  });
+  return html + '</div></div>';
+}
+
+function devChatStoredAssistantHtml(message){
+  var text = String(message.content || '');
+  var html = '<div class="dev-msg dev-msg-assistant"><div class="dev-prose">' + formatDevChatText(text) + '</div>';
+  var runs = Array.isArray(message.tool_results) ? message.tool_results.filter(function(r){ return r && r.tool; }) : [];
+  if(runs.length){
+    html += '<div class="dev-runs">';
+    runs.slice(0, 6).forEach(function(item){
+      html += '<div class="dev-run' + (item.ok === false ? ' is-error' : '') + '">' + DEV_CHAT_ICONS.bolt
+        + '<span>' + escapeHtml(String(item.summary || item.tool || 'Action')) + '</span></div>';
+    });
+    html += '</div>';
+  }
+  // Documents made in this turn come back with the transcript, so the buttons
+  // are still there after a reload or a new login.
+  var docs = [];
+  runs.forEach(function(item){
+    if(Array.isArray(item.documents)) docs = docs.concat(item.documents);
+  });
+  if(docs.length) html += devChatDocumentsHtml(docs);
+  return html + devChatActionsHtml() + '</div>';
+}
+
+function devChatPendingCardHtml(pending){
+  if(!pending || !pending.token || !pending.tool) return '';
+  return '<div class="dev-msg dev-msg-assistant"><div class="dev-confirm">'
+    + '<div class="dev-confirm-head">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.7 17a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'
+    + '<div><div class="dev-confirm-title">' + escapeHtml(pending.summary || 'Confirm this change?') + '</div>'
+    + '<div class="dev-confirm-sub">Nothing is saved until you confirm.</div></div></div>'
+    + '<div class="dev-confirm-btns">'
+    + '<button class="dev-confirm-yes" type="button" onclick="confirmDevChatAction(this)" data-tool="' + escapeHtml(pending.tool) + '" data-token="' + escapeHtml(pending.token) + '" data-args="' + escapeHtml(JSON.stringify(pending.args || {})) + '">Confirm</button>'
+    + '<button class="dev-confirm-no" type="button" onclick="this.parentNode.parentNode.remove()">Cancel</button>'
+    + '</div></div></div>';
+}
+
+function renderDevChatSession(detail){
+  var thread = document.getElementById('dev-chat-thread');
+  if(!thread) return;
+  var messages = Array.isArray(detail.messages) ? detail.messages : [];
+  DEV_CHAT_MESSAGES = [];
+  var html = '';
+  if(messages.length > 12){
+    html += '<div class="dev-chat-hint">This chat is long. Keep going here, or start a fresh chat whenever you prefer.</div>';
+  }
+  messages.forEach(function(message){
+    if(!message || (message.role !== 'user' && message.role !== 'assistant')) return;
+    if(message.role === 'user'){
+      html += devChatStoredUserHtml(message);
+      DEV_CHAT_MESSAGES.push({ role:'user', text:message.content || '' });
+    } else {
+      html += devChatStoredAssistantHtml(message);
+      if(message.content) DEV_CHAT_MESSAGES.push({ role:'assistant', text:message.content });
+    }
+  });
+  if(!html) html = devChatWelcomeHtml();
+  thread.innerHTML = html;
+  if(detail.state && detail.state.pending_review && detail.state.pending_review.token){
+    thread.insertAdjacentHTML('beforeend', devChatPendingCardHtml(detail.state.pending_review));
+  }
+  if(detail.state && detail.state.open_job_id) setDevChatJob(detail.state.open_job_id);
+  else setDevChatJob(null);
+  devChatSyncWelcomeState();
+  devChatScrollToEnd();
+}
+
+function openDevChat(id, opts){
+  var options = opts || {};
+  if(!id) return Promise.resolve(false);
+  if(DEV_CHAT_BUSY && !options.silent){
+    showToast('Wait for the current answer to finish.', 'error');
+    return Promise.resolve(false);
+  }
+  closeDevChatMenus();
+  return devChatJsonFetch('/api/ops-jobs?chat=' + encodeURIComponent(id), { method:'GET' }).then(function(res){
+    if(!res.ok) throw new Error(res.data && res.data.message || 'That chat could not be opened.');
+    if(res.data.session && res.data.session.status === 'deleted') throw new Error('That chat is in Deleted. Restore it first.');
+    setDevChatId(id);
+    DEV_CHAT_SHOW_DELETED = false;
+    renderDevChatSession(res.data);
+    if(res.data.session && res.data.session.status === 'archived'){
+      var archived = devChatFindSession(id);
+      if(archived) archived.status = 'active';
+      devChatUpdateSession(id, { status:'active' }).catch(function(){});
+    }
+    renderDevChatRail();
+    if(!options.silent) toggleDevChatRail(false);
+    var input = document.getElementById('dev-chat-input');
+    if(input && !options.silent) input.focus();
+    return true;
+  }).catch(function(err){
+    if(!options.silent) showToast((err && err.message) || 'That chat could not be opened.', 'error');
+    if(DEV_CHAT_ID === id){ setDevChatId(null); resetDevCommandChat(); }
+    return false;
+  });
+}
+
+function devChatBoot(){
+  if(DEV_CHAT_BOOTED) return;
+  DEV_CHAT_BOOTED = true;
+  loadDevGate();
+  loadDevChatSessions({ silent:true }).then(function(list){
+    var stored = null;
+    try { stored = sessionStorage.getItem(DEV_CHAT_STORE) || null; } catch(e){}
+    if(stored){
+      return openDevChat(stored, { silent:true }).then(function(ok){
+        if(ok) return true;
+        if(list.length) return openDevChat(list[0].id, { silent:true });
+        return ensureDevChatSession();
+      });
+    }
+    if(list.length) return openDevChat(list[0].id, { silent:true });
+    return ensureDevChatSession();
+  });
+}
+// The page is part of the conversation: keep it across a reload so "check the
+// page" still knows which page it means.
+try { DEV_CHAT_JOB_ID = sessionStorage.getItem(DEV_CHAT_JOB_STORE) || null; } catch(e){}
+function setDevChatJob(id){
+  DEV_CHAT_JOB_ID = id || null;
+  try {
+    if(DEV_CHAT_JOB_ID) sessionStorage.setItem(DEV_CHAT_JOB_STORE, DEV_CHAT_JOB_ID);
+    else sessionStorage.removeItem(DEV_CHAT_JOB_STORE);
+  } catch(e){}
+}
+// A portal session lasts one hour. One quiet retry after the server renews it
+// keeps a long conversation going instead of showing "session not valid".
+function refreshPortalSessionOnce(){
+  return fetch('/api/result-auth', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+    .then(function(r){ return r.json().catch(function(){ return {}; }); })
+    .then(function(d){ return Boolean(d && d.ok !== false && d.user); })
+    .catch(function(){ return false; });
+}
+// Hosted reader: ask the portal's own host to read the next waiting page.
+// It returns at once and the reply arrives through the normal status check.
+function nudgeOpsWorker(){
+  try {
+    fetch('/api/ops-jobs', {
+      method: 'POST',
+      credentials: 'same-origin',
+      keepalive: true,
+      headers: Object.assign({ 'Accept': 'application/json', 'Content-Type': 'application/json' }, getAuthHeaders()),
+      body: JSON.stringify({ action: 'worker_pass' })
+    }).catch(function(){});
+  } catch(e){}
+}
+function devChatFetch(url, options){
+  return fetch(url, options).then(function(res){
+    if(res.status !== 401) return res;
+    return refreshPortalSessionOnce().then(function(ok){
+      return ok ? fetch(url, options) : res;
+    });
+  });
+}
+
+function formatDevChatText(text){
+  if(!text) return '';
+  var safe = escapeHtml(String(text).trim());
+  safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  safe = safe.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+  safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  var lines = safe.split('\n');
+  var out = [];
+  var inList = false;
+  for(var i = 0; i < lines.length; i++){
+    var line = lines[i];
+    var headingMatch = line.match(/^\s*#{1,4}\s+(.+)$/);
+    var bulletMatch = line.match(/^(\s*)[-*]\s+(.+)$/);
+    var numMatch = line.match(/^(\s*)\d+\.\s+(.+)$/);
+    if(headingMatch){
+      if(inList){ out.push(inList === 'ol' ? '</ol>' : '</ul>'); inList = false; }
+      out.push('<div class="dev-prose-h">' + headingMatch[1] + '</div>');
+    } else if(bulletMatch){
+      if(!inList){ out.push('<ul>'); inList = 'ul'; }
+      out.push('<li>' + bulletMatch[2] + '</li>');
+    } else if(numMatch){
+      if(!inList){ out.push('<ol>'); inList = 'ol'; }
+      out.push('<li>' + numMatch[2] + '</li>');
+    } else {
+      if(inList){ out.push(inList === 'ol' ? '</ol>' : '</ul>'); inList = false; }
+      if(line.trim() === ''){
+        out.push('<div class="dev-gap"></div>');
+      } else {
+        out.push('<div>' + line + '</div>');
+      }
+    }
+  }
+  if(inList){ out.push(inList === 'ol' ? '</ol>' : '</ul>'); }
+  return out.join('');
+}
+
+var DEV_CHAT_PROGRESS = null;
+var DEV_CHAT_ICONS = {
+  copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>',
+  speak:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15 9a4 4 0 010 6M18 6a8 8 0 010 12"/></svg>',
+  up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 10v10H4V10zM7 10l4-7c1.4 0 2.3 1 2.3 2.4V9h5.2c1.2 0 1.9 1 1.7 2.1l-1.2 6.2A2.4 2.4 0 0116.6 20H7"/></svg>',
+  down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 14V4H4v10zM7 14l4 7c1.4 0 2.3-1 2.3-2.4V15h5.2c1.2 0 1.9-1 1.7-2.1l-1.2-6.2A2.4 2.4 0 0016.6 4H7"/></svg>',
+  bolt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>',
+  alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v5M12 17h.01"/><path d="M10.3 3.9L2.7 17a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>',
+  doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>'
+};
+
+function devChatGreeting(){
+  var hour = new Date().getHours();
+  var part = hour < 12 ? 'Good morning' : (hour < 17 ? 'Good afternoon' : 'Good evening');
+  return part + ', Developer';
+}
+
+function devChatSuggestButton(prompt, label, sub, icon){
+  return '<button class="dev-sg" type="button" onclick="sendDevCommandQuick(' + JSON.stringify(prompt) + ')">'
+    + '<span class="dev-sg-icon" aria-hidden="true">' + icon + '</span>'
+    + '<span class="dev-sg-txt"><b>' + escapeHtml(label) + '</b><small>' + escapeHtml(sub) + '</small></span>'
+    + '<span class="dev-sg-arrow" aria-hidden="true">›</span>'
+    + '</button>';
+}
+
+function devChatWelcomeHtml(){
+  var trophy = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 4h8v5a4 4 0 01-8 0z"/><path d="M8 6H5v2a3 3 0 003 3M16 6h3v2a3 3 0 01-3 3M12 13v4M9 21h6M10 17h4"/></svg>';
+  var userPlus = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0112 0M18 8v6M15 11h6"/></svg>';
+  var sliders = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>';
+  var layers = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12l9 5 9-5M3 16l9 5 9-5"/></svg>';
+  return '<div class="dev-welcome">'
+    + '<h4>' + escapeHtml(devChatGreeting()) + '</h4>'
+    + '<p>I have the school ledger open. Ask me a question, attach a record-book photo, or tell me what to change — I will show you anything risky before it is saved.</p>'
+    + '<div class="dev-ws-suggest" id="dev-chat-initial-chips">'
+    + devChatSuggestButton('Who is leading in JSS1?', 'JSS1 leader', 'Top of the class', trophy)
+    + devChatSuggestButton('Add a new pupil', 'Add a pupil', 'New student record', userPlus)
+    + devChatSuggestButton('Show me the school settings', 'School settings', 'Current term setup', sliders)
+    + devChatSuggestButton('Give me an overview of total school enrollment.', 'Enrollment overview', 'Whole-school totals', layers)
+    + '</div></div>';
+}
+
+function devChatActionsHtml(){
+  return '<div class="dev-actions">'
+    + '<button class="dev-act" type="button" title="Copy answer" aria-label="Copy answer" onclick="devChatCopy(this)">' + DEV_CHAT_ICONS.copy + '</button>'
+    + '<button class="dev-act" type="button" title="Read aloud" aria-label="Read answer aloud" onclick="devChatSpeak(this)">' + DEV_CHAT_ICONS.speak + '</button>'
+    + '<button class="dev-act" type="button" title="Helpful" aria-label="Mark this answer helpful" onclick="devChatFeedback(this, true)">' + DEV_CHAT_ICONS.up + '</button>'
+    + '<button class="dev-act" type="button" title="Not helpful" aria-label="Mark this answer not helpful" onclick="devChatFeedback(this, false)">' + DEV_CHAT_ICONS.down + '</button>'
+    + '</div>';
+}
+
+function devChatUserHtml(text, photoSnapshot){
+  var html = '<div class="dev-msg dev-msg-user">';
+  if(photoSnapshot && photoSnapshot.previewUrl){
+    html += '<img class="dev-user-photo" src="' + escapeHtml(photoSnapshot.previewUrl) + '" alt="Attached record-book photo">';
+  }
+  if(text){
+    html += '<div class="dev-bubble"><div>' + escapeHtml(text).replace(/\n/g, '<br>') + '</div></div>';
+  }
+  return html + '</div>';
+}
+
+function devChatProgressSteps(photo, confirming){
+  if(confirming){
+    return ['Applying the change you confirmed…', 'Checking the school records…', 'Writing the result…'];
+  }
+  if(photo){
+    return ['Reading the record-book photo…', 'Matching names against the class roster…', 'Checking the marks already on record…', 'Putting the page together…'];
+  }
+  return ['Reading your request…', 'Checking the school ledger…', 'Working through the details…', 'Putting the answer together…'];
+}
+
+function devChatStartProgress(steps){
+  var thread = document.getElementById('dev-chat-thread');
+  if(!thread) return;
+  var id = 'dev-chat-thinking-' + Date.now();
+  var clock = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9" opacity=".28"/><path d="M12 3a9 9 0 019 9" stroke-linecap="round"/></svg>';
+  var html = '<div class="dev-msg dev-msg-assistant" id="' + id + '">'
+    + '<div class="dev-tool-row is-live">'
+    + '<span class="dev-tool-icon" aria-hidden="true">' + clock + '</span>'
+    + '<span class="dev-tool-text">' + escapeHtml(steps[0]) + '</span>'
+    + '<span class="dev-tool-dots" aria-hidden="true"><i></i><i></i><i></i></span>'
+    + '</div></div>';
+  thread.insertAdjacentHTML('beforeend', html);
+  var textEl = thread.querySelector('#' + id + ' .dev-tool-text');
+  var index = 0;
+  var timer = setInterval(function(){
+    index = Math.min(index + 1, steps.length - 1);
+    if(textEl && steps[index]) textEl.textContent = steps[index];
+  }, 4300);
+  DEV_CHAT_PROGRESS = { id: id, timer: timer };
+  devChatSyncWelcomeState();
+  devChatScrollToEnd();
+}
+
+function devChatStopProgress(){
+  if(!DEV_CHAT_PROGRESS) return;
+  clearInterval(DEV_CHAT_PROGRESS.timer);
+  var el = document.getElementById(DEV_CHAT_PROGRESS.id);
+  if(el) el.remove();
+  DEV_CHAT_PROGRESS = null;
+}
+
+function devChatIsNearBottom(){
+  var thread = document.getElementById('dev-chat-thread');
+  if(!thread) return true;
+  return thread.scrollHeight - thread.scrollTop - thread.clientHeight < 110;
+}
+
+function devChatScrollToEnd(){
+  var thread = document.getElementById('dev-chat-thread');
+  if(!thread) return;
+  thread.scrollTop = thread.scrollHeight;
+  devChatScrollState();
+}
+
+function devChatJumpToLatest(){
+  var thread = document.getElementById('dev-chat-thread');
+  if(!thread) return;
+  if(thread.scrollTo) thread.scrollTo({ top: thread.scrollHeight, behavior: 'smooth' });
+  else thread.scrollTop = thread.scrollHeight;
+}
+
+function devChatScrollState(){
+  var thread = document.getElementById('dev-chat-thread');
+  var stage = document.getElementById('dev-thread-stage');
+  if(!thread || !stage) return;
+  stage.classList.toggle('is-scrolled', !devChatIsNearBottom());
+}
+
+function devChatCopy(btn){
+  var msg = btn.closest('.dev-msg');
+  var prose = msg ? msg.querySelector('.dev-prose') : null;
+  var text = prose ? prose.innerText : '';
+  if(!text) return;
+  var done = function(){
+    btn.classList.add('is-on');
+    showToast('Copied to the clipboard.');
+    setTimeout(function(){ btn.classList.remove('is-on'); }, 1600);
+  };
+  var fallback = function(){
+    try {
+      var area = document.createElement('textarea');
+      area.value = text;
+      area.setAttribute('readonly', '');
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      area.remove();
+      done();
+    } catch(e){ showToast('The answer could not be copied.', 'error'); }
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(fallback);
+  } else { fallback(); }
+}
+
+function devChatSpeak(btn){
+  if(!window.speechSynthesis || !window.SpeechSynthesisUtterance){
+    showToast('This browser cannot read the answer aloud.', 'error');
+    return;
+  }
+  if(btn.classList.contains('is-on')){
+    window.speechSynthesis.cancel();
+    btn.classList.remove('is-on');
+    return;
+  }
+  var msg = btn.closest('.dev-msg');
+  var prose = msg ? msg.querySelector('.dev-prose') : null;
+  var text = prose ? prose.innerText : '';
+  if(!text) return;
+  window.speechSynthesis.cancel();
+  var speech = new SpeechSynthesisUtterance(text);
+  speech.rate = 0.98;
+  speech.pitch = 1;
+  speech.onend = function(){ btn.classList.remove('is-on'); };
+  speech.onerror = function(){ btn.classList.remove('is-on'); };
+  btn.classList.add('is-on');
+  window.speechSynthesis.speak(speech);
+}
+
+function devChatFeedback(btn, good){
+  var row = btn.parentNode;
+  var buttons = row ? row.querySelectorAll('.dev-act') : [];
+  for(var i = 2; i < buttons.length; i++) buttons[i].classList.remove('is-on');
+  btn.classList.add('is-on');
+  showToast(good ? 'Thanks for the feedback.' : 'Thanks — I will keep this in mind.');
+}
+
+function devChatSyncWelcomeState(){
+  var thread = document.getElementById('dev-chat-thread');
+  if(!thread) return;
+  var hasMessages = !!thread.querySelector('.dev-msg, .dev-tool-row, .dev-notice');
+  thread.classList.toggle('is-welcome', !hasMessages);
+}
+
+function devChatFitPlaceholder(){
+  var input = document.getElementById('dev-chat-input');
+  if(!input) return;
+  var narrow = !!(window.matchMedia && window.matchMedia('(max-width:600px)').matches);
+  input.setAttribute('placeholder', narrow ? 'Ask anything…' : 'Ask anything, or attach a score sheet…');
+}
+
+function devChatInitThread(){
+  var thread = document.getElementById('dev-chat-thread');
+  if(!thread) return;
+  if(!thread.children.length) thread.innerHTML = devChatWelcomeHtml();
+  if(!thread.getAttribute('data-scroll-bound')){
+    thread.setAttribute('data-scroll-bound', '1');
+    thread.addEventListener('scroll', devChatScrollState, { passive: true });
+  }
+  if(!thread.getAttribute('data-placeholder-bound')){
+    thread.setAttribute('data-placeholder-bound', '1');
+    window.addEventListener('resize', devChatFitPlaceholder);
+  }
+  devChatFitPlaceholder();
+  devChatSyncWelcomeState();
+}
+
+function handleDevChatPhoto(files){
+  var file = files && files[0];
+  if(!file) return;
+  if(file.size > 12000000){
+    showToast('The photo is too large (max 12MB).', 'error');
+    return;
+  }
+  var previewUrl = URL.createObjectURL(file);
+  var snapshot = {
+    file: file,
+    filename: file.name || 'photo.jpg',
+    mime: file.type || 'image/jpeg',
+    previewUrl: previewUrl,
+    buffer: null,
+    uploadName: null,
+    prepared: null
+  };
+  DEV_CHAT_PENDING_PHOTO = snapshot;
+  var badge = document.getElementById('dev-chat-photo-preview');
+  var thumb = document.getElementById('dev-chat-photo-thumb');
+  var nameEl = document.getElementById('dev-chat-photo-name');
+  if(thumb) thumb.src = previewUrl;
+  if(nameEl) nameEl.textContent = file.size > 900000 ? 'Preparing photo…' : (file.name || 'photo.jpg');
+  if(badge) badge.style.display = 'flex';
+
+  // Read and shrink the photo now, while the phone's file handle is fresh.
+  // Some Android app browsers stop reading the picked file a few seconds
+  // later, so the bytes are copied into memory once and every send then works
+  // from that copy.
+  snapshot.prepared = prepareDevChatPhoto(file, snapshot.mime).then(function(prepared){
+    if(!prepared) return null;
+    snapshot.file = prepared.blob;
+    snapshot.buffer = prepared.buffer;
+    snapshot.mime = prepared.mime;
+    snapshot.uploadName = prepared.name;
+    if(nameEl && prepared.name) nameEl.textContent = prepared.blob.size < file.size
+      ? 'Ready to send (' + Math.round(prepared.blob.size / 1024) + ' KB)'
+      : (file.name || 'photo.jpg');
+    if(prepared.blob.size > 3000000){
+      reportDevChatUploadError('prepare', new Error('still large after shrinking'), file.name, prepared.blob.size);
+    }
+    return prepared;
+  }).catch(function(err){
+    reportDevChatUploadError('prepare', err, file.name, file.size);
+    if(nameEl) nameEl.textContent = file.name || 'photo.jpg';
+    showToast('The phone did not let the app read this photo. Choose it again, or take a new photo.', 'error');
+    return null;
+  });
+}
+
+function clearDevChatPhoto(keepPreview){
+  if(!keepPreview && DEV_CHAT_PENDING_PHOTO && DEV_CHAT_PENDING_PHOTO.previewUrl){
+    try { URL.revokeObjectURL(DEV_CHAT_PENDING_PHOTO.previewUrl); } catch(e){}
+  }
+  DEV_CHAT_PENDING_PHOTO = null;
+  var badge = document.getElementById('dev-chat-photo-preview');
+  if(badge) badge.style.display = 'none';
+  var cam = document.getElementById('dev-chat-camera');
+  if(cam) cam.value = '';
+  var gal = document.getElementById('dev-chat-gallery');
+  if(gal) gal.value = '';
+}
+
+function resetDevCommandChat(){
+  if(DEV_CHAT_BUSY) return;
+  DEV_CHAT_MESSAGES = [];
+  setDevChatJob(null);
+  clearDevChatPhoto();
+  var thread = document.getElementById('dev-chat-thread');
+  if(thread){
+    thread.innerHTML = devChatWelcomeHtml();
+    thread.scrollTop = 0;
+    devChatSyncWelcomeState();
+    devChatScrollState();
+  }
+  var input = document.getElementById('dev-chat-input');
+  if(input){
+    input.value = '';
+    input.style.height = 'auto';
+  }
+}
+
+function sendDevCommandQuick(text){
+  if(DEV_CHAT_BUSY) return;
+  sendDevCommandChat(text);
+}
+
+function submitDevCommandChat(){
+  if(DEV_CHAT_BUSY) return;
+  var input = document.getElementById('dev-chat-input');
+  var text = String(input ? input.value : '').trim();
+  if(!text && !DEV_CHAT_PENDING_PHOTO){
+    showToast('Type a question or attach a photo.', 'error');
+    if(input) input.focus();
+    return;
+  }
+  if(input) input.value = '';
+  sendDevCommandChat(text);
+}
+
+function devDocLabel(file){
+  if(!file) return 'Document';
+  var kind = file.type === 'broadsheet' || file.kind === 'broadsheet' ? 'Broadsheet' : 'Report cards';
+  var template = String(file.template || '').trim();
+  var templateLabel = template ? template.charAt(0).toUpperCase() + template.slice(1) : '';
+  var mode = file.mode === 'final' ? 'final' : 'sample';
+  if(kind === 'Broadsheet') return 'Broadsheet · ' + mode;
+  return (templateLabel ? templateLabel + ' · ' : '') + mode;
+}
+
+// The document buttons, drawn the same way in a fresh answer and in a saved
+// one. The link is a fallback: the click handler below downloads in place.
+function devChatDocumentsHtml(files){
+  if(!Array.isArray(files)) return '';
+  var list = files.filter(function(file){ return file && (file.url || file.id); });
+  if(!list.length) return '';
+  var html = '<div class="dev-docs">';
+  list.forEach(function(file){
+    var url = file.url || ('/api/ops-jobs?document=' + encodeURIComponent(file.id));
+    var filename = file.filename || 'document.pdf';
+    html += '<a class="dev-doc" href="' + escapeHtml(url) + '" download="' + escapeHtml(filename) + '" target="_blank" rel="noopener"'
+      + ' data-url="' + escapeHtml(url) + '" data-filename="' + escapeHtml(filename) + '" title="' + escapeHtml(filename) + '">'
+      + DEV_CHAT_ICONS.doc + '<span>' + escapeHtml(devDocLabel(file))
+      + '<small>' + escapeHtml((file.page_count ? file.page_count + ' pages · ' : '') + (file.class || file.class_key || '')) + '</small></span></a>';
+  });
+  return html + '</div>';
+}
+
+// A click downloads in place, so the portal is never left and the session is
+// never lost. The link stays usable for middle-click and open-in-new-tab.
+document.addEventListener('click', function(e){
+  var btn = e.target && e.target.closest ? e.target.closest('.dev-doc') : null;
+  if(!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  var url = btn.getAttribute('data-url') || btn.getAttribute('href') || '/api/ops-jobs?document=latest';
+  downloadDevChatFile(url, btn.getAttribute('data-filename') || 'document.pdf', btn);
+});
+
+function inAndroidApp(){
+  return !!(window.AndroidPrint || window.NativeFiles || /FirstChoiceAndroid/i.test(navigator.userAgent||''));
+}
+
+var LAST_SAVED_FILE = '';
+function showSavedFile(name){
+  LAST_SAVED_FILE = name || '';
+  var card = document.getElementById('saved-file');
+  var label = document.getElementById('saved-file-name');
+  if(!card) return;
+  if(label) label.textContent = LAST_SAVED_FILE || 'Your document';
+  card.classList.add('show');
+}
+function hideSavedFile(){
+  var card = document.getElementById('saved-file');
+  if(card) card.classList.remove('show');
+}
+function openSavedFile(){
+  if(window.NativeFiles && typeof window.NativeFiles.openSaved === 'function'){
+    try{ window.NativeFiles.openSaved(LAST_SAVED_FILE || ''); hideSavedFile(); return; }catch(e){}
+  }
+  showToast('Open your phone Downloads folder to see ' + (LAST_SAVED_FILE || 'the file'));
+}
+function openDownloadsFolder(){
+  if(window.NativeFiles && typeof window.NativeFiles.openDownloads === 'function'){
+    try{ window.NativeFiles.openDownloads(); hideSavedFile(); return; }catch(e){}
+  }
+  showToast('Open your phone Files app, then Downloads.');
+}
+window.scanFileSaved = function(name){
+  showSavedFile(name);
+};
+window.scanFileFailed = function(reason){
+  showToast(reason || 'The file could not be saved.', 'error');
+};
+
+// The Android WebView cannot download a blob: URL, and the old download
+// listener saved the file with no name. A native file bridge saves the exact
+// bytes with the real filename and a .pdf ending. When an older app has no
+// bridge, the attachment URL still reaches its download listener.
+function saveFileOnAndroid(blob, filename, url){
+  var name = filename || 'document.pdf';
+  if(!/\.pdf$/i.test(name) && blob.type === 'application/pdf') name += '.pdf';
+  // A very large file is safer through the download service than through the
+  // JavaScript bridge, which has a per-call size limit.
+  if(blob.size > 900000 && url){
+    window.location.href = url;
+    showToast('Download started. Check your phone Downloads.');
+    return true;
+  }
+  if(window.NativeFiles && typeof window.NativeFiles.saveBase64 === 'function'){
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var base64 = String(reader.result || '').split(',')[1] || '';
+        window.NativeFiles.saveBase64(base64, name, blob.type || 'application/pdf');
+        showToast('Saving to Downloads…');
+      }catch(e){
+        showToast('The file could not be saved. Try again.', 'error');
+      }
+    };
+    reader.onerror = function(){ showToast('The file could not be read.', 'error'); };
+    reader.readAsDataURL(blob);
+    return true;
+  }
+  // Older app: let its DownloadListener take the attachment. A download
+  // response never replaces the portal page.
+  if(url){
+    window.location.href = url;
+    showToast('Download started. Check your phone Downloads.');
+    return true;
+  }
+  return false;
+}
+
+function downloadDevChatFile(url, filename, button){
+  if(!url) return;
+  if(button){ button.classList.add('is-busy'); button.setAttribute('aria-busy','true'); }
+  fetch(url, { credentials: 'same-origin', headers: getAuthHeaders(), cache: 'no-store' })
+    .then(function(res){ if(!res.ok) throw new Error('The file could not be downloaded.'); return res.blob(); })
+    .then(function(blob){
+      if(inAndroidApp() && saveFileOnAndroid(blob, filename, url)) return;
+      var a = document.createElement('a');
+      var href = URL.createObjectURL(blob);
+      a.href = href; a.download = filename || 'document';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(href); }, 4000);
+    })
+    .catch(function(err){ showToast((err && err.message) || 'Download failed.', 'error'); })
+    .finally(function(){
+      if(button){ button.classList.remove('is-busy'); button.removeAttribute('aria-busy'); }
+    });
+}
+
+var DEV_DOCUMENTS_CACHE = null;
+
+function openDevDocuments(){
+  var modal = document.getElementById('modal-dev-documents');
+  var list = document.getElementById('dev-documents-list');
+  var downloadsBtn = document.getElementById('dev-doc-downloads-btn');
+  if(modal) modal.style.display = 'flex';
+  if(downloadsBtn) downloadsBtn.style.display = inAndroidApp() ? 'inline-flex' : 'none';
+  if(list) list.innerHTML = '<div class="dev-doc-empty">Loading…</div>';
+  devChatJsonFetch('/api/ops-jobs?documents=1&limit=40', { method:'GET' }).then(function(res){
+    if(!res.ok) throw new Error(res.data && res.data.message || 'The document list could not be loaded.');
+    DEV_DOCUMENTS_CACHE = Array.isArray(res.data.documents) ? res.data.documents : [];
+    renderDevDocuments(DEV_DOCUMENTS_CACHE);
+    var badge = document.querySelector('[data-doc-count]');
+    if(badge) badge.setAttribute('data-doc-count', String(DEV_DOCUMENTS_CACHE.length));
+  }).catch(function(err){
+    if(list) list.innerHTML = '<div class="dev-doc-empty">' + escapeHtml((err && err.message) || 'The document list could not be loaded.') + '</div>';
+  });
+}
+
+function renderDevDocuments(list){
+  var box = document.getElementById('dev-documents-list');
+  if(!box) return;
+  var files = Array.isArray(list) ? list : [];
+  if(!files.length){
+    box.innerHTML = '<div class="dev-doc-empty">No documents yet. Ask for report card samples and they will be kept here.</div>';
+    return;
+  }
+  var html = '';
+  files.forEach(function(file){
+    var url = file.url || ('/api/ops-jobs?document=' + encodeURIComponent(file.id));
+    var when = '';
+    if(file.created_at){
+      var d = new Date(file.created_at);
+      if(!isNaN(d.getTime())) when = d.toLocaleDateString(undefined, { day:'numeric', month:'short' }) + ' · ' + d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+    }
+    var where = [file.class || file.class_key || '', file.term || '', file.academic_session || ''].filter(Boolean).join(' · ');
+    html += '<div class="dev-doc-row">'
+      + '<div class="dev-doc-row-main">'
+      + '<div class="dev-doc-row-title">' + escapeHtml(devDocLabel(file)) + '</div>'
+      + '<div class="dev-doc-row-meta">' + escapeHtml(where || 'School document') + (file.page_count ? ' · ' + file.page_count + ' pages' : '') + (when ? ' · ' + escapeHtml(when) : '') + '</div>'
+      + '</div>'
+      + '<a class="dev-doc" href="' + escapeHtml(url) + '" download="' + escapeHtml(file.filename || 'document.pdf') + '" target="_blank" rel="noopener"'
+      + ' data-url="' + escapeHtml(url) + '" data-filename="' + escapeHtml(file.filename || 'document.pdf') + '">'
+      + DEV_CHAT_ICONS.doc + '<span>Download</span></a>'
+      + '</div>';
+  });
+  box.innerHTML = html;
+}
+
+function renderDevChatData(data, confirmAction){
+  if(!data) return;
+    var thread = document.getElementById('dev-chat-thread');
+    if(data.job_id) setDevChatJob(data.job_id);
+    var shouldStick = devChatIsNearBottom();
+    devChatStopProgress();
+
+    if(confirmAction && confirmAction.button){
+      var doneBtn = confirmAction.button;
+      doneBtn.textContent = 'Confirmed ✓';
+      doneBtn.disabled = true;
+      var cancelBtn = doneBtn.parentNode && doneBtn.parentNode.querySelector('button:not([data-tool])');
+      if(cancelBtn) cancelBtn.remove();
+    }
+
+    var replyText = data.reply || data.answer || 'I reviewed the records, but no summary was generated.';
+    DEV_CHAT_MESSAGES.push({ role: 'assistant', text: replyText });
+    if(data.gate) applyDevGate(data.gate);
+    devChatSpeakText(replyText);
+    if(data.chat_title && DEV_CHAT_ID){
+      var currentSession = devChatFindSession(DEV_CHAT_ID);
+      if(currentSession){
+        currentSession.title = data.chat_title;
+        currentSession.last_active_at = new Date().toISOString();
+        currentSession.message_count = (Number(currentSession.message_count) || 0) + 2;
+        var tagContext = devChatScreenContext();
+        currentSession.tags = Object.assign({}, currentSession.tags || {}, {
+          class: tagContext.class_label || (currentSession.tags || {}).class || null,
+          subject: tagContext.subject || (currentSession.tags || {}).subject || null,
+          term: tagContext.term || (currentSession.tags || {}).term || null
+        });
+        renderDevChatRail();
+      }
+    }
+
+    var asstHtml = '<div class="dev-msg dev-msg-assistant">'
+      + '<div class="dev-prose">' + formatDevChatText(replyText) + '</div>';
+
+    // The line-by-line mapping is drawn from the server's own rows, so it
+    // appears even when the written answer is short or worded differently.
+    var mapHtml = (data.mapping && Array.isArray(data.mapping.rows) && data.mapping.rows.length)
+      ? devChatMappingHtml(data.mapping)
+      : '';
+    if(mapHtml) asstHtml += mapHtml;
+
+    if(Array.isArray(data.executed) && data.executed.length){
+      asstHtml += '<div class="dev-runs">';
+      data.executed.forEach(function(item){
+        var ok = item && item.ok !== false;
+        asstHtml += '<div class="dev-run' + (ok ? '' : ' is-error') + '">' + DEV_CHAT_ICONS.bolt
+          + '<span>' + escapeHtml(String(item.summary || item.tool || 'Action')) + '</span></div>';
+      });
+      asstHtml += '</div>';
+    }
+
+    if(data.chat_id && data.chat_saved === false){
+      asstHtml += '<div class="dev-runs"><div class="dev-run is-error">' + DEV_CHAT_ICONS.alert
+        + '<span>This answer is here, but the chat history could not be saved. Check the connection before closing the page.</span></div></div>';
+    }
+
+    if(Array.isArray(data.documents) && data.documents.length){
+      asstHtml += devChatDocumentsHtml(data.documents);
+      // A new document means the saved list changed; reload it next time.
+      DEV_DOCUMENTS_CACHE = null;
+    }
+
+    if(data.pending && data.pending.token){
+      asstHtml += '<div class="dev-confirm">'
+        + '<div class="dev-confirm-head">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.7 17a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'
+        + '<div><div class="dev-confirm-title">' + escapeHtml(data.pending.summary || 'Confirm this change?') + '</div>'
+        + '<div class="dev-confirm-sub">Nothing is saved until you confirm.</div></div></div>'
+        + '<div class="dev-confirm-btns">'
+        + '<button class="dev-confirm-yes" type="button" onclick="confirmDevChatAction(this)" data-tool="' + escapeHtml(data.pending.tool) + '" data-token="' + escapeHtml(data.pending.token) + '" data-args="' + escapeHtml(JSON.stringify(data.pending.args || {})) + '">Confirm</button>'
+        + '<button class="dev-confirm-no" type="button" onclick="this.parentNode.parentNode.remove()">Cancel</button>'
+        + '</div></div>';
+    }
+
+    if(Array.isArray(data.quick_chips) && data.quick_chips.length){
+      asstHtml += '<div class="dev-qchips">';
+      data.quick_chips.forEach(function(chip){
+        asstHtml += '<button class="dev-qchip" type="button" onclick="sendDevCommandQuick(' + JSON.stringify(chip) + ')">' + escapeHtml(chip) + '</button>';
+      });
+      asstHtml += '</div>';
+    }
+    asstHtml += devChatActionsHtml() + '</div>';
+
+    if(thread){
+      if(DEV_CHAT_MESSAGES.length > 24 && !thread.querySelector('.dev-chat-hint')){
+        thread.insertAdjacentHTML('afterbegin', '<div class="dev-chat-hint">This chat is long. Keep going here, or start a fresh chat whenever you prefer.</div>');
+      }
+      thread.insertAdjacentHTML('beforeend', asstHtml);
+      if(mapHtml && thread.lastElementChild){
+        devChatMapWire(thread.lastElementChild, data.mapping);
+      }
+      devChatSyncWelcomeState();
+      if(shouldStick) devChatScrollToEnd();
+      else devChatScrollState();
+    }
+}
+
+function confirmDevChatAction(button){
+  if(!button || DEV_CHAT_BUSY) return;
+  var tool = button.getAttribute('data-tool');
+  var token = button.getAttribute('data-token');
+  var args = {};
+  try { args = JSON.parse(button.getAttribute('data-args') || '{}'); } catch(e) {}
+  button.disabled = true;
+  button.textContent = 'Saving…';
+  sendDevCommandChat('', { tool: tool, token: token, args: args, button: button });
+}
+
+// A photo picked on a phone can be several megabytes. Shrinking it in the
+// browser makes the upload quick and keeps the page readable; the server would
+// downsize it to about this size anyway. The steps stop as soon as the copy is
+// small enough, so a normal page photo keeps its detail.
+function readDevChatBytes(blob){
+  if(blob && typeof blob.arrayBuffer === 'function'){
+    return blob.arrayBuffer().catch(function(){
+      return readDevChatBytesLegacy(blob);
+    });
+  }
+  return readDevChatBytesLegacy(blob);
+}
+
+function readDevChatBytesLegacy(blob){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onerror = function(){ reject(new Error('The phone did not let the app read this photo.')); };
+    reader.onload = function(){ resolve(reader.result); };
+    reader.readAsArrayBuffer(blob);
+  });
+}
+
+// One canvas pass. Some Android app browsers return no blob at all, so the
+// data URL is kept as a second way out.
+function drawShrunk(source, width, height, quality){
+  return new Promise(function(resolve){
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(width));
+    canvas.height = Math.max(1, Math.round(height));
+    try{
+      canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
+    }catch(e){
+      canvas.width = 0; canvas.height = 0;
+      return resolve(null);
+    }
+    var done = function(blob){
+      canvas.width = 0; canvas.height = 0;
+      resolve(blob && blob.size ? blob : null);
+    };
+    if(canvas.toBlob){
+      try{
+        canvas.toBlob(done, 'image/jpeg', quality);
+        return;
+      }catch(e){}
+    }
+    try{
+      var parts = String(canvas.toDataURL('image/jpeg', quality)).split(',');
+      if(parts.length < 2) return done(null);
+      var binary = atob(parts[1]);
+      var bytes = new Uint8Array(binary.length);
+      for(var i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      done(new Blob([bytes], { type: 'image/jpeg' }));
+    }catch(e){ done(null); }
+  });
+}
+
+// The phone decodes the photo already scaled down, which is what keeps a
+// 12-megapixel camera photo inside a small app browser's memory.
+function shrinkViaBitmap(file, maxSide, quality){
+  if(typeof createImageBitmap !== 'function') return Promise.resolve(null);
+  var make = function(options){
+    try{
+      return options ? createImageBitmap(file, options) : createImageBitmap(file);
+    }catch(e){
+      return Promise.reject(e);
+    }
+  };
+  return make({ resizeWidth: maxSide, resizeQuality: 'high' }).catch(function(){
+    return make(null);
+  }).then(function(bitmap){
+    if(!bitmap) return null;
+    var scale = Math.min(1, maxSide / bitmap.width, 2400 / bitmap.height);
+    var width = Math.max(1, Math.round(bitmap.width * scale));
+    var height = Math.max(1, Math.round(bitmap.height * scale));
+    return drawShrunk(bitmap, width, height, quality).then(function(blob){
+      try{ bitmap.close && bitmap.close(); }catch(e){}
+      return blob;
+    }, function(){
+      try{ bitmap.close && bitmap.close(); }catch(e){}
+      return null;
+    });
+  }).catch(function(){ return null; });
+}
+
+function shrinkViaImage(file, maxSide, quality){
+  return new Promise(function(resolve){
+    var url = '';
+    try{ url = URL.createObjectURL(file); }catch(e){ return resolve(null); }
+    var img = new Image();
+    var settled = false;
+    var finish = function(blob){
+      if(settled) return;
+      settled = true;
+      try{ URL.revokeObjectURL(url); }catch(e){}
+      resolve(blob || null);
+    };
+    img.onerror = function(){ finish(null); };
+    img.onload = function(){
+      var w = img.naturalWidth || img.width;
+      var h = img.naturalHeight || img.height;
+      if(!w || !h) return finish(null);
+      var scale = Math.min(1, maxSide / w, 2400 / h);
+      drawShrunk(img, Math.round(w * scale), Math.round(h * scale), quality).then(finish, function(){ finish(null); });
+    };
+    img.src = url;
+  });
+}
+
+function shrinkDevChatPhoto(file){
+  if(!file || !file.size || file.size <= 900000) return Promise.resolve(file);
+  var steps = [[1800, 0.9], [1500, 0.85], [1200, 0.78], [1000, 0.7]];
+  var attempt = function(index){
+    if(index >= steps.length) return Promise.resolve(file);
+    var side = steps[index][0];
+    var quality = steps[index][1];
+    return shrinkViaBitmap(file, side, quality).then(function(blob){
+      if(blob && blob.size && blob.size <= 900000) return blob;
+      return shrinkViaImage(file, side, quality).then(function(second){
+        if(second && second.size && second.size <= 900000) return second;
+        return attempt(index + 1);
+      });
+    });
+  };
+  return attempt(0).catch(function(){ return file; });
+}
+
+// A small copy for the model to look at while it decides which page this is.
+// It only needs to read the header (class, subject, term), not every mark.
+function devChatPagePreview(file, buffer){
+  if(!file) return Promise.resolve('');
+  return shrinkViaBitmap(file, 1400, 0.72).then(function(blob){
+    if(!blob) return '';
+    return readDevChatBytes(blob).then(function(bytes){
+      return bytes && bytes.byteLength ? blobToBase64(bytes) : '';
+    });
+  }).catch(function(){
+    return (buffer && buffer.byteLength && buffer.byteLength <= 1200000) ? blobToBase64(buffer) : '';
+  });
+}
+
+// Hold the bytes once, shrink them once, and give the send a name that comes
+// from the content so a retry cannot store the page twice.
+function prepareDevChatPhoto(file, mime){
+  return readDevChatBytes(file).then(function(buffer){
+    if(!buffer || !buffer.byteLength) throw new Error('The photo is empty.');
+    var held = new Blob([buffer], { type: mime || 'image/jpeg' });
+    return shrinkDevChatPhoto(held).then(function(small){
+      var finalBlob = (small && small.size && small.size < held.size) ? small : held;
+      return readDevChatBytes(finalBlob).then(function(finalBuffer){
+        return devChatPhotoName(finalBlob, finalBuffer).then(function(name){
+          return { blob: finalBlob, buffer: finalBuffer, mime: 'image/jpeg', name: name };
+        });
+      });
+    });
+  });
+}
+
+// Base64 from the bytes already held in memory, so a FileReader that the app
+// browser refuses is never in the path.
+function blobToBase64(buffer){
+  var bytes = new Uint8Array(buffer || []);
+  if(!bytes.length) return '';
+  var chunk = 0x8000;
+  var parts = [];
+  for(var i = 0; i < bytes.length; i += chunk){
+    parts.push(String.fromCharCode.apply(null, bytes.subarray(i, i + chunk)));
+  }
+  return btoa(parts.join(''));
+}
+
+// A small content fingerprint, used when the app browser has no crypto
+// support. The length is mixed in, so two different pages rarely collide.
+function hashPageBytes(buffer){
+  var bytes = new Uint8Array(buffer || []);
+  var a = 2166136261 >>> 0;
+  var b = 2246822519 >>> 0;
+  for(var i = 0; i < bytes.length; i += 1){
+    a = Math.imul(a ^ bytes[i], 16777619) >>> 0;
+    b = Math.imul(b ^ bytes[bytes.length - 1 - i], 2246822519) >>> 0;
+  }
+  a = (a ^ bytes.length) >>> 0;
+  b = (b ^ (bytes.length << 1)) >>> 0;
+  return ('0000000' + a.toString(16)).slice(-8) + ('0000000' + b.toString(16)).slice(-8);
+}
+
+// Tell the server, quietly, why an upload did not finish. It holds no school
+// data, only sizes and the browser's own error text.
+function reportDevChatUploadError(step, err, name, size){
+  try{
+    var text = String((err && (err.name + ': ' + err.message)) || err || 'unknown').slice(0, 400);
+    fetch('/api/ops-jobs', {
+      method: 'POST',
+      credentials: 'same-origin',
+      keepalive: true,
+      headers: Object.assign({ 'Accept': 'application/json', 'Content-Type': 'application/json' }, getAuthHeaders()),
+      body: JSON.stringify({
+        action: 'client_error',
+        job_id: DEV_CHAT_JOB_ID || null,
+        step: 'chat_upload_' + step,
+        error: text + ' | bytes=' + size + ' | file=' + (name || '?')
+      })
+    }).catch(function(){});
+  }catch(e){}
+}
+
+// The same photo always gets the same name, so a dropped upload can be checked
+// and retried without storing the page twice.
+function devChatPhotoName(blob, buffer){
+  if(!buffer && blob && typeof blob.arrayBuffer === 'function'){
+    return blob.arrayBuffer().then(function(bytes){
+      return devChatPhotoName(blob, bytes);
+    }).catch(function(){ return 'page-' + Date.now() + '.jpg'; });
+  }
+  if(!buffer) return Promise.resolve('page-' + Date.now() + '.jpg');
+  if(window.crypto && crypto.subtle){
+    return crypto.subtle.digest('SHA-256', buffer).then(function(hash){
+      var hex = '';
+      var view = new Uint8Array(hash);
+      for(var i = 0; i < view.length; i += 1) hex += ('0' + view[i].toString(16)).slice(-2);
+      return 'page-' + hex.slice(0, 16) + '.jpg';
+    }).catch(function(){ return 'page-' + hashPageBytes(buffer) + '.jpg'; });
+  }
+  return Promise.resolve('page-' + hashPageBytes(buffer) + '.jpg');
+}
+
+function isNetworkError(err){
+  var message = String(err && err.message || '');
+  return (err && err.name === 'TypeError') || /Failed to fetch|NetworkError|Load failed|network error/i.test(message);
+}
+
+function jobHasPage(jobId, name){
+  if(!jobId) return Promise.resolve(false);
+  return fetch('/api/ops-jobs?id=' + encodeURIComponent(jobId), {
+    credentials: 'same-origin',
+    headers: Object.assign({ 'Accept': 'application/json' }, getAuthHeaders()),
+    cache: 'no-store'
+  }).then(function(r){ return r.json(); }).then(function(d){
+    return (d && d.files || []).some(function(file){ return file && file.filename === name; });
+  }).catch(function(){ return false; });
+}
+
+function restoreDevChatPhoto(snapshot){
+  if(!snapshot) return;
+  DEV_CHAT_PENDING_PHOTO = snapshot;
+  var badge = document.getElementById('dev-chat-photo-preview');
+  var thumb = document.getElementById('dev-chat-photo-thumb');
+  var nameEl = document.getElementById('dev-chat-photo-name');
+  if(thumb && snapshot.previewUrl) thumb.src = snapshot.previewUrl;
+  if(nameEl) nameEl.textContent = snapshot.filename || 'photo.jpg';
+  if(badge) badge.style.display = 'flex';
+}
+
+// The page card: four separate lists, not one mixed table. Exact names need
+// only a score check, suggested names can be re-picked, names on the sheet
+// alone can be offered to the assistant, and pupils absent from the sheet stay
+// visible in their own list.
+function devChatMapScore(r, locked){
+  var val = r.mark == null ? '' : String(r.mark);
+  var hint = '';
+  if(Array.isArray(r.mark_candidates) && r.mark_candidates.length){
+    hint = '<div class="dev-map-hint">reader saw ' + r.mark_candidates.map(function(v){ return escapeHtml(String(v)); }).join(' or ') + '</div>';
+  } else if(r.mark_status === 'blank'){
+    hint = '<div class="dev-map-hint">blank on page</div>';
+  } else if(r.mark_status === 'none'){
+    hint = '<div class="dev-map-hint">no mark read</div>';
+  } else if(r.mark_status === 'rejected'){
+    hint = '<div class="dev-map-hint">needs your eye</div>';
+  }
+  return '<input class="dev-map-score" type="number" min="0" max="100" step="1" inputmode="decimal"'
+    + ' value="' + escapeHtml(val) + '" data-dev-score="1"'
+    + ' data-row-id="' + escapeHtml(r.row_id || '') + '"'
+    + ' data-mark-id="' + escapeHtml(r.mark_id || '') + '"'
+    + ' aria-label="Score for line ' + escapeHtml(r.line == null ? '' : r.line) + '"'
+    + (locked ? ' disabled' : '') + '>'
+    + hint + '<div class="dev-map-save" data-dev-save></div>';
+}
+
+function devChatMapPicker(r, roster, used, locked){
+  var html = '<select data-dev-map-row="1" data-row-id="' + escapeHtml(r.row_id || '') + '"'
+    + ' aria-label="Pupil for line ' + escapeHtml(r.line == null ? '' : r.line) + '"'
+    + (locked ? ' disabled' : '') + '>'
+    + '<option value="">Choose the pupil…</option>';
+  (roster || []).forEach(function(p){
+    if(!p || !p.id) return;
+    var selected = p.id === r.pupil_id;
+    var taken = Boolean(used[p.id]) && !selected;
+    html += '<option value="' + escapeHtml(p.id) + '"' + (selected ? ' selected' : '') + (taken ? ' disabled' : '') + '>'
+      + escapeHtml(p.name || 'Pupil') + (p.admno ? ' · ' + escapeHtml(p.admno) : '') + '</option>';
+  });
+  return html + '</select>';
+}
+
+function devChatMappingHtml(map){
+  if(!map) return '';
+  var rows = Array.isArray(map.rows) ? map.rows : [];
+  var roster = Array.isArray(map.roster) ? map.roster : [];
+  var portalOnly = Array.isArray(map.portal_only) ? map.portal_only : [];
+  var groups = { A: [], B: [], C: [] };
+  rows.forEach(function(r){
+    var g = r.group === 'A' || r.group === 'B' ? r.group : 'C';
+    groups[g].push(r);
+  });
+  var used = {};
+  rows.forEach(function(r){ if(r.pupil_id) used[r.pupil_id] = true; });
+  var locked = map.status === 'approved' || map.status === 'applied';
+  var heading = [map.class_label, map.subject, map.column].filter(Boolean).join(' · ');
+  var term = [map.term, map.academic_session].filter(Boolean).join(' · ');
+  var exact = groups.A.length;
+  var suggested = groups.B.length;
+  var onSheetOnly = groups.C.length;
+  var portalOnlyCount = portalOnly.length;
+
+  function section(kind, title, count, note, head, body, open){
+    if(!count) return '';
+    return '<details class="dev-map-sec dev-map-sec-' + kind + '"' + (open ? ' open' : '') + '>'
+      + '<summary><span class="dev-map-dot ' + kind + '"></span><span>' + title + '</span>'
+      + ' <span class="dev-map-n">(' + count + ')</span></summary>'
+      + '<div class="dev-map-body">'
+      + (note ? '<div class="dev-map-note">' + note + '</div>' : '')
+      + '<table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table>'
+      + '</div></details>';
+  }
+
+  var second = function(r){
+    return r.second_read && r.second_read !== r.on_page
+      ? '<div class="dev-map-second">reader read: ' + escapeHtml(String(r.second_read)) + '</div>'
+      : '';
+  };
+
+  var aBody = groups.A.map(function(r){
+    return '<tr>'
+      + '<td class="dev-map-line">' + (r.line == null ? '' : escapeHtml(String(r.line))) + '</td>'
+      + '<td><div class="dev-map-page">' + escapeHtml(String(r.on_page || '')) + '</div>' + second(r) + '</td>'
+      + '<td><div class="dev-map-pupil">' + escapeHtml(String(r.pupil || 'Pupil')) + '</div>'
+      + '<span class="dev-map-tag a">exact</span></td>'
+      + '<td>' + devChatMapScore(r, locked) + '</td></tr>';
+  }).join('');
+
+  var bBody = groups.B.map(function(r){
+    var tag = r.manual
+      ? '<span class="dev-map-tag manual">mapped by hand</span>'
+      : '<span class="dev-map-tag b">' + (r.confidence == null ? '' : escapeHtml(String(r.confidence)) + '% ') + 'suggested</span>';
+    return '<tr>'
+      + '<td class="dev-map-line">' + (r.line == null ? '' : escapeHtml(String(r.line))) + '</td>'
+      + '<td><div class="dev-map-page">' + escapeHtml(String(r.on_page || '')) + '</div>' + second(r) + '</td>'
+      + '<td>' + devChatMapPicker(r, roster, used, locked) + tag + '</td>'
+      + '<td>' + devChatMapScore(r, locked) + '</td></tr>';
+  }).join('');
+
+  var cBody = groups.C.map(function(r){
+    var suggestion = r.suggestion || r.on_page || '';
+    var note = r.suggestion
+      ? 'Reader thought: ' + escapeHtml(String(r.suggestion)) + '. Pick the pupil, or add them.'
+      : 'No clear match. Pick the pupil if the spelling differs, or add them.';
+    var addName = String(r.on_page || r.suggestion || '');
+    var addBtn = locked || !addName ? ''
+      : '<button class="dev-map-add" type="button" data-dev-add="1" data-row-id="' + escapeHtml(r.row_id || '') + '"'
+        + ' data-name="' + escapeHtml(addName) + '" data-line="' + escapeHtml(r.line == null ? '' : r.line) + '">'
+        + '+ Ask to add</button>';
+    return '<tr>'
+      + '<td class="dev-map-line">' + (r.line == null ? '' : escapeHtml(String(r.line))) + '</td>'
+      + '<td><div class="dev-map-page">' + escapeHtml(String(r.on_page || '')) + '</div>' + second(r) + '</td>'
+      + '<td><div class="dev-map-note" style="padding:0 0 4px">' + note + '</div>'
+      + devChatMapPicker(r, roster, used, locked) + addBtn + '</td>'
+      + '<td>' + devChatMapScore(r, locked) + '</td></tr>';
+  }).join('');
+
+  var dBody = portalOnly.map(function(p){
+    return '<tr><td><div class="dev-map-pupil">' + escapeHtml(String(p.name || 'Pupil')) + '</div></td>'
+      + '<td>' + escapeHtml(String(p.admno || '—')) + '</td></tr>';
+  }).join('');
+
+  return '<div class="dev-map" data-dev-map="1" data-job="' + escapeHtml(map.job_id || '') + '">'
+    + '<div class="dev-map-head"><div class="dev-map-title">' + escapeHtml(heading || 'Mapping') + '</div>'
+    + (term ? '<div class="dev-map-sub">' + escapeHtml(term) + '</div>' : '')
+    + '<div class="dev-map-counts">'
+    + '<span class="dev-map-chip a">' + exact + ' exact</span>'
+    + '<span class="dev-map-chip b">' + suggested + ' suggested / mapped</span>'
+    + '<span class="dev-map-chip c">' + onSheetOnly + ' on sheet only</span>'
+    + '<span class="dev-map-chip d">' + portalOnlyCount + ' in portal only</span>'
+    + '</div></div>'
+    + (locked ? '<div class="dev-map-locked">This page is already saved, so these lists are read-only.</div>' : '')
+    + section('a', 'A. Exact names', exact, 'The full name fits. Only the score can be adjusted.', '<th>#</th><th>On the page</th><th>Pupil</th><th>Score</th>', aBody, true)
+    + section('b', 'B. Suggested and mapped names', suggested, 'Pick the right pupil if the suggestion is wrong. The score is editable.', '<th>#</th><th>On the page</th><th>Pupil</th><th>Score</th>', bBody, true)
+    + section('c', 'C. On the sheet, not in the portal', onSheetOnly, 'Nothing is matched here yet. Match a pupil, or ask the assistant to add them.', '<th>#</th><th>On the page</th><th>Pupil</th><th>Score</th>', cBody, true)
+    + section('d', 'D. In the portal, not on the sheet', portalOnlyCount, 'These pupils have no line on this page. Their records stay as they are.', '<th>Pupil</th><th>Admission number</th>', dBody, false)
+    + '<div class="dev-map-note">A score saves when you change it. A name saves when you pick a pupil. Nothing reaches the school records until you approve the page.</div>'
+    + '</div>';
+}
+
+function devChatMapSetState(input, text, isError){
+  var cell = input.closest('td');
+  var state = cell ? cell.querySelector('[data-dev-save]') : null;
+  if(!state) return;
+  state.textContent = text || '';
+  state.className = 'dev-map-save' + (isError ? ' is-error' : '');
+}
+
+function devChatMapRefresh(root, map){
+  var box = root ? root.querySelector('[data-dev-map="1"]') : null;
+  if(!box || !map || !map.job_id) return Promise.resolve();
+  box.classList.add('is-loading');
+  return devChatFetch('/api/ops-jobs', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: Object.assign({ 'Accept': 'application/json', 'Content-Type': 'application/json' }, getAuthHeaders()),
+    body: JSON.stringify({ action: 'mapping', job_id: map.job_id }),
+    cache: 'no-store'
+  }).then(function(res){
+    return res.json().then(function(data){
+      if(!res.ok || !data || data.ok === false || !data.mapping) throw data || {};
+      box.outerHTML = devChatMappingHtml(data.mapping);
+      devChatMapWire(root, data.mapping);
+      return data.mapping;
+    });
+  }).catch(function(err){
+    if(box && box.parentNode) box.classList.remove('is-loading');
+    showToast((err && err.message) || 'The page did not refresh. Try again.', 'error');
+  });
+}
+
+function devChatMapSaveScore(input, root, map){
+  if(!input || input.disabled) return;
+  var raw = String(input.value == null ? '' : input.value).trim();
+  var status = raw === '' ? 'blank' : 'read';
+  var value = raw === '' ? null : Number(raw);
+  if(status === 'read' && (!Number.isFinite(value) || value < 0 || value > 100)){
+    input.classList.add('is-bad');
+    devChatMapSetState(input, 'Use 0 to 100', true);
+    return;
+  }
+  input.classList.remove('is-bad');
+  input.disabled = true;
+  devChatMapSetState(input, 'Saving…', false);
+  var markId = input.getAttribute('data-mark-id') || '';
+  var body = {
+    action: markId ? 'decide_mark' : 'set_mark',
+    job_id: map.job_id || DEV_CHAT_JOB_ID,
+    staged_row_id: input.getAttribute('data-row-id') || '',
+    value: value,
+    status: status
+  };
+  if(markId) body.mark_id = markId;
+  devChatFetch('/api/ops-jobs', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: Object.assign({ 'Accept': 'application/json', 'Content-Type': 'application/json' }, getAuthHeaders()),
+    body: JSON.stringify(body),
+    cache: 'no-store'
+  }).then(function(res){
+    return res.json().then(function(data){
+      if(!res.ok || !data || data.ok === false) throw data || {};
+      if(data.mark && data.mark.id) input.setAttribute('data-mark-id', data.mark.id);
+      input.disabled = false;
+      var cell = input.closest('td');
+      var oldHint = cell ? cell.querySelector('.dev-map-hint') : null;
+      if(oldHint) oldHint.remove();
+      devChatMapSetState(input, status === 'blank' ? 'Kept blank ✓' : 'Saved ✓', false);
+    });
+  }).catch(function(err){
+    input.disabled = false;
+    devChatMapSetState(input, (err && err.message) || 'Not saved. Try again.', true);
+    showToast((err && err.message) || 'The score was not saved. Try again.', 'error');
+  });
+}
+
+function devChatMapAttach(select, root, map){
+  if(!select || select.disabled) return;
+  var previous = select.getAttribute('data-previous') || '';
+  var studentId = select.value;
+  if(!studentId){
+    select.value = previous;
+    return;
+  }
+  select.disabled = true;
+  devChatFetch('/api/ops-jobs', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: Object.assign({ 'Accept': 'application/json', 'Content-Type': 'application/json' }, getAuthHeaders()),
+    body: JSON.stringify({
+      action: 'attach',
+      job_id: map.job_id || DEV_CHAT_JOB_ID,
+      staged_row_id: select.getAttribute('data-row-id') || '',
+      student_id: studentId
+    }),
+    cache: 'no-store'
+  }).then(function(res){
+    return res.json().then(function(data){
+      if(!res.ok || !data || data.ok === false) throw data || {};
+      return devChatMapRefresh(root, map);
+    });
+  }).catch(function(err){
+    select.disabled = false;
+    select.value = previous;
+    showToast((err && err.message) || 'That pupil was not linked. Try again.', 'error');
+  });
+}
+
+function devChatMapWire(root, map){
+  if(!root || !map) return;
+  root.querySelectorAll('[data-dev-score]').forEach(function(input){
+    input.addEventListener('change', function(){ devChatMapSaveScore(input, root, map); });
+    input.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ e.preventDefault(); input.blur(); }
+    });
+  });
+  root.querySelectorAll('[data-dev-map-row]').forEach(function(select){
+    select.setAttribute('data-previous', select.value || '');
+    select.addEventListener('change', function(){ devChatMapAttach(select, root, map); });
+  });
+  root.querySelectorAll('[data-dev-add]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var name = btn.getAttribute('data-name') || 'this pupil';
+      var line = btn.getAttribute('data-line') || '';
+      var cls = map.class_label || 'this class';
+      sendDevCommandChat('Add ' + name + ' to ' + cls + ' as a new pupil. It is line ' + line + ' on the open page. Ask me for anything you still need before saving.');
+    });
+  });
+}
+
+function sendDevCommandChat(text, confirmAction, options){
+  if(!isDeveloperUser()){
+    showToast('Command Center is strictly restricted to the developer account.', 'error');
+    return;
+  }
+  if(DEV_CHAT_BUSY) return;
+  if(!DEV_CHAT_ID){
+    ensureDevChatSession().then(function(id){
+      if(id) sendDevCommandChat(text, confirmAction, options);
+      else showToast('A chat could not be started. Check the connection and try again.', 'error');
+    });
+    return;
+  }
+  DEV_CHAT_BUSY = true;
+
+  var thread = document.getElementById('dev-chat-thread');
+  var sendBtn = document.getElementById('dev-chat-send-btn');
+  if(sendBtn) sendBtn.disabled = true;
+
+  var opts = options || {};
+  var photoSnapshot = DEV_CHAT_PENDING_PHOTO;
+  clearDevChatPhoto(true);
+
+  var userHtml = devChatUserHtml(text, photoSnapshot);
+
+  if(thread && !opts.silent && (text || photoSnapshot)){
+    thread.insertAdjacentHTML('beforeend', userHtml);
+    devChatScrollToEnd();
+  }
+
+  devChatStartProgress(devChatProgressSteps(Boolean(photoSnapshot), Boolean(confirmAction && confirmAction.token)));
+
+  if(text || photoSnapshot){
+    DEV_CHAT_MESSAGES.push({
+      role: 'user',
+      text: text,
+      has_photo: Boolean(photoSnapshot)
+    });
+  }
+
+  var uploadPromise = Promise.resolve();
+  var photoLanded = false;
+  var pageStarted = false;
+  var photoHandled = false;
+  // True once the server has answered the request that carried the photo. From
+  // then on the photo lives in the chat's stored attachment, so it is never
+  // sent again with later messages.
+  var photoSent = false;
+
+  if(photoSnapshot && photoSnapshot.file){
+    // A photo needs a page before its bytes can go up. The model reads the
+    // sentence and the conversation and starts (or reuses) the page itself.
+    var detailText = text;
+    if(!detailText){
+      for(var mi = DEV_CHAT_MESSAGES.length - 1; mi >= 0; mi -= 1){
+        if(DEV_CHAT_MESSAGES[mi].role === 'user' && DEV_CHAT_MESSAGES[mi].text){ detailText = DEV_CHAT_MESSAGES[mi].text; break; }
+      }
+    }
+
+    var askForPage = function(){
+      // Send the prepared photo itself, not only a small header preview: the
+      // marks are read from this image and the same bytes are kept with the
+      // chat. Fall back to a preview only when the prepared copy is too large
+      // for one JSON request.
+      var preview = (photoSnapshot.buffer && photoSnapshot.buffer.byteLength
+        && photoSnapshot.buffer.byteLength <= 2600000)
+        ? Promise.resolve(blobToBase64(photoSnapshot.buffer))
+        : (photoSnapshot.pagePreview
+          ? Promise.resolve(photoSnapshot.pagePreview)
+          : devChatPagePreview(photoSnapshot.file, photoSnapshot.buffer).then(function(value){
+              photoSnapshot.pagePreview = value || '';
+              return photoSnapshot.pagePreview;
+            }));
+      return preview.then(function(previewB64){
+        var payload = {
+          action: 'chat',
+          mode: 'prepare_page',
+          text: detailText || 'Score sheet photo attached.',
+          job_id: DEV_CHAT_JOB_ID || null,
+          chat_id: DEV_CHAT_ID || null,
+          photo_name: (photoSnapshot && (photoSnapshot.filename || photoSnapshot.uploadName || photoSnapshot.name)) || null,
+          screen: devChatScreenContext(),
+          messages: DEV_CHAT_MESSAGES.slice(-12)
+        };
+        if(previewB64){
+          payload.photo_base64 = previewB64;
+          payload.photo_mime = 'image/jpeg';
+        }
+        return devChatFetch('/api/ops-jobs', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: Object.assign({ 'Accept': 'application/json', 'Content-Type': 'application/json' }, getAuthHeaders()),
+          body: JSON.stringify(payload),
+          cache: 'no-store'
+        });
+      }).then(function(r){
+        // Any answer means the server has the bytes and has kept them with
+        // this chat. The composer copy is finished at that point.
+        photoSent = true;
+        return r.json().then(function(data){ return { ok: r.ok, data: data }; });
+      }).then(function(res){
+        var data = res.data || {};
+        if(!res.ok || data.ok === false) throw data;
+        // A score sheet is recorded straight from the structured read. There
+        // is no record-book page to upload, so show the answer and stop.
+        if(data.direct){
+          photoHandled = true;
+          renderDevChatData(data);
+          clearDevChatPhoto();
+          photoSnapshot = null;
+          throw { directRendered: true };
+        }
+        if(data.page && data.page.job_id){
+          setDevChatJob(data.page.job_id);
+          pageStarted = true;
+          return;
+        }
+        // The answer is a question, not a failure. The photo stays attached so
+        // the next tap sends it once the page is known.
+        throw {
+          code: 'OPS_PAGE_NOT_STARTED',
+          message: data.reply || 'Tell me the class and subject, then send the photo again.',
+          question: true
+        };
+      });
+    };
+
+    var startPhotoJob = function(){
+      return askForPage().then(function(){
+        return photoSnapshot.uploadName
+          ? Promise.resolve(photoSnapshot.uploadName)
+          : devChatPhotoName(photoSnapshot.file, photoSnapshot.buffer);
+      }).then(function(name){
+        photoSnapshot.filename = name;
+        return jobHasPage(DEV_CHAT_JOB_ID, name).then(function(already){
+          if(already) return { already: true };
+          var mime = photoSnapshot.mime || 'image/jpeg';
+          var qs = '?action=upload&filename=' + encodeURIComponent(name) + '&mime=' + encodeURIComponent(mime);
+          qs += '&job_id=' + encodeURIComponent(DEV_CHAT_JOB_ID);
+          var opts = {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: Object.assign({ 'Content-Type': mime }, getAuthHeaders()),
+            body: photoSnapshot.file
+          };
+          // Some phone data connections drop a raw photo body even though a
+          // normal JSON request gets through. If that happens, the same bytes
+          // go up inside a JSON request instead.
+          var sendInsideJson = function(){
+            var bytes = photoSnapshot.buffer;
+            if(!bytes || !photoSnapshot.file || photoSnapshot.file.size > 3000000){
+              return Promise.reject({
+                message: 'This photo is still too large for the phone app to send. Take it again with the phone camera, or choose a smaller copy.'
+              });
+            }
+            var base64 = blobToBase64(bytes);
+            return devChatFetch('/api/ops-jobs', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: Object.assign({ 'Accept': 'application/json', 'Content-Type': 'application/json' }, getAuthHeaders()),
+                body: JSON.stringify({
+                  action: 'upload',
+                  job_id: DEV_CHAT_JOB_ID,
+                  filename: name,
+                  mime: mime,
+                  data_base64: base64,
+                  client_step: 'chat_json_upload'
+                })
+              });
+          };
+          return devChatFetch('/api/ops-jobs' + qs, opts).catch(function(err){
+            if(!isNetworkError(err)) throw err;
+            reportDevChatUploadError('binary', err, name, photoSnapshot.file ? photoSnapshot.file.size : null);
+            // The bytes may have arrived even though the reply was lost. Look
+            // before sending them a second time.
+            return jobHasPage(DEV_CHAT_JOB_ID, name).then(function(landed){
+              if(landed) return { already: true };
+              return sendInsideJson();
+            });
+          });
+        });
+      }).then(function(r){
+        if(r && r.already){
+          setDevChatJob(DEV_CHAT_JOB_ID);
+          photoLanded = true;
+          nudgeOpsWorker();
+          return;
+        }
+        return r.json().then(function(res){
+          if(res && res.job && res.job.id){ setDevChatJob(res.job.id); photoLanded = true; nudgeOpsWorker(); }
+          else if(res && res.ok === false){ throw res; }
+        });
+      });
+    };
+
+    // Wait for the one-time read and shrink, then send from the copy held in
+    // memory. A restored photo from an older send has no preparation step.
+    uploadPromise = Promise.resolve(photoSnapshot.prepared).then(function(){
+      if(photoSnapshot.buffer && photoSnapshot.uploadName) return startPhotoJob();
+      return shrinkDevChatPhoto(photoSnapshot.file).then(function(blob){
+        if(blob && blob !== photoSnapshot.file){
+          photoSnapshot.file = blob;
+          photoSnapshot.mime = 'image/jpeg';
+        }
+        return readDevChatBytes(photoSnapshot.file).then(function(bytes){
+          photoSnapshot.buffer = bytes;
+          return startPhotoJob();
+        });
+      });
+    });
+  }
+
+  uploadPromise.then(function(){
+    // A photo with no page gets one question from the model and stops here.
+    if(photoSnapshot && photoSnapshot.file && !pageStarted) return null;
+    return devChatFetch('/api/ops-jobs', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: Object.assign({
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }, getAuthHeaders()),
+      body: JSON.stringify({
+        action: 'chat',
+        mode: photoLanded ? 'post_upload' : 'chat',
+        text: text || (confirmAction ? '' : (photoLanded ? '' : 'I attached a score sheet photo for your review.')),
+        job_id: DEV_CHAT_JOB_ID || null,
+        chat_id: DEV_CHAT_ID || null,
+        photo_name: (photoSnapshot && (photoSnapshot.filename || photoSnapshot.uploadName || photoSnapshot.name)) || null,
+        screen: devChatScreenContext(),
+        messages: DEV_CHAT_MESSAGES.slice(-20),
+        confirm: confirmAction || null
+      }),
+      cache: 'no-store'
+    });
+  }).then(function(res){
+    if(!res) return null;
+    return res.json().then(function(data){
+      if(!res.ok || data.ok === false) throw data;
+      return data;
+    });
+  }).then(function(data){
+    renderDevChatData(data, confirmAction);
+  }).catch(function(err){
+    devChatStopProgress();
+
+    // The score-sheet answer was already shown and the photo was consumed.
+    if(err && err.directRendered) return;
+
+    // The server read the photo and asked one normal question. The photo is
+    // already stored with the chat, so it is not kept in the composer; the
+    // next typed answer continues from the stored copy.
+    if(err && err.question){
+      clearDevChatPhoto();
+      photoSnapshot = null;
+      var qText = String(err.message || 'Tell me the class and subject, then send the photo again.');
+      DEV_CHAT_MESSAGES.push({ role: 'assistant', text: qText });
+      var qHtml = '<div class="dev-msg dev-msg-assistant"><div class="dev-prose">' + formatDevChatText(qText) + '</div></div>';
+      if(thread){
+        thread.insertAdjacentHTML('beforeend', qHtml);
+        devChatSyncWelcomeState();
+        devChatScrollToEnd();
+      }
+      return;
+    }
+
+    if(confirmAction && confirmAction.button){
+      confirmAction.button.textContent = 'Confirm';
+      confirmAction.button.disabled = false;
+    }
+
+    var errMsg = (err && err.message) || 'The assistant could not reach the server.';
+    if(isNetworkError(err)){
+      if(photoLanded) errMsg = 'The connection dropped before I could answer. The photo is saved - ask me to check the page.';
+      else if(photoSent) errMsg = 'The photo reached the server and is saved with this chat. Send your next message to continue.';
+      else errMsg = 'The photo did not finish uploading. Check your connection, then press Send again - it is still attached.';
+    }
+    // Only a photo that never reached the server stays in the composer for a
+    // retry. One that was sent is part of the chat now.
+    if(!photoSent && photoSnapshot){ restoreDevChatPhoto(photoSnapshot); }
+    var errHtml = '<div class="dev-msg dev-msg-assistant">'
+      + '<div class="dev-notice">' + DEV_CHAT_ICONS.alert
+      + '<div><strong>That did not go through</strong><p>' + escapeHtml(errMsg) + '</p></div>'
+      + '</div></div>';
+    if(thread){
+      thread.insertAdjacentHTML('beforeend', errHtml);
+      devChatSyncWelcomeState();
+      devChatScrollToEnd();
+    }
+    showToast(errMsg, 'error');
+  }).finally(function(){
+    DEV_CHAT_BUSY = false;
+    if(sendBtn) sendBtn.disabled = false;
+    // The reader needs time. Ask again once, quietly, so the user gets a
+    // result instead of having to prompt for it.
+    if(photoSnapshot && photoLanded){
+      setTimeout(function(){
+        nudgeOpsWorker();
+        if(!DEV_CHAT_BUSY) sendDevCommandChat('The photo has had time to be read now. Check the page and tell me the result.', null, { silent: true });
+      }, 15000);
+    }
+  });
+}
+
+devChatInitThread();
+
+function useAICommandExample(question){
+  sendDevCommandQuick(question);
+}
+
+function runAICommand(){
+  submitDevCommandChat();
 }
 </script>
 

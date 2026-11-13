@@ -532,7 +532,7 @@ async function handleAction(action, payload, token) {
   return unsupportedAction();
 }
 
-module.exports = async function resultData(req, res) {
+async function resultData(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     sendJson(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
@@ -561,3 +561,8 @@ module.exports = async function resultData(req, res) {
     sendJson(res, authStatus(payload.code), payload);
   }
 };
+
+module.exports = resultData;
+// The ops tool layer runs school writes through the same audited handler, so it
+// needs the action entry point, not the HTTP wrapper.
+module.exports.handleAction = handleAction;

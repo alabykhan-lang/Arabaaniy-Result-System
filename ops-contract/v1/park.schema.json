@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://first-choice-result-portal.vercel.app/ops-contract/v1/park.schema.json",
+  "title": "Ops park outcome v1",
+  "description": "Every fallback chain ends here. A parked job is never shown as done.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "outcome", "reason"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "outcome": { "const": "park" },
+    "reason": { "type": "string", "minLength": 1 },
+    "detail": { "type": ["object", "null"] }
+  }
+}

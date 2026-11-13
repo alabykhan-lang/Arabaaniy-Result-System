@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://first-choice-result-portal.vercel.app/ops-contract/v1/intent.schema.json",
+  "title": "Ops intent v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "intent"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "intent": { "enum": ["roster", "scores", "documents", "unknown"] },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "notes": { "type": "string" }
+  }
+}
