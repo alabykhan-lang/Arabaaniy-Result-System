@@ -12,6 +12,11 @@ const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY
   || process.env.FIRST_CHOICE_SUPABASE_PUBLISHABLE_KEY
   || process.env.FIRST_CHOICE_SUPABASE_ANON_KEY
   || '';
+// This key must exist only in the server/Vercel environment. It is never
+// returned to the browser or included in a response.
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+  || process.env.FIRST_CHOICE_SUPABASE_SERVICE_ROLE_KEY
+  || '';
 const COOKIE_NAME = 'school_result_session';
 const REFRESH_COOKIE_NAME = 'school_result_refresh';
 const SESSION_MAX_AGE = 8 * 60 * 60;
@@ -43,7 +48,7 @@ function setSecurityHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()');
 }
 
 function parseCookies(req) {
@@ -144,6 +149,34 @@ async function supabaseRest(resource, options = {}, accessToken) {
   return payload;
 }
 
+async function supabaseAdminRest(resource, options = {}) {
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    const error = new Error('Supabase service role key is not configured');
+    error.status = 503;
+    error.payload = { code: 'AUTH_ADMIN_NOT_CONFIGURED' };
+    throw error;
+  }
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${resource}`, {
+    method: options.method || 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Prefer: options.prefer || 'return=representation',
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+    ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+  });
+  let payload = null;
+  try { payload = await response.json(); } catch { payload = null; }
+  if (!response.ok) {
+    const error = new Error(payload?.message || payload?.hint || 'Supabase admin request failed');
+    error.status = response.status;
+    error.payload = payload || { code: 'SUPABASE_ADMIN_REQUEST_FAILED' };
+    throw error;
+  }
+  return payload;
+}
+
 function bearerTokenFromRequest(req) {
   const value = String(req.headers.authorization || '');
   if (/^Bearer\s+(.+)$/i.test(value)) return value.replace(/^Bearer\s+/i, '').trim();
@@ -166,6 +199,34 @@ async function supabaseAuthRequest(path, body, accessToken) {
   try { payload = await response.json(); } catch {}
   if (!response.ok) {
     const error = new Error(payload.msg || payload.message || payload.error_description || 'Authentication failed');
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
+  }
+  return payload;
+}
+
+async function supabaseAdminAuthRequest(path, body) {
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    const error = new Error('Supabase service role key is not configured');
+    error.status = 503;
+    error.payload = { code: 'AUTH_ADMIN_NOT_CONFIGURED' };
+    throw error;
+  }
+  const requestOptions = body && body.method ? body : { method: body === undefined ? 'GET' : 'PATCH', body };
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
+    method: requestOptions.method,
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+    ...(requestOptions.body === undefined ? {} : { body: JSON.stringify(requestOptions.body) }),
+  });
+  let payload = {};
+  try { payload = await response.json(); } catch {}
+  if (!response.ok) {
+    const error = new Error(payload.msg || payload.message || payload.error_description || 'Authentication admin request failed');
     error.status = response.status;
     error.payload = payload;
     throw error;
@@ -228,6 +289,8 @@ module.exports = {
   refreshTokenFromRequest,
   bearerTokenFromRequest,
   supabaseAuthRequest,
+  supabaseAdminRest,
+  supabaseAdminAuthRequest,
   supabaseRest,
   supabaseRpc,
 };

@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "functions": {
+    "api/ops-jobs.js": {
+      "maxDuration": 60,
+      "includeFiles": "{api/fonts/**,node_modules/sharp/**,node_modules/@img/**}"
+    }
+  },
   "routes": [
     {
       "src": "/(index|portal_core)\\.html",
@@ -18,7 +24,7 @@
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY",
         "Referrer-Policy": "strict-origin-when-cross-origin",
-        "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+        "Permissions-Policy": "camera=(self), microphone=(self), geolocation=()"
       },
       "continue": true
     },
