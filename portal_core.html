@@ -1833,7 +1833,7 @@ body.result-context-read-only .results-history-readable{display:flex}
 
   <!-- DASHBOARD -->
   <div class="page" id="page-dashboard">
-    <div class="stats-row">
+    <div class="stats-row" id="dashboard-class-summary">
       <div class="stat-card"><span class="stat-icon">&#127891;</span><h3 id="d-stu">0</h3><p>Students</p></div>
       <div class="stat-card gold"><span class="stat-icon">&#128221;</span><h3 id="d-ent">0</h3><p>Scores Entered</p></div>
       <div class="stat-card blue"><span class="stat-icon">&#128202;</span><h3 id="d-avg">--</h3><p>Class Average</p></div>
@@ -1939,7 +1939,7 @@ body.result-context-read-only .results-history-readable{display:flex}
       </div>
       </div>
     </div>
-    <div class="tbl-wrap">
+    <div class="tbl-wrap" id="dashboard-class-students">
       <div class="tbl-head">
         <h3 id="d-tbl-title">Students</h3>
         <button class="btn btn-primary btn-sm" onclick="navTo('students',document.getElementById('ni-students'))">View All</button>
@@ -4794,6 +4794,21 @@ function renderHistoryStudents(rows,session,classKey,graduates){
 // DASHBOARD
 // ============================================================
 function renderDash(){
+  // The Command Center opens the dashboard with no class chosen. That is the
+  // whole-school view: the card takes the screen and the class table steps
+  // aside, so nothing reads a class that is not open.
+  var mainDashboard=!CLS||!DEPTS[CLS];
+  var commandCenter=document.getElementById('developer-command-center-card');
+  if(commandCenter&&isDeveloperUser())commandCenter.classList.add('active-card');
+  var classSummary=document.getElementById('dashboard-class-summary');
+  var classStudents=document.getElementById('dashboard-class-students');
+  if(classSummary)classSummary.style.display=mainDashboard?'none':'';
+  if(classStudents)classStudents.style.display=mainDashboard?'none':'';
+  if(mainDashboard){
+    document.getElementById('d-tbl-title').textContent='School dashboard';
+    document.getElementById('d-tbody').innerHTML='<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--gray)">Open a class to see its dashboard.</td></tr>';
+    return;
+  }
   var students=DB_STUDENTS[CLS]||[];
   document.getElementById('d-stu').textContent=students.length;
   document.getElementById('d-tbl-title').textContent=DEPTS[CLS].label+' - Students';
