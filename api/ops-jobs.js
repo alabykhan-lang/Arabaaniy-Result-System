@@ -1307,7 +1307,7 @@ module.exports = async (req, res) => {
         if (action === 'upload') return await uploadPhoto(req, res, ctx, body);
       }
 
-      if (action.startsWith('chat_')) {
+      if (action.startsWith('chat_') || action === 'printed') {
         return await chatRoute(req, res, ctx, body, action);
       }
 
