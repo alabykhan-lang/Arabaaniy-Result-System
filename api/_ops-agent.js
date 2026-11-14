@@ -2322,4 +2322,5 @@ module.exports = {
   testModelRoute,
   testVisionRoute,
   loadModelRoutes,
+  extractSheetPhoto,
 };

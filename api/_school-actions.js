@@ -1576,12 +1576,41 @@ async function prepareSheetReview(ctx, args, context, sheetRead, fileId) {
   }
 
   const subjectRaw = clean(args.subject || sheetRead?.subject, 120);
-  const subject = await resolveSubjectFor(ctx, config, active, cls.key, subjectRaw);
-  if (!subject.ok) {
+  const fallbackSubject = await resolveSubjectFor(ctx, config, active, cls.key, subjectRaw);
+  const columns = sheetColumns(sheetRead);
+
+  // One photo often carries two subjects side by side, with the subject name
+  // written over each column. Read the subject from the column heading first,
+  // so each column's marks land in its own subject. A column that cannot be
+  // given a subject is reported back, never written into the wrong subject.
+  const columnSubject = new Map();
+  for (const column of columns) {
+    const title = clean(column?.title, 120);
+    if (!title) continue;
+    const hit = await resolveSubjectFor(ctx, config, active, cls.key, title);
+    if (hit.ok) columnSubject.set(column.key, hit);
+    // A printed column heading is strong evidence even when the catalog name
+    // is longer ("English" over a column, "English Language" in the catalog),
+    // so a confident best guess is taken instead of holding the whole column.
+    else {
+      const want = normalise(title);
+      const entry = subjectEntries(config, cls.key).find((item) => {
+        const label = normalise(item.label);
+        return label === want || label.startsWith(`${want} `) || want.startsWith(`${label} `);
+      }) || (hit.best
+        ? subjectEntries(config, cls.key).find((item) => item.index === Number(hit.best.index))
+        : null);
+      if (entry) columnSubject.set(column.key, { ok: true, ...entry, confidence: 0.9, method: 'column title' });
+    }
+  }
+  const subject = fallbackSubject.ok
+    ? fallbackSubject
+    : columnSubject.values().next().value || null;
+  if (!subject) {
     return {
-      ...subject,
+      ...fallbackSubject,
       ok: false,
-      code: subject.code || 'SHEET_SUBJECT_NEEDED',
+      code: fallbackSubject.code || 'SHEET_SUBJECT_NEEDED',
       needs: ['subject'],
       class_key: cls.key,
       class: cls.label,
@@ -1594,16 +1623,14 @@ async function prepareSheetReview(ctx, args, context, sheetRead, fileId) {
     column: args.column || sheetRead?.column_title,
   });
   const defaultKey = defaultComponent.component || 'ca1';
-  const columns = sheetColumns(sheetRead);
   const [students, allScores, aliases] = await Promise.all([
     loadStudents(ctx, session, cls.key),
-    loadScores(ctx, session, term, cls.key, subject.index),
+    loadScores(ctx, session, term, cls.key),
     loadNameAliases(ctx),
   ]);
   const roster = students.map((student) => ({ ...student, class_label: cls.label }));
   const scopedAliases = aliases.filter((alias) => alias.class_key === cls.key);
-  const existingRows = allScores.filter((row) => Number(row.subject_index) === subject.index);
-  const existingByStudent = new Map(existingRows.map((row) => [row.student_id, row]));
+  const existingByKey = new Map(allScores.map((row) => [`${Number(row.subject_index)}|${row.student_id}`, row]));
 
   const draftLines = [];
   const seen = new Map();
@@ -1612,6 +1639,11 @@ async function prepareSheetReview(ctx, args, context, sheetRead, fileId) {
   for (const column of columns) {
     if (!column.readable) {
       failedColumns.push({ key: column.key, title: column.title, error: column.error || 'could not be read' });
+      continue;
+    }
+    const lineSubject = columnSubject.get(column.key) || (fallbackSubject.ok ? fallbackSubject : null);
+    if (!lineSubject) {
+      failedColumns.push({ key: column.key, title: column.title, error: 'the subject over this column was not clear' });
       continue;
     }
     const component = column.component || defaultKey;
@@ -1633,7 +1665,7 @@ async function prepareSheetReview(ctx, args, context, sheetRead, fileId) {
       if (!rawName && value == null) continue;
 
       if (status === 'auto' && studentId) {
-        const old = scoreValue(existingByStudent.get(studentId) || null, component);
+        const old = scoreValue(existingByKey.get(`${Number(lineSubject.index)}|${studentId}`) || null, component);
         if (old != null) {
           status = 'existing';
           note = `already recorded: ${old}`;
@@ -1657,7 +1689,7 @@ async function prepareSheetReview(ctx, args, context, sheetRead, fileId) {
       // Two lines naming one learner are never both written. The earlier line
       // is held back as well, so the user answers them together in one review.
       if (studentId && status !== 'existing') {
-        const key = `${subject.index}|${component}|${studentId}`;
+        const key = `${lineSubject.index}|${component}|${studentId}`;
         const prior = seen.get(key);
         if (prior) {
           prior.match_status = 'held';
@@ -1671,8 +1703,8 @@ async function prepareSheetReview(ctx, args, context, sheetRead, fileId) {
       const line = {
         item_no: null,
         class_key: cls.key,
-        subject_index: subject.index,
-        subject_label: subject.label,
+        subject_index: lineSubject.index,
+        subject_label: lineSubject.label,
         term,
         academic_session: session,
         component,
@@ -1693,7 +1725,7 @@ async function prepareSheetReview(ctx, args, context, sheetRead, fileId) {
       };
       draftLines.push(line);
       if (line.match_student_id && line.match_status !== 'existing') {
-        seen.set(`${component}|${line.match_student_id}`, line);
+        seen.set(`${lineSubject.index}|${component}|${line.match_student_id}`, line);
       }
     }
   }
@@ -1729,12 +1761,15 @@ async function prepareSheetReview(ctx, args, context, sheetRead, fileId) {
     }
   }
 
+  const usedSubjects = [...new Map(draftLines.map((line) => [Number(line.subject_index), line.subject_label])).entries()]
+    .map(([index, label]) => ({ index, label }));
   const meta = {
     file_id: fileId || null,
     class_key: cls.key,
     class: cls.label,
     subject_index: subject.index,
-    subject: subject.label,
+    subject: usedSubjects.length === 1 ? usedSubjects[0].label : usedSubjects.map((item) => item.label).join(' + '),
+    subject_set: usedSubjects,
     term,
     academic_session: session,
     class_size: roster.length,
@@ -2007,7 +2042,9 @@ async function commitSheetReview(ctx, args, context, sessionId) {
     const [component, subjectIndex] = key.split('|');
     const result = await recordScores(ctx, {
       class: meta.class,
-      subject: meta.subject,
+      // The subject of this batch's own column, not the review header, so a
+      // photo carrying two subjects writes each column into its own subject.
+      subject: lines[0]?.subject_label || meta.subject,
       component,
       term: meta.term,
       session: meta.session || meta.academic_session,
@@ -2751,6 +2788,7 @@ module.exports = {
   generateDocuments,
   // sheet reader
   prepareSheetReview,
+  resolveSubjectFor,
   loadSheetState,
   applySheetAnswers,
   commitSheetReview,
