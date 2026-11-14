@@ -520,7 +520,7 @@ async function repairAdmissionNumbers(ctx, args, context) {
   const report = [];
   for (const cls of targets) {
     const rows = await supabaseRest(
-      `students?archived=eq.false&class_key=eq.${encodeURIComponent(cls.key)}&select=id,name,admno,created_at&order=created_at.asc&limit=4000`,
+      `students?archived=eq.false&class_key=eq.${encodeURIComponent(cls.key)}&select=id,name,admno,created_at&order=name.asc&limit=4000`,
       {}, ctx.token,
     ) || [];
     const used = new Set(args.sequential ? [] : rows.map((row) => String(row.admno || '').trim().toUpperCase()).filter(Boolean));
