@@ -1265,7 +1265,7 @@ module.exports = async (req, res) => {
         }
         const payload = await opsRpc('ops_jobs_get', { p_id: id });
         if (!payload?.job || !jobVisibleTo(ctx.actor, payload.job)) {
-          return sendJson(res, 404, { ok: false, code: 'OPS_JOB_NOT_FOUND', message: 'That page is not in this school.', debug: { has: !!payload?.job, sub: payload?.job?.submitted_by || null, school: payload?.job?.school_id || null, actor: ctx.actor.id || null } });
+          return sendJson(res, 404, { ok: false, code: 'OPS_JOB_NOT_FOUND', message: 'That page is not in this school.' });
         }
         return sendJson(res, 200, payload);
       }
