@@ -385,166 +385,379 @@ function band(doc, x, y, w, h, color) {
 // class summary, every subject of the class, personal development, remark and
 // signature. A subject or score the school has not entered yet stays blank;
 // nothing is invented and no missing mark is written as zero.
+// The card is a copy of the portal's own printed card: the same navy frame,
+// header, subject columns, personal development table, fee schedule, remark
+// line and proprietor signature. The school's own section toggles decide what
+// appears, so a card made here and a card printed in the portal read the same.
+// Every number below is measured from the portal's own printed card, so the
+// download and the browser print are the same document. Coordinates are
+// offsets from the card's left edge; the frame starts at CARD_M.
+const CARD_M = 22.5;
+const CARD_EDGE = CARD_M + 0.75;
+const CARD_W = PAGE_WIDTH - CARD_EDGE * 2;
+const CARD_CELL = 0.75;
+
+// Card text sits on a baseline. PDFKit places the top of the line, so lift the
+// baseline by the font's ascent.
+function cardText(doc, value, x, baseline, opts = {}) {
+  const size = opts.size || 8;
+  write(doc, value, CARD_EDGE + x, baseline - size * 0.93, {
+    size,
+    bold: opts.bold,
+    color: opts.color,
+    width: opts.width,
+    align: opts.align,
+  });
+}
+
+function cardCell(doc, theme, x, y, w, h, fill) {
+  doc.save().rect(CARD_EDGE + x, y, w, h).lineWidth(CARD_CELL)
+    .strokeColor(theme.border).fillAndStroke(fill, theme.border).restore();
+}
+
+function cardRule(doc, theme, x1, x2, y, width = 0.75) {
+  rule(doc, CARD_EDGE + x1, y, CARD_EDGE + x2, y, width, theme.border);
+}
+
+function cardBand(doc, theme, title, y, height = 20.25) {
+  band(doc, CARD_EDGE, y, CARD_W, height, theme.accent);
+  cardText(doc, title.toUpperCase(), 0, y + height - 7.5, {
+    bold: true, size: 8, color: theme.primary, width: CARD_W, align: 'center',
+  });
+  return y + height;
+}
+
+function cardHeader(doc, data, theme) {
+  const top = CARD_M;
+  const outer = PAGE_WIDTH - CARD_M * 2;
+  // Frame: light border, heavier navy strip across the top.
+  doc.save().rect(CARD_M, top, outer, PAGE_HEIGHT - CARD_M * 2)
+    .lineWidth(CARD_CELL).strokeColor(theme.border).stroke().restore();
+  band(doc, CARD_M, top, outer, 5.25, theme.primary);
+  band(doc, CARD_EDGE, top + 5.25, CARD_W, 69.75, theme.primary);
+  band(doc, CARD_EDGE, top + 73.5, CARD_W, 1.5, theme.accent);
+
+  // School crest on its white tile.
+  band(doc, CARD_EDGE + 12, top + 12.75, 51, 51, '#ffffff');
+  const logo = data.assets && data.assets.logo;
+  if (logo) drawImage(doc, logo, CARD_EDGE + 14, top + 14.75, 47, 47);
+
+  const textX = 74.25;
+  const textW = 439.5 - textX - 10;
+  cardText(doc, str(data.school_name || 'SCHOOL NAME').toUpperCase(), textX, top + 34.5, {
+    bold: true, size: 15, color: theme.accent2, width: textW,
+  });
+  if (data.school_address) cardText(doc, data.school_address, textX, top + 47.25, {
+    size: 8, color: '#ffffff', width: textW,
+  });
+  const contact = [data.school_phone ? `Phone: ${data.school_phone}` : '',
+    data.school_email ? `Email: ${data.school_email}` : ''].filter(Boolean).join(' | ');
+  if (contact) cardText(doc, contact, textX, top + 57, { size: 8, color: '#ffffff', width: textW });
+  if (data.sample) cardText(doc, 'SAMPLE — NOT A SCHOOL RESULT', textX, top + 68, {
+    bold: true, size: 6.5, color: theme.accent2, width: textW,
+  });
+
+  band(doc, CARD_EDGE + 439.5, top + 26.25, 97.5, 26.25, theme.accent);
+  cardText(doc, 'REPORT CARD', 439.5, top + 43.25, {
+    bold: true, size: 9.5, color: theme.primary, width: 97.5, align: 'center',
+  });
+  return top + 75;
+}
+
+// Cell sizes of the results grid, in the portal's own proportions. The subject
+// column takes whatever the fixed columns leave.
+const CARD_HEADS = [
+  { label: 'TOTAL', sub: '(100%)', pad: 4.5 },
+  { label: 'GRADE', pad: 4.5 },
+  { label: 'CLASS AVG', pad: 4.5 },
+  { label: 'HIGHEST', pad: 4.5 },
+  { label: 'REMARK', pad: 4.5, size: 9.5 },
+];
+
 function cardPage(doc, data, pupil, index, total) {
   doc.addPage();
   const theme = themeOf(data);
-  let y = header(doc, data, 'REPORT CARD', { logo: data.assets && data.assets.logo, theme });
+  const sections = data.sections || {};
+  const on = (key) => sections[key] !== false;
+  let y = cardHeader(doc, data, theme);
 
-  // BIO — the same fields as the portal card, blank where the school has none.
-  const photoWidth = 74;
-  band(doc, MARGIN, y, CONTENT_WIDTH, 78, theme.soft);
-  const hasPhoto = data.assets && drawImage(doc, pupil.photo, MARGIN + 4, y + 3, 62, 72);
-  const bioX = MARGIN + (hasPhoto ? photoWidth : 0) + 6;
-  const bioWidth = CONTENT_WIDTH - (hasPhoto ? photoWidth : 0) - 126;
-  write(doc, 'NAME OF STUDENT', bioX, y + 6, { size: 6.8, color: theme.text, width: bioWidth });
-  write(doc, pupil.name || '', bioX, y + 15, { bold: true, size: 11.5, color: theme.primary, width: bioWidth });
-  const bio = [
-    ['GENDER', pupil.gender || '—'],
-    ['CLASS', data.class_label || '—'],
-    ['AGE', pupil.age || '—'],
-  ];
-  let bx = bioX;
-  bio.forEach(([label, value]) => {
-    write(doc, `${label}: ${value}`, bx, y + 33, { size: 7.4, color: theme.text, width: 92 });
-    bx += 88;
-  });
-  const rightX = PAGE_WIDTH - MARGIN - 116;
-  write(doc, 'REG. NO:', rightX, y + 8, { bold: true, size: 6.8, color: theme.text, width: 108, align: 'right' });
-  write(doc, pupil.admno || '—', rightX, y + 16, { bold: true, size: 8.6, color: theme.primary, width: 108, align: 'right' });
-  write(doc, 'SESSION:', rightX, y + 28, { bold: true, size: 6.8, color: theme.text, width: 108, align: 'right' });
-  write(doc, data.academic_session || '—', rightX, y + 36, { bold: true, size: 8.6, color: theme.primary, width: 108, align: 'right' });
-  band(doc, rightX + 22, y + 50, 86, 15, theme.primary);
-  write(doc, `TERM: ${data.term || '—'}`, rightX + 24, y + 54, { bold: true, size: 7, color: theme.accent2, width: 82, align: 'center' });
-  y += 82;
-  doc.save().rect(MARGIN, y, CONTENT_WIDTH, 2).fill(theme.primary).restore();
-  y += 7;
-
-  // CLASS SUMMARY — the pupil's line among the class, as the portal shows it.
-  const stats = data.stats || {};
-  const summary = [
-    ['No. of students', stats.class_size == null ? '—' : String(stats.class_size)],
-    ['Student avg', pupil.average == null ? '—' : number(pupil.average, 2)],
-    ['Class avg', stats.average == null ? '—' : number(stats.average, 2)],
-    ['Overall total', pupil.total == null ? '—' : number(pupil.total, 1)],
-    ['Lowest avg', stats.lowest_average == null ? '—' : number(stats.lowest_average, 2)],
-    ['Highest avg', stats.highest_average == null ? '—' : number(stats.highest_average, 2)],
-    ['Overall performance', pupil.overall_grade || '—'],
-    ['Subjects counted', `${pupil.counted_subjects} of ${(data.subject_set || []).length}`],
-  ];
-  const cellWidth = CONTENT_WIDTH / 4;
-  for (let row = 0; row < 2; row += 1) {
-    for (let col = 0; col < 4; col += 1) {
-      const [label, value] = summary[row * 4 + col];
-      const cx = MARGIN + col * cellWidth;
-      doc.save().rect(cx, y, cellWidth - 4, 24).lineWidth(0.6).strokeColor(theme.border).stroke().restore();
-      write(doc, `${label}:`, cx + 5, y + 3, { size: 6.2, color: theme.text, width: cellWidth - 14 });
-      write(doc, value, cx + 5, y + 11, { bold: true, size: 8.4, color: theme.primary, width: cellWidth - 14 });
-    }
-    y += 26;
-  }
-  y += 5;
-
-  // SUBJECTS — always the whole class list, so the card reads like the portal's.
-  band(doc, MARGIN, y, CONTENT_WIDTH, 16, theme.accent);
-  write(doc, 'ACADEMIC SUBJECT RESULTS', MARGIN + 5, y + 5, { bold: true, size: 8, color: theme.primary, width: CONTENT_WIDTH });
-  y += 19;
-  const colSubject = CONTENT_WIDTH - 60 - 54 - 88;
-  const headCells = [
-    { label: 'SUBJECT', width: colSubject, align: 'left' },
-    { label: 'MARK', width: 60, align: 'right' },
-    { label: 'GRADE', width: 54, align: 'center' },
-    { label: 'REMARK', width: 88, align: 'left' },
-  ];
-  let hx = MARGIN;
-  band(doc, MARGIN, y - 3, CONTENT_WIDTH, 15, theme.primary);
-  headCells.forEach((cell) => {
-    write(doc, cell.label, hx + 4, y, { bold: true, size: 6.8, color: '#ffffff', width: cell.width - 8, align: cell.align });
-    hx += cell.width;
-  });
-  y += 14;
-
-  const subjects = Array.isArray(data.subject_set) ? data.subject_set : [];
-  subjects.forEach((subject, i) => {
-    const mark = pupil.marks ? pupil.marks[subject.key] : null;
-    const has = mark != null;
-    if (i % 2 === 1) band(doc, MARGIN, y, CONTENT_WIDTH, 13, theme.soft);
-    const cells = [
-      { text: subject.label, width: colSubject, align: 'left', bold: true, color: theme.primary },
-      { text: has ? number(mark, 1) : '', width: 60, align: 'right', bold: true, color: theme.text },
-      { text: has ? gradeOf(pupil, subject.key) : '', width: 54, align: 'center', bold: true, color: theme.text },
-      { text: has ? str(pupil.grade_remarks && pupil.grade_remarks[subject.key]) : '', width: 88, align: 'left', color: theme.text },
-    ];
-    let cx = MARGIN;
-    cells.forEach((cell) => {
-      write(doc, cell.text, cx + 4, y + 2, { size: 7.8, bold: cell.bold, color: cell.color, width: cell.width - 8, align: cell.align });
-      cx += cell.width;
+  // BIO — only when the school keeps it on.
+  if (on('showBio')) {
+    const photoWidth = 84;
+    band(doc, CARD_EDGE, y, CARD_W, 78, theme.soft);
+    const hasPhoto = on('showPhoto') && pupil.photo
+      && drawImage(doc, pupil.photo, CARD_EDGE + 10, y + 3, 62, 72);
+    const bioX = hasPhoto ? photoWidth : 12;
+    const rightX = 420;
+    const bioWidth = rightX - bioX - 8;
+    cardText(doc, 'NAME OF STUDENT', bioX, y + 14, { size: 7.4, color: theme.text, width: bioWidth });
+    cardText(doc, str(pupil.name).toUpperCase(), bioX, y + 28, {
+      bold: true, size: 11.5, color: theme.primary, width: bioWidth,
     });
-    y += 13;
-    rule(doc, MARGIN, y, PAGE_WIDTH - MARGIN, y, 0.3, theme.border);
-  });
-  y += 7;
-
-  // PERSONAL DEVELOPMENT — blank ratings where nothing has been entered.
-  const traits = pupil.traits || {};
-  band(doc, MARGIN, y, CONTENT_WIDTH, 15, theme.accent);
-  write(doc, 'PERSONAL DEVELOPMENT ASSESSMENT', MARGIN + 5, y + 4, { bold: true, size: 7.4, color: theme.primary, width: CONTENT_WIDTH });
-  y += 18;
-  const half = CONTENT_WIDTH / 2;
-  [['AFFECTIVE TRAITS', AFFECTIVE, 'affective'], ['PSYCHOMOTOR SKILLS', PSYCHOMOTOR, 'psychomotor']].forEach(([title, list, kind], side) => {
-    const sx = MARGIN + side * half;
-    write(doc, title, sx + 4, y, { bold: true, size: 6.6, color: theme.primary, width: half - 40 });
-    write(doc, 'RTG', sx + half - 34, y, { bold: true, size: 6.6, color: theme.primary, width: 28, align: 'center' });
-    list.forEach((trait, i) => {
-      const ty = y + 11 + i * 10.5;
-      if (i % 2 === 1) band(doc, sx, ty - 1, half - 6, 10.5, theme.soft);
-      write(doc, trait, sx + 4, ty, { size: 7.2, color: theme.text, width: half - 40 });
-      const value = traits[kind] && traits[kind][trait] != null ? String(traits[kind][trait]) : '';
-      write(doc, value, sx + half - 34, ty, { bold: true, size: 7.2, color: theme.primary, width: 28, align: 'center' });
-    });
-  });
-  y += 11 + 6 * 10.5 + 4;
-  rule(doc, MARGIN + half, y - 70, MARGIN + half, y - 6, 0.5, theme.border);
-
-  // NEXT TERM FEES — the school's own bill lines for this class group.
-  const feeRows = Array.isArray(data.fees_next_term) ? data.fees_next_term : [];
-  if (feeRows.length) {
-    band(doc, MARGIN, y, CONTENT_WIDTH, 15, theme.accent);
-    write(doc, 'NEXT TERM FEE SCHEDULE', MARGIN + 5, y + 4, { bold: true, size: 7.4, color: theme.primary, width: CONTENT_WIDTH - 110 });
-    write(doc, 'AMOUNT', PAGE_WIDTH - MARGIN - 92, y + 4, { bold: true, size: 6.6, color: theme.primary, width: 86, align: 'right' });
-    y += 17;
-    feeRows.forEach((row, i) => {
-      if (i % 2 === 1) band(doc, MARGIN, y - 1, CONTENT_WIDTH, 11.5, theme.soft);
-      write(doc, row.label, MARGIN + 5, y, { size: 7.4, color: theme.text, width: CONTENT_WIDTH - 120 });
-      write(doc, `N${Number(row.amount).toLocaleString('en-NG')}`, PAGE_WIDTH - MARGIN - 92, y, {
-        bold: true, size: 7.4, color: theme.primary, width: 86, align: 'right',
+    let bx = bioX;
+    [['GENDER', pupil.gender || '—'], ['CLASS', data.class_label || '—'], ['AGE', pupil.age || '—']]
+      .forEach(([label, value]) => {
+        cardText(doc, `${label}: ${value}`, bx, y + 40, { size: 8, color: theme.text, width: 100 });
+        bx += 92;
       });
-      y += 11.5;
+    cardText(doc, 'REG. NO:', rightX, y + 16, {
+      bold: true, size: 7.5, color: theme.primary, width: 108, align: 'right',
     });
+    cardText(doc, str(pupil.admno || '—'), rightX, y + 27, {
+      bold: true, size: 9, color: theme.text, width: 108, align: 'right',
+    });
+    cardText(doc, 'SESSION:', rightX, y + 40, {
+      bold: true, size: 7.5, color: theme.primary, width: 108, align: 'right',
+    });
+    cardText(doc, str(data.academic_session || '—'), rightX, y + 51, {
+      bold: true, size: 9, color: theme.text, width: 108, align: 'right',
+    });
+    band(doc, CARD_EDGE + rightX + 26, y + 62, 82, 14, theme.primary);
+    cardText(doc, `TERM: ${str(data.term || '—')}`, rightX + 28, y + 72, {
+      bold: true, size: 7.4, color: theme.accent2, width: 78, align: 'center',
+    });
+    y += 78;
+    cardRule(doc, theme, 0, CARD_W, y, 1.5);
+    y += 1.5;
+  }
+
+  // SUMMARY — the pupil's line among the class, when the school keeps it on.
+  if (on('showSummary')) {
+    const stats = data.stats || {};
+    const cells = [
+      ['No. of students', stats.class_size == null ? '—' : String(stats.class_size)],
+      ['Student avg', pupil.average == null ? '--' : number(pupil.average, 2)],
+      ['Class avg', stats.average == null ? '--' : number(stats.average, 2)],
+      ['Overall total', pupil.total == null ? '--' : number(pupil.total, 1)],
+      ['Lowest avg', stats.lowest_average == null ? '--' : number(stats.lowest_average, 2)],
+      ['Highest avg', stats.highest_average == null ? '--' : number(stats.highest_average, 2)],
+      ['Overall performance', pupil.overall_grade || '--'],
+      ['Term', data.term || '--'],
+    ];
+    const cw = CARD_W / 4;
+    for (let row = 0; row < 2; row += 1) {
+      for (let col = 0; col < 4; col += 1) {
+        const [label, value] = cells[row * 4 + col];
+        cardCell(doc, theme, col * cw, y, cw, 15, '#ffffff');
+        cardText(doc, `${label}: ${value}`, col * cw + 4, y + 11, { size: 7.2, color: theme.text, width: cw - 8 });
+      }
+      y += 15;
+    }
     y += 5;
   }
 
-  // REMARK
-  doc.save().rect(MARGIN, y, CONTENT_WIDTH, 28).lineWidth(0.6).strokeColor(theme.border).fillAndStroke(theme.soft, theme.border).restore();
-  write(doc, 'TEACHER’S REMARK', MARGIN + 5, y + 4, { bold: true, size: 6.2, color: theme.text, width: CONTENT_WIDTH - 10 });
-  write(doc, pupil.remark || '', MARGIN + 5, y + 11, { size: 7.8, color: theme.primary, width: CONTENT_WIDTH - 10, wrap: true });
-  y += 34;
+  // SUBJECTS — the portal's own columns, including the class figures. A browser
+  // table widens a column to fit its longest entry, so the widths here are
+  // measured the same way: every column starts at its longest word and the
+  // spare width is shared out. A long subject name therefore widens its column
+  // instead of being cut off.
+  if (on('showSubjects')) {
+    y = cardBand(doc, theme, 'Academic Subject Results', y);
+    y += 0.75;
+    const assessment = data.assessment || { caCount: 2, caMarks: [], examMark: 70 };
+    const caCount = Math.max(1, Math.min(3, Number(assessment.caCount) || 1));
+    const caHeads = Array.from({ length: caCount }, (_, i) => ({
+      label: `CA${i + 1}`, sub: `(${Number((assessment.caMarks || [])[i]) || 0})`, pad: 4.5,
+    }));
+    const heads = [
+      { label: 'SUBJECT', pad: 9 },
+      ...caHeads,
+      { label: 'EXAM', sub: `(${Number(assessment.examMark) || 100}%)`, pad: 4.5 },
+      ...CARD_HEADS,
+    ];
+    const statsByKey = new Map((((data.stats || {}).subjects) || []).map((row) => [String(row.key), row]));
+    const subjects = Array.isArray(data.subject_set) ? data.subject_set : [];
+    const at = (i) => heads[1 + caCount + i];
+    const rows = subjects.map((subject, ri) => {
+      const key = String(subject.key);
+      const parts = (pupil.parts && pupil.parts[key]) || {};
+      const total = pupil.marks ? pupil.marks[key] : null;
+      const has = total != null;
+      const stat = statsByKey.get(key) || {};
+      return [
+        { text: subject.label, align: 'left', bold: true, color: theme.primary, pad: 9 },
+        ...caHeads.map((cell, ci) => ({
+          text: parts[`ca${ci + 1}`] == null ? '' : parts[`ca${ci + 1}`], align: 'center', pad: 4.5,
+        })),
+        { text: parts.exam == null ? '' : parts.exam, align: 'center', pad: 4.5 },
+        { text: has ? number(total, 1) : '', align: 'center', bold: true, color: theme.text, pad: 4.5 },
+        { text: has ? str(pupil.grades && pupil.grades[key]) : '', align: 'center', bold: true, color: theme.text, pad: 4.5 },
+        { text: stat.average == null ? '--' : number(stat.average, 1), align: 'center', color: theme.text, pad: 4.5 },
+        { text: stat.highest == null ? '--' : number(stat.highest, 1), align: 'center', color: theme.text, pad: 4.5 },
+        { text: has ? str(pupil.grade_remarks && pupil.grade_remarks[key]) : '', align: 'center', color: theme.text, pad: 4.5 },
+      ];
+    });
 
-  // SIGNATURE
-  const sigX = PAGE_WIDTH - MARGIN - 150;
-  const sigTop = Math.max(y + 2, PAGE_HEIGHT - MARGIN - 76);
-  if (data.assets && data.assets.signature) drawImage(doc, data.assets.signature, sigX, sigTop, 140, 44);
-  doc.save().rect(sigX, sigTop + 46, 140, 1.4).fill(theme.primary).restore();
-  write(doc, data.signature_title || 'School Proprietor', sigX, sigTop + 50, {
-    bold: true, size: 6.8, color: theme.primary, width: 140, align: 'center',
-  });
+    // Measure, then lay out like the browser does.
+    const measure = (text, bold, size, pad) => doc.font(bold ? 'bold' : 'body')
+      .fontSize(size).widthOfString(str(text)) + pad;
+    const longestWord = (text, bold, size, pad) => {
+      const words = str(text).split(/\s+/).filter(Boolean);
+      const widest = words.length ? Math.max(...words.map((word) => measure(word, bold, size, 0))) : 0;
+      return widest + pad;
+    };
+    const cols = heads.map((head, ci) => {
+      const pad = head.pad;
+      const size = head.size || 8;
+      let min = Math.max(longestWord(head.label, true, size, pad), head.sub ? longestWord(head.sub, true, 8, pad) : 0);
+      let max = Math.max(measure(head.label, true, size, pad), head.sub ? measure(head.sub, true, 8, pad) : 0);
+      rows.forEach((cells) => {
+        const cell = cells[ci];
+        if (!cell) return;
+        min = Math.max(min, longestWord(cell.text, cell.bold, 8, pad));
+        max = Math.max(max, measure(cell.text, cell.bold, 8, pad));
+      });
+      return { min, max };
+    });
+    const floor = cols.reduce((sum, col) => sum + col.min, 0);
+    if (floor >= CARD_W) {
+      cols.forEach((col) => { col.w = (col.min * CARD_W) / floor; });
+    } else {
+      const spare = CARD_W - floor;
+      const room = cols.reduce((sum, col) => sum + (col.max - col.min), 0);
+      const bases = cols.reduce((sum, col) => sum + col.max, 0);
+      cols.forEach((col) => {
+        const share = room > 0 ? (col.max - col.min) / room : col.max / bases;
+        col.w = col.min + spare * share;
+      });
+    }
+    heads.forEach((head, ci) => { head.w = cols[ci].w; });
 
-  band(doc, MARGIN, PAGE_HEIGHT - MARGIN - 14, CONTENT_WIDTH, 1, theme.border);
-  write(doc, `Card ${index + 1} of ${total}`, PAGE_WIDTH - MARGIN - 70, PAGE_HEIGHT - MARGIN - 9, {
-    size: 6.4, color: SOFT, width: 70, align: 'right',
-  });
-  write(doc, data.stats && data.stats.position_rule ? data.stats.position_rule : '', MARGIN, PAGE_HEIGHT - MARGIN - 9, {
-    size: 6.4, color: SOFT, width: CONTENT_WIDTH - 80,
-  });
+    let hx = 0;
+    heads.forEach((cell, ci) => {
+      band(doc, CARD_EDGE + hx, y, cell.w, 27.75, theme.primary);
+      const label = cell.pad / 2;
+      if (cell.sub) {
+        cardText(doc, cell.label, hx + label, y + 11.25, {
+          bold: true, size: 8, color: '#ffffff', width: cell.w - cell.pad, align: 'center',
+        });
+        cardText(doc, cell.sub, hx + label, y + 21, {
+          bold: true, size: 8, color: '#ffffff', width: cell.w - cell.pad, align: 'center',
+        });
+      } else {
+        const size = cell.size || 8;
+        cardText(doc, cell.label, hx + label, y + (size > 8 ? 17.5 : 11.25), {
+          bold: true, size, color: '#ffffff', width: cell.w - cell.pad,
+          align: ci === 0 ? 'left' : 'center',
+        });
+      }
+      hx += cell.w;
+    });
+    y += 27.75;
+
+    rows.forEach((cells, ri) => {
+      const fill = ri % 2 === 0 ? '#ffffff' : theme.soft;
+      let cxp = 0;
+      cells.forEach((cell, ci) => {
+        const w = heads[ci].w;
+        cardCell(doc, theme, cxp, y, w, 16.5, fill);
+        cardText(doc, cell.text, cxp + cell.pad / 2, y + 10.5, {
+          size: 8, bold: cell.bold, color: cell.color,
+          width: w - cell.pad, align: cell.align,
+        });
+        cxp += w;
+      });
+      y += 16.5;
+    });
+    // Close the grid with the frame's own edge.
+    cardRule(doc, theme, 0, CARD_W, y);
+  }
+
+  // PERSONAL DEVELOPMENT — two columns, ratings blank where none is entered.
+  if (on('showAffective') || on('showPsycho')) {
+    y = cardBand(doc, theme, 'Personal Development Assessment', y);
+    const sides = [];
+    if (on('showAffective')) sides.push(['AFFECTIVE TRAITS', AFFECTIVE, 'affective']);
+    if (on('showPsycho')) sides.push(['PSYCHOMOTOR SKILLS', PSYCHOMOTOR, 'psychomotor']);
+    const layout = sides.length > 1
+      ? [{ x: 1.5, w: 219.75, rtg: 221.25 }, { x: 276, w: 220.5, rtg: 496.5 }]
+      : [{ x: 1.5, w: CARD_W - 57, rtg: CARD_W - 55.5 }];
+    const rtgW = 52.5;
+    const headY = y + 0.75;
+    sides.forEach(([title, list, kind], side) => {
+      const spot = layout[side];
+      band(doc, CARD_EDGE + spot.x, headY, spot.w, 18, theme.primary);
+      band(doc, CARD_EDGE + spot.rtg, headY, rtgW, 18, theme.primary);
+      cardText(doc, title, spot.x, headY + 12.5, {
+        bold: true, size: 8, color: '#ffffff', width: spot.w - 6,
+      });
+      cardText(doc, 'RTG', spot.rtg, headY + 12.5, {
+        bold: true, size: 8, color: '#ffffff', width: rtgW, align: 'center',
+      });
+      list.forEach((trait, i) => {
+        const ty = headY + 18 + i * 16.5;
+        const fill = i % 2 === 0 ? '#ffffff' : theme.soft;
+        cardCell(doc, theme, spot.x, ty, spot.w, 16.5, fill);
+        cardText(doc, trait, spot.x + 5.25, ty + 10.5, { size: 8, color: theme.text, width: spot.w - 10 });
+        const value = pupil.traits && pupil.traits[kind] && pupil.traits[kind][trait] != null
+          ? String(pupil.traits[kind][trait]) : '';
+        cardText(doc, value, spot.rtg, ty + 10.5, {
+          bold: true, size: 8, color: theme.primary, width: rtgW, align: 'center',
+        });
+      });
+      // Rating key under the psychomotor column, then the column closes.
+      const footTop = headY + 18 + list.length * 16.5;
+      cardCell(doc, theme, spot.x, footTop, spot.w, 13.5, '#ffffff');
+      cardCell(doc, theme, spot.rtg, footTop, rtgW, 13.5, '#ffffff');
+    });
+    band(doc, CARD_EDGE + 221.25, headY, 0.75, 18, theme.primary);
+    if (on('showPsycho')) {
+      cardText(doc, '5=Excellent, 1=Poor', 461.47, headY + 18 + PSYCHOMOTOR.length * 16.5 + 9.5, {
+        size: 7, color: SOFT, width: 75, align: 'right',
+      });
+    }
+    if (sides.length > 1) band(doc, CARD_EDGE + 273.75, headY, 1.5, 18 + 6 * 16.5 + 13.5, theme.border);
+    y = headY + 18 + 6 * 16.5 + 13.5;
+  }
+
+  // NEXT TERM FEES — the school's own lines.
+  const feeRows = Array.isArray(data.fees_next_term) ? data.fees_next_term : [];
+  if (on('showFees') && feeRows.length) {
+    y = cardBand(doc, theme, 'Next Term Fee Schedule', y, 18.75);
+    band(doc, CARD_EDGE + 1.5, y + 0.75, CARD_W - 1.5, 18.75, theme.primary);
+    band(doc, CARD_EDGE, y, CARD_W, 1.5, theme.primary);
+    cardText(doc, 'FEE ITEM', 5.25, y + 13.5, {
+      bold: true, size: 8, color: '#ffffff', width: 180,
+    });
+    cardText(doc, 'NEXT TERM AMOUNT', 0, y + 13.5, {
+      bold: true, size: 8, color: '#ffffff', width: CARD_W - 6, align: 'right',
+    });
+    y += 18.75;
+    feeRows.forEach((row, i) => {
+      const fill = i % 2 === 0 ? '#ffffff' : theme.soft;
+      cardCell(doc, theme, 1.5, y, 201, 18, fill);
+      cardCell(doc, theme, 202.5, y, CARD_W - 203.25, 18, fill);
+      cardText(doc, row.label, 5.25, y + 12, { size: 8, color: theme.text, width: 180 });
+      cardText(doc, row.amount ? `N${Number(row.amount).toLocaleString('en-NG')}` : '--', 202.5, y + 12, {
+        bold: true, size: 8.5, color: theme.text, width: CARD_W - 208.5, align: 'right',
+      });
+      y += 18;
+    });
+    cardRule(doc, theme, 0, CARD_W, y - 0.75);
+  }
+
+  // GENERAL REMARK — written on its own rule, as in the portal card.
+  const remarkY = y + 14.25;
+  cardText(doc, 'GENERAL REMARK', 9.75, remarkY, { bold: true, size: 8.5, color: theme.accent });
+  // The remark is written on the rule beside the label; the rule fills the rest
+  // of the line, as in the portal card.
+  const remarkX = 9.75 + doc.font('bold').fontSize(8.5).widthOfString('GENERAL REMARK') + 14;
+  const remark = str(pupil.general_remark || pupil.remark || '--') || '--';
+  cardText(doc, remark, remarkX, remarkY + 1.5, { size: 7.5, color: theme.text, width: CARD_W - remarkX - 10 });
+  const remarkEnd = remarkX + doc.font('body').fontSize(7.5).widthOfString(remark) + 10;
+  rule(doc, CARD_EDGE + remarkEnd, remarkY + 2.25, CARD_EDGE + 540, remarkY + 2.25, 0.75, '#aaaaaa');
+  cardRule(doc, theme, 0, CARD_W, remarkY + 7.5);
+
+  // SIGNATURE — signature art over a rule, with the title beneath it.
+  if (on('showSignature')) {
+    if (data.assets && data.assets.signature) {
+      drawImage(doc, data.assets.signature, CARD_EDGE + 34, remarkY + 15.25, 54, 42);
+    }
+    rule(doc, CARD_EDGE + 17.5, remarkY + 55.75, CARD_EDGE + 130.5, remarkY + 55.75, 0.75, theme.primary);
+    cardText(doc, str(data.signature_title || 'SCHOOL PROPRIETOR').toUpperCase(), 7.29, remarkY + 69.75, {
+      bold: true, size: 8.5, color: theme.primary, width: 140,
+    });
+  }
 }
 
 async function readAsset(name, width, height) {

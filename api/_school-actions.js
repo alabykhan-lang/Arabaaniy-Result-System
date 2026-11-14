@@ -2612,6 +2612,7 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
   const pupils = students.map((student) => {
     const bySubject = new Map((rowsByStudent.get(student.id) || []).map((row) => [Number(row.subject_index), row]));
     const marks = {};
+    const parts = {};
     const grades = {};
     const gradeRemarks = {};
     let total = 0;
@@ -2625,6 +2626,11 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
         continue;
       }
       marks[String(subject.index)] = Number(value.toFixed(2));
+      // The card prints CA1, CA2 and the exam as columns, so the split is kept
+      // beside the total. A blank part stays blank.
+      parts[String(subject.index)] = {
+        ca1: row.ca1, ca2: row.ca2, ca3: row.ca3, exam: row.exam,
+      };
       const percent = subjectMax ? (Number(value) / subjectMax) * 100 : Number(value);
       grades[String(subject.index)] = gradeFor(config, percent);
       gradeRemarks[String(subject.index)] = gradeRemarkFor(config, percent);
@@ -2644,6 +2650,7 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
       photo: student.photo || null,
       traits: traitsById.get(student.id) || null,
       marks,
+      parts,
       grades,
       grade_remarks: gradeRemarks,
       total: counted ? Number(total.toFixed(2)) : null,
@@ -2654,6 +2661,7 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
       missing_subjects: missing,
       asterisk: missing.length > 0,
       remark: teacherRemark || (averagePercent != null ? remarkFor(config, averagePercent) : null) || null,
+      general_remark: teacherRemark || (average != null ? remarkFor(config, averagePercent) : null) || null,
     };
   // Every pupil keeps their card even before marks are entered: the card is the
   // school's real form, so a blank subject simply prints empty.
@@ -2692,6 +2700,14 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
   const school = config.school || {};
   return {
     fees_next_term: nextTermFees(config, cls.key),
+    // Card presentation the school has chosen: the same section toggles and
+    // assessment split the portal card uses.
+    sections: config.sections || {},
+    assessment: {
+      caCount: Math.max(1, Math.min(3, Number((config.assessment || {}).caCount) || 1)),
+      caMarks: Array.isArray((config.assessment || {}).caMarks) ? config.assessment.caMarks : [],
+      examMark: Number((config.assessment || {}).examMark) || 100,
+    },
     class_key: cls.key,
     class_label: cls.label,
     term,
