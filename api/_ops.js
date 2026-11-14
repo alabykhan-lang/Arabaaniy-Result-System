@@ -101,7 +101,7 @@ async function resolveSession(req, res) {
   let profile = null;
   try {
     const rows = await supabaseRest(
-      `staff_profiles?id=eq.${encodeURIComponent(user.id)}&select=id,email,role,suspended,school_id&limit=1`,
+      `staff_profiles?id=eq.${encodeURIComponent(user.id)}&select=id,email,role,suspended,school_id,is_developer&limit=1`,
       {},
       token,
     );
@@ -128,6 +128,7 @@ function actorOf(session) {
       id: profile.id,
       email: profile.email || session.user.email || '',
       role: profile.role,
+      is_developer: profile.is_developer === true,
       school_id: profile.school_id || null,
     },
   };
