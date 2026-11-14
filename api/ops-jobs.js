@@ -235,10 +235,17 @@ async function serveDocument(req, res, ctx, documentId) {
   }
   const buffer = Buffer.from(payload.content_b64, 'base64');
   const mime = payload.mime === 'application/pdf' ? 'application/pdf' : 'application/octet-stream';
+  const safeName = String(payload.filename || 'document.pdf')
+    .replace(/[^\x20-\x7e]/g, '')
+    .replace(/["\\]/g, '')
+    .trim() || 'document.pdf';
+  const asciiName = /\.pdf$/i.test(safeName) ? safeName : `${safeName}.pdf`;
   res.statusCode = 200;
   res.setHeader('Content-Type', mime);
   res.setHeader('Content-Length', buffer.length);
-  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(payload.filename || 'document.pdf')}"`);
+  // A plain ASCII name first, because some Android download managers ignore
+  // the extended form and fall back to ".bin" without it.
+  res.setHeader('Content-Disposition', `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(payload.filename || asciiName)}`);
   res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
   res.setHeader('Cache-Control', 'private, no-store, max-age=0, must-revalidate');
   res.setHeader('CDN-Cache-Control', 'no-store');

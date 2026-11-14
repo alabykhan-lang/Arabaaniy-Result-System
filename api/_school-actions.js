@@ -15,6 +15,7 @@ const crypto = require('node:crypto');
 const { supabaseRest } = require('./_lib');
 const { opsRpc } = require('./_ops');
 const { findClass, findColumn, findTerm, normalise } = require('./_ops-instruction');
+const { similarity } = require('./_ops-match');
 const { renderBroadsheet, renderCards } = require('./_ops-documents');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1656,7 +1657,7 @@ async function prepareSheetReview(ctx, args, context, sheetRead, fileId) {
       // Two lines naming one learner are never both written. The earlier line
       // is held back as well, so the user answers them together in one review.
       if (studentId && status !== 'existing') {
-        const key = `${component}|${studentId}`;
+        const key = `${subject.index}|${component}|${studentId}`;
         const prior = seen.get(key);
         if (prior) {
           prior.match_status = 'held';
@@ -1910,7 +1911,9 @@ async function applySheetAnswers(ctx, args, context, sessionId, answersOverride)
         line.raw_score = String(value);
         // The user has now read the mark for us; the sheet's doubt is settled.
         line.flags = [];
-        if (line.match_student_id && line.match_status === 'held' && !line.note?.includes('another line')) {
+        if (line.match_student_id && line.match_status === 'held') {
+          // The user has answered for this line, so a duplicate-name hold is
+          // settled too and does not come back on the next pass.
           line.match_status = 'confirmed';
           line.note = 'confirmed by the user';
         }
@@ -1931,7 +1934,7 @@ async function applySheetAnswers(ctx, args, context, sessionId, answersOverride)
   const seen = new Map();
   for (const line of lines) {
     if (!line.match_student_id || line.match_status === 'rejected') continue;
-    const key = `${line.component}|${line.match_student_id}`;
+    const key = `${line.subject_index}|${line.component}|${line.match_student_id}`;
     if (seen.has(key)) {
       const prior = seen.get(key);
       prior.match_status = 'held';
@@ -2599,8 +2602,7 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
   };
 }
 
-async function generateDocuments(ctx, args, context, confirmed = false) {
-  const config = await loadConfig(ctx);
+async function generateDocuments(ctx, args, context, confirmed = false) {  const config = await loadConfig(ctx);
   const active = { ...(await loadContextRows(ctx)), ...(context || {}) };
   const cls = classEntry(active, args.class);
   if (!cls) return { error: `There is no class called "${clean(args.class, 80)}".`, next: 'Call get_school_snapshot for the real class list.' };
@@ -2619,12 +2621,13 @@ async function generateDocuments(ctx, args, context, confirmed = false) {
   }
 
   const subjects = subjectEntries(config, cls.key).filter((subject) => subject.active);
+  const onePupil = clean(args.pupil || (Array.isArray(args.pupils) ? args.pupils[0] : ''), 120);
   let approval = mode === 'final' ? await approvalFor(ctx, cls.key, term, session) : null;
   if (mode === 'final' && !approvalCovers(approval, subjects)) {
     if (!confirmed) {
       return {
         needs_confirmation: true,
-        summary: `Approve all ${subjects.length} subjects for ${cls.label}, ${term} and generate final ${kinds.join(' and ')}${templates.length > 1 ? ` in ${templates.length} templates` : ` in the ${templates[0]} template`}? Nothing is published, and every score stays as it is.`,
+        summary: `Approve all ${subjects.length} subjects for ${cls.label}, ${term} and generate final ${kinds.join(' and ')} for${onePupil ? ` ${onePupil}` : ' the whole class'}${templates.length > 1 ? ` in ${templates.length} templates` : ` in the ${templates[0]} template`}? Nothing is published, and every score stays as it is.`,
         tool: 'generate_documents',
         args,
         token: confirmationToken(ctx, 'generate_documents', args),
@@ -2649,8 +2652,29 @@ async function generateDocuments(ctx, args, context, confirmed = false) {
   for (const template of templates) {
     const data = await buildDocumentData(ctx, config, active, { ...args, class: cls.label, template }, { mode, approval });
     if (data.error) return data;
+    // One learner on request: the card set becomes that pupil's single card,
+    // while the class statistics behind the position line stay the whole class.
+    if (onePupil) {
+      const list = Array.isArray(data.pupils) ? data.pupils : [];
+      const want = normalise(onePupil);
+      const hit = list.find((pupil) => normalise(pupil.name) === want)
+        || list.find((pupil) => similarity(pupil.name, want) >= 0.82);
+      if (!hit) {
+        return {
+          error: `No pupil called "${onePupil}" is on ${cls.label} for ${term}.`,
+          pupils: list.map((pupil) => pupil.name).slice(0, 40),
+          next: 'Name one of those pupils, or leave pupil empty for the whole class.',
+        };
+      }
+      data.pupils = [hit];
+      data.single_pupil = hit.name;
+    }
     for (const kind of kinds) {
       const rendered = kind === 'broadsheet' ? await renderBroadsheet(data) : await renderCards(data);
+      if (onePupil && kind === 'cards') {
+        const slug = String(onePupil).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'pupil';
+        rendered.filename = String(rendered.filename || 'card.pdf').replace(/\.pdf$/i, '') + '-' + slug + '.pdf';
+      }
       const stored = await opsRpc('school_store_document', {
         p_school_id: ctx.actor.school_id,
         p_actor_id: ctx.actor.id,

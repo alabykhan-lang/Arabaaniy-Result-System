@@ -260,7 +260,9 @@ async function handleAction(action, payload, token) {
   if (action === 'management.staff.list') {
     await requireManagement(token);
     const rows = await supabaseRest('staff_profiles?order=last_seen_at.desc.nullslast,created_at.asc', {}, token);
-    return { ok: true, staff: rows || [] };
+    // The developer account sits above admin and is not a role the school
+    // manages, so it stays off the staff screen and staff counts.
+    return { ok: true, staff: (rows || []).filter((row) => row.role !== 'developer' && row.is_developer !== true) };
   }
   if (action === 'management.staff.create') {
     const manager = await requireManagement(token);

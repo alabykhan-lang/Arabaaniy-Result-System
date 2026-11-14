@@ -8640,6 +8640,17 @@ function devChatScrollToEnd(){
   devChatScrollState();
 }
 
+// A new answer is read downward, so it is lined up at the top of the view
+// instead of being pinned at the bottom with its first lines above the fold.
+function devChatScrollToMessageStart(el){
+  var thread = document.getElementById('dev-chat-thread');
+  if(!thread || !el) return;
+  var top = Math.max(0, (el.offsetTop || 0) - 8);
+  if(thread.scrollTo) thread.scrollTo({ top: top, behavior: 'smooth' });
+  else thread.scrollTop = top;
+  devChatScrollState();
+}
+
 function devChatJumpToLatest(){
   var thread = document.getElementById('dev-chat-thread');
   if(!thread) return;
@@ -8959,16 +8970,31 @@ function saveFileOnAndroid(blob, filename, url){
   return false;
 }
 
+// A report card or broadsheet is always a PDF. Some Android download managers
+// looked at the wrong header and saved the file as ".bin", so the name is
+// forced to a .pdf ending and the blob is re-typed before it is handed on.
+function devPdfName(filename){
+  var name = String(filename || '').trim() || 'document.pdf';
+  name = name.replace(/[\/:*?"<>|]+/g, '-');
+  if(!/\.pdf$/i.test(name)) name = name.replace(/\.(bin|octet-stream|dat)$/i, '') + '.pdf';
+  return name;
+}
+
 function downloadDevChatFile(url, filename, button){
   if(!url) return;
   if(button){ button.classList.add('is-busy'); button.setAttribute('aria-busy','true'); }
+  var name = devPdfName(filename);
   fetch(url, { credentials: 'same-origin', headers: getAuthHeaders(), cache: 'no-store' })
     .then(function(res){ if(!res.ok) throw new Error('The file could not be downloaded.'); return res.blob(); })
     .then(function(blob){
-      if(inAndroidApp() && saveFileOnAndroid(blob, filename, url)) return;
+      var typed = blob;
+      if(blob.type !== 'application/pdf'){
+        try{ typed = new Blob([blob], { type: 'application/pdf' }); }catch(e){ typed = blob; }
+      }
+      if(inAndroidApp() && saveFileOnAndroid(typed, name, url)) return;
       var a = document.createElement('a');
-      var href = URL.createObjectURL(blob);
-      a.href = href; a.download = filename || 'document';
+      var href = URL.createObjectURL(typed);
+      a.href = href; a.download = name;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){ URL.revokeObjectURL(href); }, 4000);
     })
@@ -9124,7 +9150,7 @@ function renderDevChatData(data, confirmAction){
         devChatMapWire(thread.lastElementChild, data.mapping);
       }
       devChatSyncWelcomeState();
-      if(shouldStick) devChatScrollToEnd();
+      if(shouldStick) devChatScrollToMessageStart(thread.lastElementChild);
       else devChatScrollState();
     }
 }

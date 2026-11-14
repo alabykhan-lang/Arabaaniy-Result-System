@@ -2140,7 +2140,7 @@ const FUNCTION_DECLARATIONS = [
   },
   {
     name: 'generate_documents',
-    description: 'Make broadsheets or report cards from the parameters given. mode sample is watermarked and needs no approval. mode final asks once, and may approve the whole class in the same confirmed action.',
+    description: 'Make broadsheets or report cards from the parameters given. mode sample is watermarked and needs no approval. mode final asks once, and may approve the whole class in the same confirmed action. Pass pupil (or pupils) to print one learner\'s report card instead of the whole class batch.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -2149,6 +2149,7 @@ const FUNCTION_DECLARATIONS = [
         template: { type: 'STRING', description: 'modern, classic, compact or premium.' },
         templates: { type: 'ARRAY', items: { type: 'STRING' }, description: 'Render the same document in several templates.' },
         mode: { type: 'STRING', description: 'sample or final.' },
+        pupil: { type: 'STRING', description: 'One pupil name, for a single report card instead of the class batch.' },
         term: { type: 'STRING' },
         session: { type: 'STRING' },
       },
