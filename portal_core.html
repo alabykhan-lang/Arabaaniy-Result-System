@@ -1149,7 +1149,7 @@ html, body {
 body.developer-account #ni-main-dashboard,body.assistant-account #ni-main-dashboard{display:flex!important}
 body.developer-account #bn-main-dashboard,body.assistant-account #bn-main-dashboard{display:flex!important}
 body.developer-account #developer-command-center-card.active-card,body.assistant-account #developer-command-center-card.active-card{display:grid!important}
-body.developer-account .developer-command-center-only#dev-home-card{display:flex!important}
+body.developer-account .developer-command-center-only#dev-home-card,body.assistant-account .developer-command-center-only#dev-home-card{display:flex!important}
 /* ── Developer Command Center: the portal’s light, calm chat ── */
 #developer-command-center-card.dev-workspace{
   --ws-bg:#f8fafc;--ws-bg-soft:#eef3f9;--ws-panel:#ffffff;--ws-panel-2:#e6edf5;
@@ -1760,7 +1760,7 @@ body.result-context-read-only .results-history-readable{display:flex}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/><path d="M12 7v5l3 2"/></svg>History
     </div>
     <div class="bn-item" id="bn-main-dashboard" onclick="openMainDashboard(this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Command Center</div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Chat Assistant</div>
     <div class="bn-item results-management-only-bn" onclick="mobileNav('settings',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings
     </div>
@@ -1835,14 +1835,14 @@ body.result-context-read-only .results-history-readable{display:flex}
           <div style="width:36px;height:36px;border-radius:8px;background:var(--g1);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;box-shadow:0 2px 6px rgba(13,92,58,0.25)">AS</div>
           <div>
             <div style="font-weight:700;color:var(--g1);font-size:.9rem;display:flex;align-items:center;gap:6px">
-              Developer Command Center
+              Chat Assistant
               <span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;font-size:.62rem;font-weight:600;padding:2px 7px;border-radius:999px">Private</span>
             </div>
-            <div style="font-size:.72rem;color:var(--gray)">AI operational assistant, roster analytics &amp; score sheet reader</div>
+            <div style="font-size:.72rem;color:var(--gray)">Ask about pupils, marks, cards or school settings</div>
           </div>
         </div>
         <button class="btn btn-primary btn-sm" type="button" onclick="openMainDashboard(this)" style="font-size:.76rem;padding:8px 14px;display:flex;align-items:center;gap:6px">
-          <span>Open Command Center</span>
+          <span>Open chat assistant</span>
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
@@ -1902,15 +1902,15 @@ body.result-context-read-only .results-history-readable{display:flex}
         <div class="dev-ws-brand">
           <div class="dev-ws-logo" aria-hidden="true">AS</div>
           <div class="dev-ws-copy">
-            <div class="dev-ws-crumb">Command Center <span>/</span> School records</div>
-            <div class="dev-ws-sub"><i aria-hidden="true"></i> Developer workspace · private</div>
+            <div class="dev-ws-crumb">Chat Assistant <span>/</span> School records</div>
+            <div class="dev-ws-sub"><i aria-hidden="true"></i> Private · answers from your school records</div>
           </div>
         </div>
         <div class="dev-ws-actions">
           <button class="dev-rail-toggle" type="button" onclick="toggleDevChatRail()" title="Your chats" aria-label="Open your chats">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
           </button>
-          <span class="dev-ws-priv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg> Developer only</span>
+          <span class="dev-ws-priv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg> Private</span>
           <button class="dev-ws-gear" type="button" onclick="openDevDocuments()" title="Generated documents" aria-label="Generated documents" data-doc-count="0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
           </button>
@@ -3059,7 +3059,7 @@ function applyDeveloperAccountClass(){
   document.body.classList.toggle('developer-account',dev);
   document.body.classList.toggle('assistant-account',canUseAssistant(user));
   var card=document.getElementById('dev-home-card');
-  if(card)card.style.display=dev?'flex':'none';
+  if(card)card.style.display=canUseAssistant(user)?'flex':'none';
   // Load the chat list and reopen the last chat once the developer signs in.
   // Without this the history drawer stayed empty until a chat was started.
   if(dev||canUseAssistant(user)) devChatBoot();
@@ -8771,7 +8771,14 @@ var DEV_CHAT_ICONS = {
 function devChatGreeting(){
   var hour = new Date().getHours();
   var part = hour < 12 ? 'Good morning' : (hour < 17 ? 'Good afternoon' : 'Good evening');
-  return part + ', Developer';
+  // Greet the signed-in person by name; placeholder display names fall back to
+  // the email name so nobody is greeted as "School Staff".
+  var name = String((CURRENT_USER && CURRENT_USER.display_name) || '').trim();
+  if (!name || /^(school staff|school administrator|portal developer)$/i.test(name)) {
+    name = String((CURRENT_USER && CURRENT_USER.email) || '').split('@')[0].replace(/[._-]+/g, ' ');
+  }
+  name = String(name).split(/\s+/)[0] || 'there';
+  return part + ', ' + name;
 }
 
 function devChatSuggestButton(prompt, label, sub, icon){
