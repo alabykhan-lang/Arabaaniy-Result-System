@@ -8782,8 +8782,10 @@ function devChatGreeting(){
   if (!name || /^(school staff|school administrator|portal developer)$/i.test(name)) {
     name = String((CURRENT_USER && CURRENT_USER.email) || '').split('@')[0].replace(/[._-]+/g, ' ');
   }
-  name = String(name).split(/\s+/)[0] || 'there';
-  name = name.charAt(0).toUpperCase() + name.slice(1);
+  name = String(name).replace(/\s+/g, ' ').trim() || 'there';
+  name = name.replace(/(^|\s)([a-z])/g, function (_, gap, letter) {
+    return gap + letter.toUpperCase();
+  });
   return part + ', ' + name;
 }
 
