@@ -8973,9 +8973,19 @@ function devChatPrintDoc(btn){
     if(cfg.cardTheme !== theme.id){ cfg.cardTheme = theme.id; saveCfg(cfg); }
   }
   toggleDevChatRail(false);
-  applyClassContext(clsKey, session, term, false).then(function(){
-    if(activePageId() !== 'card') navTo('card');
-    if(!pupil){ printAll(); return null; }
+  // applyClassContext is promise-chained but returns nothing, so wait for the
+  // class to be loaded by watching the state it leaves behind.
+  applyClassContext(clsKey, session, term, false);
+  var waited = 0;
+  var finish = function(){
+    if(CLS !== clsKey || !(DB_STUDENTS[CLS] || []).length){
+      waited += 250;
+      if(waited > 25000){ hideLoad(); showToast('The card could not be opened.', 'error'); return; }
+      setTimeout(finish, 250);
+      return;
+    }
+    if(!pupil){ navTo('card'); printAll(); return; }
+    navTo('card');
     var sel = document.getElementById('rc-stu');
     var want = String(pupil).toUpperCase().replace(/\s+/g, ' ').trim();
     var hit = null;
@@ -8983,18 +8993,15 @@ function devChatPrintDoc(btn){
       if(hit) return;
       if(String(opt.textContent).toUpperCase().replace(/\s+/g, ' ').trim() === want) hit = opt;
     });
-    if(!hit){
-      showToast('That pupil is no longer on this class list.', 'error');
-      return null;
-    }
+    if(!hit){ hideLoad(); showToast('That pupil is no longer on this class list.', 'error'); return; }
     sel.value = hit.value;
-    return renderCard().then(function(){
+    renderCard().then(function(){
+      hideLoad();
       fitReportCardsToOnePage();
       printReportCardDocument();
-    });
-  }).catch(function(err){
-    showToast((err && err.message) || 'The card could not be opened.', 'error');
-  });
+    }).catch(function(){ hideLoad(); showToast('The card could not be opened.', 'error'); });
+  };
+  setTimeout(finish, 250);
 }
 
 // A click downloads in place, so the portal is never left and the session is
