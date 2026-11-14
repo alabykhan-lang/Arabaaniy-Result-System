@@ -765,6 +765,7 @@ MATCHING NAMES
 WHAT YOU CAN DO
 - School: read the snapshot, subject catalogs, completeness, rankings and saved marks.
 - Learners: search anywhere, list a class, add one or many, edit, move, archive, restore, permanently delete an archived record, read fees, remarks and traits, change them or clear them. Use "pupil" for early childhood and primary classes, "student" for JSS and SS.
+- Untidy rosters: when a class holds placeholder names ("Bbj", "Fcgh") or repeated or missing admission numbers, offer the cleanup yourself. "archive_many" removes a named handful, or the whole class with all=true plus a keep list, so the teacher confirms once. "fix_admission_numbers" gives every learner in a class their own number in one call; never try to do that one edit per pupil.
 - Staff: list, create, change and delete logins, and set the invite code.
 - Results: record a sheet, correct one mark, remember a name, undo a batch, approve a class, publish or unpublish results, and change the subject catalog.
 - Documents: make report cards and broadsheets in any template, as a watermarked sample or as a final. A sample never needs approval. A final uses approved subjects; if the class is not approved, offer to approve the whole class in the same confirmation.
@@ -1248,7 +1249,7 @@ function describeFallback(tool, result, context) {
     return result?.documents?.length ? `${result.documents.length} ${result.mode} document${result.documents.length === 1 ? '' : 's'} ready.` : 'The documents were not made.';
   }
   if (tool === 'manage_students' || tool === 'update_pupil_records' || tool === 'manage_staff') {
-    return result?.next || 'Updated.';
+    return result?.summary || result?.next || 'Updated.';
   }
   if (tool === 'find_pupil' && Array.isArray(result?.matches) && result.matches.length) {
     const list = result.matches.slice(0, 8).map((p) => `${p.name} (${classLabelFor(p.class, context)})`);

@@ -452,6 +452,105 @@ async function archivePupil(ctx, args, context) {
   return { archived: true, pupil: await pupilSummary(saved.student || found.pupil, context) };
 }
 
+// A class roster often starts as placeholder entries ("Bbj", "Fcgh") and the
+// teacher wants them gone in one go, not one confirmation per name. "all" with
+// an optional keep list covers that; explicit names cover a picked handful.
+async function archivePupils(ctx, args, context) {
+  const cls = classEntry(context, args.class);
+  if (!cls) {
+    return { error: `There is no class called "${clean(args.class, 60)}".`, next: 'Call get_school_snapshot for the real class list.' };
+  }
+  const roster = await listStudents(ctx, cls.key);
+  if (!roster.length) return { error: `${cls.label} has no pupils on the live list.` };
+  let chosen = [];
+  if (args.all === true) {
+    const keep = new Set((Array.isArray(args.keep) ? args.keep : []).map((n) => normalise(n)));
+    chosen = roster.filter((row) => !keep.has(normalise(row.name)));
+  } else {
+    const wanted = (Array.isArray(args.names) ? args.names : []).map((n) => normalise(n)).filter(Boolean);
+    if (!wanted.length) {
+      return {
+        error: 'Name the pupils to remove, or pass all=true to remove the whole class.',
+        roster: roster.map((row) => row.name),
+      };
+    }
+    const missing = [];
+    for (const want of wanted) {
+      const hit = roster.find((row) => normalise(row.name) === want)
+        || roster.find((row) => similarity(row.name, want) >= 0.82);
+      if (hit && !chosen.includes(hit)) chosen.push(hit);
+      else if (!hit) missing.push(want);
+    }
+    if (missing.length && !chosen.length) {
+      return {
+        error: `None of those names is on the ${cls.label} list.`,
+        roster: roster.map((row) => row.name),
+      };
+    }
+    if (missing.length) return { error: `These names are not on the ${cls.label} list: ${missing.join(', ')}. Nothing was removed.`, roster: roster.map((row) => row.name) };
+  }
+  if (!chosen.length) return { error: `Every pupil in ${cls.label} is on the keep list, so nothing was removed.` };
+  const reason = clean(args.reason, 200) || 'Removed through the Command Center';
+  const removed = [];
+  for (const row of chosen) {
+    await handleAction('students.archive', { student_id: row.id, reason }, ctx.token);
+    removed.push(row.name);
+  }
+  return {
+    archived: true,
+    class: cls.label,
+    count: removed.length,
+    pupils: removed,
+    summary: `Removed ${removed.length} from ${cls.label}: ${removed.join(', ')}. The records are kept and can be restored.`,
+    restored: 'Use action "restore" with a name to bring one back; the records are kept.',
+  };
+}
+
+// Duplicate or blank admission numbers cannot be repaired one edit per pupil
+// inside the tool-call budget (14 pupils would take 14 calls). This fixes a
+// whole class in one call: the first holder of a number keeps it and every
+// blank or repeated one moves to the next free number in join order.
+async function repairAdmissionNumbers(ctx, args, context) {
+  const targets = args.class
+    ? [classEntry(context, args.class)].filter(Boolean)
+    : (context?.classes || []).map((entry) => ({ key: entry.key, label: entry.label }));
+  if (args.class && !targets.length) {
+    return { error: `There is no class called "${clean(args.class, 60)}".`, next: 'Call get_school_snapshot for the real class list.' };
+  }
+  const report = [];
+  for (const cls of targets) {
+    const rows = await supabaseRest(
+      `students?archived=eq.false&class_key=eq.${encodeURIComponent(cls.key)}&select=id,name,admno,created_at&order=created_at.asc&limit=4000`,
+      {}, ctx.token,
+    ) || [];
+    const used = new Set(rows.map((row) => String(row.admno || '').trim().toUpperCase()).filter(Boolean));
+    const seen = new Set();
+    const moves = [];
+    for (const row of rows) {
+      const current = String(row.admno || '').trim().toUpperCase();
+      if (current && !seen.has(current)) { seen.add(current); continue; }
+      const next = nextAdmissionNumber(used);
+      used.add(next);
+      moves.push({ id: row.id, name: row.name, admno: next });
+    }
+    for (const move of moves) {
+      await supabaseRest(`students?id=eq.${encodeURIComponent(move.id)}`, {
+        method: 'PATCH',
+        prefer: 'return=minimal',
+        body: { admno: move.admno, updated_at: new Date().toISOString() },
+      }, ctx.token);
+    }
+    if (moves.length) report.push({ class: cls.label, fixed: moves.length, pupils: moves.map((m) => `${m.name} ${m.admno}`) });
+  }
+  if (!report.length) return { ok: true, summary: 'Every pupil already has their own admission number, so nothing changed.' };
+  const total = report.reduce((n, item) => n + item.fixed, 0);
+  return {
+    ok: true,
+    fixed: report,
+    summary: `Repaired ${total} admission number${total === 1 ? '' : 's'} across ${report.length} class${report.length === 1 ? '' : 'es'}: ${report.map((item) => `${item.class} (${item.fixed})`).join(', ')}.`,
+  };
+}
+
 async function enterMarks(ctx, args, context) {
   const found = await resolvePupil(ctx, args, context);
   if (!found.pupil) return found;
@@ -1639,6 +1738,8 @@ async function manageStudents(ctx, args, context) {
   }
   if (action === 'edit') return editPupil(ctx, args, context);
   if (action === 'archive') return archivePupil(ctx, args, context);
+  if (action === 'archive_many') return archivePupils(ctx, args, context);
+  if (action === 'fix_admission_numbers') return repairAdmissionNumbers(ctx, args, context);
   if (action === 'restore') return restorePupil(ctx, args, context);
   if (action === 'delete') return deletePupil(ctx, args, context);
   if (action === 'move') return movePupils(ctx, args, context);
@@ -1748,7 +1849,7 @@ function requiresConfirmation(name, args) {
   if (ALWAYS_CONFIRM.has(name)) return true;
   const action = actionOf(args);
   if (name === 'update_subject_catalog') return action !== 'list';
-  if (name === 'manage_students') return ['archive', 'delete', 'move'].includes(action);
+  if (name === 'manage_students') return ['archive', 'archive_many', 'delete', 'move'].includes(action);
   if (name === 'update_pupil_records') return action.startsWith('clear_');
   if (name === 'manage_staff') return ['create', 'update', 'delete', 'invite_update', 'update_invite'].includes(action);
   // generate_documents decides for itself: samples run free, finals ask once.
@@ -2065,11 +2166,11 @@ const FUNCTION_DECLARATIONS = [
   },
   {
     name: 'manage_students',
-    description: 'Every pupil action: list a class, find one pupil, search the school, list archived pupils, add one or many, edit, archive, restore, permanently delete an archived record, or move pupils to another class. Archive, delete and move ask once. On add, a gender is required for every pupil and the admission number is filled in automatically when omitted.',
+    description: 'Every pupil action: list a class, find one pupil, search the school, list archived pupils, add one or many, edit, archive one or many, restore, permanently delete an archived record, move pupils to another class, or repair admission numbers. Archive, delete and move ask once. On add, a gender is required for every pupil and the admission number is filled in automatically when omitted. "archive_many" takes names, or all=true with an optional keep list, and is the way to clear placeholder names off an untidy roster. "fix_admission_numbers" gives every pupil in a class their own number in one call.',
     parameters: {
       type: 'OBJECT',
       properties: {
-        action: { type: 'STRING', description: 'list, find, search, archived, add, edit, archive, restore, delete or move.' },
+        action: { type: 'STRING', description: 'list, find, search, archived, add, edit, archive, archive_many, restore, delete, move or fix_admission_numbers.' },
         class: { type: 'STRING' },
         name: { type: 'STRING' },
         student_id: { type: 'STRING' },
@@ -2077,6 +2178,7 @@ const FUNCTION_DECLARATIONS = [
         admno: { type: 'STRING', description: 'Optional. The next class number is used when omitted.' },
         new_name: { type: 'STRING' },
         new_class: { type: 'STRING' },
+        keep: { type: 'ARRAY', items: { type: 'STRING' }, description: 'With archive_many all=true: names to leave on the list.' },
         from: { type: 'STRING' },
         to: { type: 'STRING' },
         names: { type: 'ARRAY', items: { type: 'STRING' }, description: 'Pupils to move.' },
@@ -2177,7 +2279,9 @@ function labelFor(tool, args, context) {
     const map = {
       list: 'Read the class list', find: 'Found the pupil', search: 'Searched the pupils',
       archived: 'Read the removed pupils', add: 'Added the pupil', edit: 'Updated the pupil',
-      archive: 'Removed the pupil', restore: 'Restored the pupil', delete: 'Deleted the pupil record',
+      archive: 'Removed the pupil', archive_many: 'Removed the pupils',
+      fix_admission_numbers: 'Repaired the admission numbers',
+      restore: 'Restored the pupil', delete: 'Deleted the pupil record',
       move: `Moved the pupils${args?.to ? ` to ${args.to}` : ''}`,
     };
     return `${map[action] || 'Updated the pupils'}${cls ? ` (${cls})` : ''}`;
@@ -2227,6 +2331,14 @@ function describePending(tool, args, context) {
     }
     case 'manage_students':
       if (action === 'archive') return `Remove ${args?.name || 'this pupil'}${cls ? ` from ${cls}` : ''}? The record is kept and can be restored.`;
+      if (action === 'archive_many') {
+        const names = Array.isArray(args?.names) ? args.names : [];
+        if (args?.all === true) {
+          const keep = Array.isArray(args?.keep) ? args.keep : [];
+          return `Remove every pupil in ${cls || 'the class'}${keep.length ? ` except ${keep.join(', ')}` : ''}? The records are kept and can be restored.`;
+        }
+        return `Remove ${names.join(', ') || 'these pupils'}${cls ? ` from ${cls}` : ''}? The records are kept and can be restored.`;
+      }
       if (action === 'delete') return `Erase ${args?.name || 'this pupil'}'s archived record and their marks, fees, remarks and traits for good?`;
       if (action === 'move') {
         return args?.all === true
