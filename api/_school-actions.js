@@ -2627,11 +2627,12 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
       asterisk: missing.length > 0,
       remark: teacherRemark || (averagePercent != null ? remarkFor(config, averagePercent) : null) || null,
     };
-  // A named pupil still gets a card when the class has no mark for them yet.
-  }).filter((pupil) => pupil.counted_subjects > 0 || options.single);
+  // Every pupil keeps their card even before marks are entered: the card is the
+  // school's real form, so a blank subject simply prints empty.
+  });
 
   if (!pupils.length) {
-    return { error: `No saved marks were found in ${cls.label} for ${term}.`, next: 'Record marks with record_scores, then generate again.' };
+    return { error: `${cls.label} has no active pupils for ${term}.`, next: 'Check the class list with get_school_snapshot.' };
   }
 
   const ranked = [...pupils].sort((a, b) => b.average - a.average || String(a.name).localeCompare(String(b.name)));
