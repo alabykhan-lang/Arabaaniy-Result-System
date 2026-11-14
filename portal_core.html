@@ -8978,7 +8978,9 @@ function devChatPrintDoc(btn){
   applyClassContext(clsKey, session, term, false);
   var waited = 0;
   var finish = function(){
-    if(CLS !== clsKey || !(DB_STUDENTS[CLS] || []).length){
+    // applyClassContext ends by opening the dashboard, so the class page is
+    // only safe to open once that has happened.
+    if(CLS !== clsKey || !(DB_STUDENTS[CLS] || []).length || activePageId() !== 'dashboard'){
       waited += 250;
       if(waited > 25000){ hideLoad(); showToast('The card could not be opened.', 'error'); return; }
       setTimeout(finish, 250);
