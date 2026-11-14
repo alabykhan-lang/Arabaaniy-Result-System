@@ -666,9 +666,12 @@ function cardPage(doc, data, pupil, index, total) {
   // PERSONAL DEVELOPMENT — two columns, ratings blank where none is entered.
   if (on('showAffective') || on('showPsycho')) {
     y = cardBand(doc, theme, 'Personal Development Assessment', y);
+    // The school's own two lists, in its own order.
+    const traits = data.traits || {};
     const sides = [];
-    if (on('showAffective')) sides.push(['AFFECTIVE TRAITS', AFFECTIVE, 'affective']);
-    if (on('showPsycho')) sides.push(['PSYCHOMOTOR SKILLS', PSYCHOMOTOR, 'psychomotor']);
+    if (on('showAffective')) sides.push(['AFFECTIVE TRAITS', (traits.affective || AFFECTIVE), 'affective']);
+    if (on('showPsycho')) sides.push(['PSYCHOMOTOR SKILLS', (traits.psychomotor || PSYCHOMOTOR), 'psychomotor']);
+    const rowCount = Math.max(1, ...sides.map(([, list]) => list.length));
     const layout = sides.length > 1
       ? [{ x: 1.5, w: 219.75, rtg: 221.25 }, { x: 276, w: 220.5, rtg: 496.5 }]
       : [{ x: 1.5, w: CARD_W - 57, rtg: CARD_W - 55.5 }];
@@ -696,18 +699,19 @@ function cardPage(doc, data, pupil, index, total) {
         });
       });
       // Rating key under the psychomotor column, then the column closes.
-      const footTop = headY + 18 + list.length * 16.5;
+      // A shorter list still gets the full block so both columns close together.
+      const footTop = headY + 18 + rowCount * 16.5;
       cardCell(doc, theme, spot.x, footTop, spot.w, 13.5, '#ffffff');
       cardCell(doc, theme, spot.rtg, footTop, rtgW, 13.5, '#ffffff');
     });
     band(doc, CARD_EDGE + 221.25, headY, 0.75, 18, theme.primary);
     if (on('showPsycho')) {
-      cardText(doc, '5=Excellent, 1=Poor', 461.47, headY + 18 + PSYCHOMOTOR.length * 16.5 + 9.5, {
+      cardText(doc, '5=Excellent, 1=Poor', 461.47, headY + 18 + rowCount * 16.5 + 9.5, {
         size: 7, color: SOFT, width: 75, align: 'right',
       });
     }
-    if (sides.length > 1) band(doc, CARD_EDGE + 273.75, headY, 1.5, 18 + 6 * 16.5 + 13.5, theme.border);
-    y = headY + 18 + 6 * 16.5 + 13.5;
+    if (sides.length > 1) band(doc, CARD_EDGE + 273.75, headY, 1.5, 18 + rowCount * 16.5 + 13.5, theme.border);
+    y = headY + 18 + rowCount * 16.5 + 13.5;
   }
 
   // NEXT TERM FEES — the school's own lines.

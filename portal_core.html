@@ -1969,7 +1969,7 @@ body.result-context-read-only .results-history-readable{display:flex}
           </button>
         </form>
         <div class="dev-composer-foot">
-          <span><b>Free to ask</b> · 1 credit only when you approve a page</span>
+          <span><b>Free to ask</b> · a page is only counted when you approve it</span>
           <span class="dev-voice-foot">
             <button class="dev-voice-toggle" id="dev-voice-toggle" type="button" onclick="devChatVoiceToggle()" aria-pressed="false" title="Read answers aloud. Off by default.">Read aloud: off</button>
             <span>Full school ledger &amp; student context enabled</span>
@@ -2354,6 +2354,13 @@ body.result-context-read-only .results-history-readable{display:flex}
       <div class="tbl-wrap" data-settings-group="cards" style="margin-bottom:0;grid-column:1/-1;display:none">
         <div class="tbl-head"><h3>Automated General Remarks</h3></div>
         <div style="padding:16px" id="remarks-cfg" class="remarks-cfg"></div>
+      </div>
+      <div class="tbl-wrap" data-settings-group="cards" style="margin-bottom:0;grid-column:1/-1;display:none">
+        <div class="tbl-head"><h3>Affective Traits &amp; Psychomotor Skills</h3></div>
+        <div style="padding:16px">
+          <p style="font-size:.78rem;color:var(--gray);margin:0 0 12px">These are the rows every card and every pupil profile uses. Rename them, add or remove them, and move them up or down; the order here is the order they print in.</p>
+          <div id="trait-cfg" style="display:grid;grid-template-columns:1fr 1fr;gap:14px"></div>
+        </div>
       </div>
       <div class="tbl-wrap" data-settings-group="cards" style="margin-bottom:0;grid-column:1/-1;display:none">
         <div class="tbl-head"><h3>Grade Scale</h3></div>
@@ -3904,6 +3911,13 @@ function applyCarryForward(skipConfirm){
 }
 var AFF6=['Punctuality','Respect','Attentiveness','Reliability','Neatness','Spirit of Teamwork'];
 var PSY6=['Handwriting','Reading','Verbal Fluency/Diction','Musical Skills','Creative Arts','Physical Education'];
+// The school can rename, add, remove and reorder both lists in Report cards
+// settings. These six are only the starting point.
+function getTraitList(kind){
+  var list=(getCfg().traits||{})[kind];
+  if(Array.isArray(list)&&list.length)return list.slice();
+  return (kind==='affective'?AFF6:PSY6).slice();
+}
 var GRADE_SCALE=[
   {min:75,max:100,g:'A1',r:'Excellent', c:'#065f46',bg:'#d1fae5'},
   {min:70,max:74, g:'B2',r:'Very Good', c:'#065f46',bg:'#d1fae5'},
@@ -5696,19 +5710,21 @@ function renderProfile(s){
   // Traits
   var traits=DB_TRAITS[sid]||{affective:{},psychomotor:{}};
   var aff=traits.affective||{};var psy=traits.psychomotor||{};
-  document.getElementById('pf-aff').innerHTML=AFF6.map(function(tr,i){
+  var affList=getTraitList('affective');
+  document.getElementById('pf-aff').innerHTML=affList.map(function(tr,i){
     var val=aff[tr]||0;
     var stars=[1,2,3,4,5].map(function(n){
       return'<span class="star'+(val>=n?' on':'')+'" data-tr="'+tr+'" data-n="'+n+'" data-sid="'+sid+'" data-type="aff">&#9733;</span>';
     }).join('');
-    return'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px;border-bottom:'+(i<AFF6.length-1?'1px solid var(--border)':'none')+';font-size:.78rem"><span>'+tr+'</span><div class="stars" id="pfa-'+i+'">'+stars+'</div></div>';
+    return'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px;border-bottom:'+(i<affList.length-1?'1px solid var(--border)':'none')+';font-size:.78rem"><span>'+tr+'</span><div class="stars" id="pfa-'+i+'">'+stars+'</div></div>';
   }).join('');
-  document.getElementById('pf-psy').innerHTML=PSY6.map(function(tr,i){
+  var psyList=getTraitList('psychomotor');
+  document.getElementById('pf-psy').innerHTML=psyList.map(function(tr,i){
     var val=psy[tr]||0;
     var stars=[1,2,3,4,5].map(function(n){
       return'<span class="star'+(val>=n?' on':'')+'" data-tr="'+tr+'" data-n="'+n+'" data-sid="'+sid+'" data-type="psy">&#9733;</span>';
     }).join('');
-    return'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px;border-bottom:'+(i<PSY6.length-1?'1px solid var(--border)':'none')+';font-size:.78rem"><span>'+tr+'</span><div class="stars" id="pfp-'+i+'">'+stars+'</div></div>';
+    return'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px;border-bottom:'+(i<psyList.length-1?'1px solid var(--border)':'none')+';font-size:.78rem"><span>'+tr+'</span><div class="stars" id="pfp-'+i+'">'+stars+'</div></div>';
   }).join('');
   // Star click handlers
   document.querySelectorAll('#pf-aff .star,#pf-psy .star').forEach(function(sp){
@@ -6487,14 +6503,14 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet,opt
       h+='<td style="width:50%;vertical-align:top;border-right:2px solid '+BORDER+';padding:0">'
         +'<table style="width:100%;border-collapse:collapse;font-size:8pt">'
         +'<tr style="background:'+NAVY+';color:'+WHITE+';'+P+'"><th style="padding:5px 8px;text-align:left;border:1px solid '+BORDER+'">AFFECTIVE TRAITS</th><th style="padding:5px;text-align:center;border:1px solid '+BORDER+';width:70px">RTG</th></tr>'
-        +AFF6.map(function(tr,i){var rb=i%2===0?WHITE:MINT;return'<tr style="background:'+rb+';'+P+'"><td style="padding:4px 8px;border:1px solid '+BORDER+'">'+tr+'</td><td style="text-align:center;border:1px solid '+BORDER+';font-weight:700;color:'+NAVY+'">'+(aff[tr]||'')+'</td></tr>';}).join('')
+        +getTraitList('affective').map(function(tr,i){var rb=i%2===0?WHITE:MINT;return'<tr style="background:'+rb+';'+P+'"><td style="padding:4px 8px;border:1px solid '+BORDER+'">'+tr+'</td><td style="text-align:center;border:1px solid '+BORDER+';font-weight:700;color:'+NAVY+'">'+(aff[tr]||'')+'</td></tr>';}).join('')
         +'</table></td>';
     }
     if(sec.showPsycho){
       h+='<td style="width:50%;vertical-align:top;padding:0">'
         +'<table style="width:100%;border-collapse:collapse;font-size:8pt">'
         +'<tr style="background:'+NAVY+';color:'+WHITE+';'+P+'"><th style="padding:5px 8px;text-align:left;border:1px solid '+BORDER+'">PSYCHOMOTOR SKILLS</th><th style="padding:5px;text-align:center;border:1px solid '+BORDER+';width:70px">RTG</th></tr>'
-        +PSY6.map(function(tr,i){var rb=i%2===0?WHITE:MINT;return'<tr style="background:'+rb+';'+P+'"><td style="padding:4px 8px;border:1px solid '+BORDER+'">'+tr+'</td><td style="text-align:center;border:1px solid '+BORDER+';font-weight:700;color:'+NAVY+'">'+(psy[tr]||'')+'</td></tr>';}).join('')
+        +getTraitList('psychomotor').map(function(tr,i){var rb=i%2===0?WHITE:MINT;return'<tr style="background:'+rb+';'+P+'"><td style="padding:4px 8px;border:1px solid '+BORDER+'">'+tr+'</td><td style="text-align:center;border:1px solid '+BORDER+';font-weight:700;color:'+NAVY+'">'+(psy[tr]||'')+'</td></tr>';}).join('')
         +'<tr><td colspan="2" style="padding:3px 8px;text-align:right;font-size:7pt;color:#666;border:1px solid '+BORDER+';font-style:italic">5=Excellent, 1=Poor</td></tr>'
         +'</table></td>';
     }
@@ -6791,7 +6807,7 @@ function renderSettings(targetTab){
       +'<td><input class="inp" type="number" value="'+g.max+'" onchange="GRADE_SCALE['+i+'].max=Number(this.value)" style="width:70px;padding:5px 8px"/></td>'
       +'<td><input class="inp" value="'+g.r+'" onchange="GRADE_SCALE['+i+'].r=this.value" style="padding:5px 8px"/></td></tr>';
   }).join('');
-  renderThemePicker();renderSubjCfg();renderPromotionCfg();renderAssessmentConfigFields();renderSecondaryDepartmentSettings();renderStaffOverview();
+  renderThemePicker();renderTraitCfg();renderSubjCfg();renderPromotionCfg();renderAssessmentConfigFields();renderSecondaryDepartmentSettings();renderStaffOverview();
 }
 function getAssessmentConfig(){
   var cfg=getCfg();var a=cfg.assessment||{};var count=Math.max(1,Math.min(3,Number(a.caCount||2)));var marks=Array.isArray(a.caMarks)?a.caMarks.slice(0,3):[15,15,10];
@@ -6926,6 +6942,63 @@ function renderThemePicker(){
   });
   var nm=document.getElementById('theme-name');
   if(nm){var th=CARD_THEMES.find(function(t){return t.id===cur;});if(th)nm.textContent=th.name;}
+}
+function renderTraitCfg(){
+  var root=document.getElementById('trait-cfg');
+  if(!root)return;
+  var labels={affective:'Affective Traits',psychomotor:'Psychomotor Skills'};
+  root.innerHTML=['affective','psychomotor'].map(function(kind){
+    var list=getTraitList(kind);
+    return '<div><label style="font-size:.76rem;font-weight:700;color:var(--g1);display:block;margin-bottom:7px">'+labels[kind]+'</label>'
+      +'<div id="trait-list-'+kind+'">'+list.map(function(name,i){
+        return '<div style="display:flex;align-items:center;gap:5px;padding:5px 0;border-bottom:1px solid var(--border)">'
+          +'<span style="flex:1;font-size:.8rem">'+escapeHtml(name)+'</span>'
+          +'<button class="btn btn-outline btn-sm" type="button" title="Move up"'+(i===0?' disabled':'')+' onclick="moveTrait(\''+kind+'\','+i+',-1)">↑</button>'
+          +'<button class="btn btn-outline btn-sm" type="button" title="Move down"'+(i===list.length-1?' disabled':'')+' onclick="moveTrait(\''+kind+'\','+i+',1)">↓</button>'
+          +'<button class="btn btn-outline btn-sm" type="button" title="Remove" onclick="removeTrait(\''+kind+'\','+i+')">x</button>'
+          +'</div>';
+      }).join('')+'</div>'
+      +'<div style="display:flex;gap:6px;margin-top:10px">'
+      +'<input class="inp" id="trait-new-'+kind+'" placeholder="Add a row" maxlength="40" style="margin:0"/>'
+      +'<button class="btn btn-primary btn-sm" type="button" onclick="addTrait(\''+kind+'\')">Add</button>'
+      +'</div></div>';
+  }).join('');
+}
+function traitListsForSave(){
+  var cfg=getCfg();
+  cfg.traits=cfg.traits||{};
+  ['affective','psychomotor'].forEach(function(kind){
+    if(!Array.isArray(cfg.traits[kind]))cfg.traits[kind]=getTraitList(kind);
+  });
+  return cfg;
+}
+function moveTrait(kind,idx,step){
+  var cfg=traitListsForSave();
+  var list=cfg.traits[kind];
+  var to=idx+step;
+  if(to<0||to>=list.length)return;
+  var moved=list.splice(idx,1)[0];
+  list.splice(to,0,moved);
+  saveCfg(cfg);renderTraitCfg();
+}
+function removeTrait(kind,idx){
+  var cfg=traitListsForSave();
+  if(cfg.traits[kind].length<2){showToast('Keep at least one row.','error');return;}
+  cfg.traits[kind].splice(idx,1);
+  saveCfg(cfg);renderTraitCfg();
+  showToast('Row removed — synced to all devices');
+}
+function addTrait(kind){
+  var inp=document.getElementById('trait-new-'+kind);
+  var val=(inp?inp.value:'').trim();
+  if(!val)return;
+  var cfg=traitListsForSave();
+  if(cfg.traits[kind].some(function(n){return n.toLowerCase()===val.toLowerCase();})){showToast('That row already exists.','error');return;}
+  cfg.traits[kind].push(val);
+  saveCfg(cfg);
+  if(inp)inp.value='';
+  renderTraitCfg();
+  showToast('Row added — synced to all devices');
 }
 function renderSubjCfg(){
   var dept=document.getElementById('dept-sel').value;

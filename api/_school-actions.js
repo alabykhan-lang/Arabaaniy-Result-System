@@ -2703,6 +2703,12 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
     // Card presentation the school has chosen: the same section toggles and
     // assessment split the portal card uses.
     sections: config.sections || {},
+    traits: {
+      affective: (Array.isArray((config.traits || {}).affective) && config.traits.affective.length)
+        ? config.traits.affective : null,
+      psychomotor: (Array.isArray((config.traits || {}).psychomotor) && config.traits.psychomotor.length)
+        ? config.traits.psychomotor : null,
+    },
     assessment: {
       caCount: Math.max(1, Math.min(3, Number((config.assessment || {}).caCount) || 1)),
       caMarks: Array.isArray((config.assessment || {}).caMarks) ? config.assessment.caMarks : [],
