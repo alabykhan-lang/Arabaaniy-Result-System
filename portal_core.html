@@ -7970,6 +7970,16 @@ function renderDevSettings(){
             : (route.has_key ? 'Key stored' : 'Uses server key')));
       var stateClass = route.enabled === false || route.last_test_ok === false ? ' is-bad'
         : (route.last_test_ok === true ? ' is-good' : '');
+      // Effort is how hard the model thinks before answering. Gemini only knows
+      // low and high, so it gets the shorter list.
+      var isGemini = String(route.provider || '').toLowerCase().indexOf('gemini') >= 0;
+      var effortNow = String(route.effort || '');
+      var effortOpts = (isGemini
+        ? [['', 'Provider default'], ['low', 'Low (faster)'], ['high', 'High (thinks more)']]
+        : [['', 'Provider default'], ['low', 'Low (faster)'], ['high', 'High'], ['xhigh', 'Extra high'], ['max', 'Max']]
+      ).map(function(pair){
+        return '<option value="' + pair[0] + '"' + (pair[0] === effortNow ? ' selected' : '') + '>' + escapeHtml(pair[1]) + '</option>';
+      }).join('');
       return '<div class="dev-route' + (isPrimary ? ' is-primary' : '') + '">'
         + '<div class="dev-route-head"><span class="dev-route-role">' + escapeHtml(role) + '</span>'
         + (isPrimary ? '<span class="dev-route-badge">Serving now</span>' : '')
@@ -7978,6 +7988,7 @@ function renderDevSettings(){
         + '<label>Provider<input id="dev-route-' + escapeHtml(role) + '-provider" value="' + escapeHtml(route.provider || '') + '" maxlength="40"></label>'
         + '<label>Model<input id="dev-route-' + escapeHtml(role) + '-model" value="' + escapeHtml(route.model || '') + '" maxlength="120" list="dev-route-' + escapeHtml(role) + '-models" placeholder="type or list the provider names"><datalist id="dev-route-' + escapeHtml(role) + '-models"></datalist></label>'
         + '<label>Base URL (optional)<input id="dev-route-' + escapeHtml(role) + '-base" value="' + escapeHtml(route.base_url || '') + '" maxlength="300" placeholder="server default"></label>'
+        + '<label>Effort<select id="dev-route-' + escapeHtml(role) + '-effort">' + effortOpts + '</select></label>'
         + '<label>API key<input id="dev-route-' + escapeHtml(role) + '-key" type="password" autocomplete="off" placeholder="' + (route.has_key ? 'stored ····' + escapeHtml(route.key_last4 || '') : 'uses server key') + '" maxlength="300"></label>'
         + '</div>'
         + '<div class="dev-route-actions">'
@@ -8063,6 +8074,7 @@ function devRouteBody(role, extra){
     provider: value('dev-route-' + role + '-provider'),
     model: value('dev-route-' + role + '-model'),
     base_url: value('dev-route-' + role + '-base') || null,
+    effort: value('dev-route-' + role + '-effort') || null,
     enabled: true
   }, extra || {});
   if(keyEl && keyEl.value && !(extra && extra.api_key)) body.api_key = keyEl.value;

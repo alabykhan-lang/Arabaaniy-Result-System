@@ -554,7 +554,7 @@ function sheetParsed(parsed) {
   };
 }
 
-async function geminiSheetRead(base64, mime, model, apiKey, deadline) {
+async function geminiSheetRead(base64, mime, model, apiKey, deadline, route = null) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.max(2500, deadline - Date.now()));
   try {
@@ -572,7 +572,12 @@ async function geminiSheetRead(base64, mime, model, apiKey, deadline) {
             { inlineData: { mimeType: mime || 'image/jpeg', data: base64 } },
           ],
         }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 3000, responseMimeType: 'application/json' },
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 3000,
+          responseMimeType: 'application/json',
+          ...(geminiEffort(route) ? { thinkingConfig: { thinkingLevel: geminiEffort(route) } } : {}),
+        },
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -621,6 +626,7 @@ async function riverSheetRead(base64, mime, route, deadline) {
         model,
         temperature: 0.1,
         max_tokens: 3000,
+        ...(routeEffort(route) ? { reasoning_effort: routeEffort(route) } : {}),
         messages: [
           { role: 'system', content: SHEET_VISION_PROMPT },
           {
@@ -684,7 +690,7 @@ async function extractSheetPhoto(base64, mime, budgetMs = 20000, meter = null) {
   for (const candidate of candidates) {
     if (Date.now() > deadline - 1000) break;
     const read = candidate.kind === 'gemini'
-      ? await geminiSheetRead(base64, mime, candidate.model, candidate.apiKey, deadline)
+      ? await geminiSheetRead(base64, mime, candidate.model, candidate.apiKey, deadline, candidate.route)
       : await riverSheetRead(base64, mime, candidate.route, deadline);
     if (!read.ok) {
       failures.push(read.error);
@@ -710,7 +716,7 @@ async function testVisionRoute() {
   const kind = route ? visionKind(route) : ((RIVER_API_KEY && RIVER_BASE_URL) ? 'river' : 'gemini');
   const tinyPng = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=';
   const read = kind === 'gemini'
-    ? await geminiSheetRead(tinyPng, 'image/png', route?.model || GEMINI_MODELS[0], route?.api_key || GEMINI_API_KEY, Date.now() + 20000)
+    ? await geminiSheetRead(tinyPng, 'image/png', route?.model || GEMINI_MODELS[0], route?.api_key || GEMINI_API_KEY, Date.now() + 20000, route)
     : await riverSheetRead(tinyPng, 'image/png', route, Date.now() + 20000);
   if (!read.ok) {
     return { ok: false, step: 'image', model: route?.model || (kind === 'river' ? ASSISTANT_MODEL : GEMINI_MODELS[0]), message: read.error };
@@ -850,6 +856,8 @@ async function geminiTurn(contents, useTools, budgetMs = 22000, route = null) {
         contents,
         generationConfig: { temperature: 0.4, maxOutputTokens: MAX_REPLY_TOKENS },
       };
+      const effort = geminiEffort(route);
+      if (effort) payload.generationConfig.thinkingConfig = { thinkingLevel: effort };
       if (useTools) payload.tools = [{ functionDeclarations: FUNCTION_DECLARATIONS }];
       const res = await fetch(url, {
         method: 'POST',
@@ -1012,6 +1020,8 @@ async function riverTurn(contents, useTools, route) {
     max_tokens: MAX_REPLY_TOKENS,
     messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...toOpenAiMessages(contents)],
   };
+  const effort = routeEffort(route);
+  if (effort) body.reasoning_effort = effort;
   if (useTools) {
     body.tools = toOpenAiTools();
     body.tool_choice = 'auto';
@@ -2320,6 +2330,21 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
     live_write: false,
     correction: correctionResult,
   });
+}
+
+// Effort is a single neutral level on the route; each provider spells it its
+// own way. Gemini only knows low and high, so xhigh and max collapse to high.
+const EFFORT_LEVELS = ['low', 'high', 'xhigh', 'max'];
+
+function routeEffort(route) {
+  const effort = String(route?.effort || '').toLowerCase();
+  return EFFORT_LEVELS.includes(effort) ? effort : null;
+}
+
+function geminiEffort(route) {
+  const effort = routeEffort(route);
+  if (!effort) return null;
+  return effort === 'low' ? 'low' : 'high';
 }
 
 // Model names are provider-specific and case-sensitive; a wrong one comes back

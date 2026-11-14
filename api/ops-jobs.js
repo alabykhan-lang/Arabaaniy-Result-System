@@ -906,6 +906,7 @@ async function modelSettingsRoute(req, res, ctx, body, action) {
       p_model: clean(body.model, 120),
       p_base_url: clean(body.base_url, 300) || null,
       p_api_key: typeof body.api_key === 'string' ? body.api_key.slice(0, 500) : null,
+      p_effort: clean(body.effort, 10) || null,
       p_enabled: typeof body.enabled === 'boolean' ? body.enabled : null,
       p_secret: process.env.OPS_SECRET_KEY || '',
       p_actor_id: ctx.actor.id,
