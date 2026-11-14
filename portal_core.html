@@ -8773,11 +8773,12 @@ function devChatGreeting(){
   var part = hour < 12 ? 'Good morning' : (hour < 17 ? 'Good afternoon' : 'Good evening');
   // Greet the signed-in person by name; placeholder display names fall back to
   // the email name so nobody is greeted as "School Staff".
-  var name = String((CURRENT_USER && CURRENT_USER.display_name) || '').trim();
+  var name = String((CURRENT_USER && (CURRENT_USER.full_name || CURRENT_USER.display_name)) || '').trim();
   if (!name || /^(school staff|school administrator|portal developer)$/i.test(name)) {
     name = String((CURRENT_USER && CURRENT_USER.email) || '').split('@')[0].replace(/[._-]+/g, ' ');
   }
   name = String(name).split(/\s+/)[0] || 'there';
+  name = name.charAt(0).toUpperCase() + name.slice(1);
   return part + ', ' + name;
 }
 
