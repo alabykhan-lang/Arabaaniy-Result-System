@@ -1308,7 +1308,8 @@ module.exports = async (req, res) => {
         return await chatRoute(req, res, ctx, body, action);
       }
 
-      if (action.startsWith('model_') || action === 'subscription_set') {
+      if (action.startsWith('model_') || action === 'subscription_set'
+        || action === 'usage_set_percent' || action === 'usage_reset') {
         return await modelSettingsRoute(req, res, ctx, body, action);
       }
 
