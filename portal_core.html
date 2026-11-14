@@ -8402,7 +8402,8 @@ function renderDevChatSession(detail){
   else setDevChatJob(null);
   devChatSyncWelcomeState();
   // An opened chat is read from its newest message, not from the first one.
-  devChatScrollToEnd(4);
+  // The wait covers the card being shown, fonts loading, and images settling.
+  devChatScrollToEnd(2200);
 }
 
 function openDevChat(id, opts){
@@ -8645,6 +8646,7 @@ function devChatIsNearBottom(){
 function devChatJumpToEnd(){
   var thread = document.getElementById('dev-chat-thread');
   if(!thread) return;
+  devChatBindEndPin();
   var smooth = thread.style.scrollBehavior;
   thread.style.scrollBehavior = 'auto';
   thread.scrollTop = thread.scrollHeight;
@@ -8652,13 +8654,39 @@ function devChatJumpToEnd(){
   devChatScrollState();
 }
 
-function devChatScrollToEnd(retries){
+// Hold the bottom for a moment. A chat can be rendered while its card is still
+// hidden, so the thread has no height yet and the one jump lands at 0. While the
+// hold runs, every frame re-pins; the first wheel or swipe lets go.
+var DEV_CHAT_PIN_UNTIL = 0;
+var DEV_CHAT_PIN_RUNNING = false;
+function devChatScrollToEnd(holdMs){
+  var hold = typeof holdMs === 'number' ? holdMs : 300;
+  DEV_CHAT_PIN_UNTIL = Math.max(DEV_CHAT_PIN_UNTIL, Date.now() + hold);
   devChatJumpToEnd();
-  // Re-pin while fonts, images and the composer settle.
-  var left = typeof retries === 'number' ? retries : 2;
-  if(left <= 0) return;
-  requestAnimationFrame(devChatJumpToEnd);
-  setTimeout(function(){ devChatScrollToEnd(left - 1); }, 120);
+  if(DEV_CHAT_PIN_RUNNING) return;
+  DEV_CHAT_PIN_RUNNING = true;
+  var step = function(){
+    if(Date.now() > DEV_CHAT_PIN_UNTIL){
+      DEV_CHAT_PIN_RUNNING = false;
+      devChatScrollState();
+      return;
+    }
+    devChatJumpToEnd();
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function devChatReleaseEndPin(){ DEV_CHAT_PIN_UNTIL = 0; }
+
+// The reader takes over the moment they scroll by hand.
+function devChatBindEndPin(){
+  var thread = document.getElementById('dev-chat-thread');
+  if(!thread || thread.dataset.pinBound) return;
+  thread.dataset.pinBound = '1';
+  ['wheel','touchmove'].forEach(function(name){
+    thread.addEventListener(name, devChatReleaseEndPin, { passive:true });
+  });
 }
 
 // A new answer is read downward, so it is lined up at the top of the view
@@ -8666,6 +8694,8 @@ function devChatScrollToEnd(retries){
 function devChatScrollToMessageStart(el){
   var thread = document.getElementById('dev-chat-thread');
   if(!thread || !el) return;
+  // A new answer wins over the bottom hold.
+  devChatReleaseEndPin();
   var top = Math.max(0, (el.offsetTop || 0) - 8);
   if(thread.scrollTo) thread.scrollTo({ top: top, behavior: 'smooth' });
   else thread.scrollTop = top;
@@ -8675,6 +8705,7 @@ function devChatScrollToMessageStart(el){
 function devChatJumpToLatest(){
   var thread = document.getElementById('dev-chat-thread');
   if(!thread) return;
+  devChatReleaseEndPin();
   if(thread.scrollTo) thread.scrollTo({ top: thread.scrollHeight, behavior: 'smooth' });
   else thread.scrollTop = thread.scrollHeight;
 }
