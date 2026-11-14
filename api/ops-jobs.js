@@ -53,7 +53,10 @@ const NO_CREDITS_TEXT = 'There are no credits left on the pilot plan this period
 
 // A new job costs credits; attaching to a job already open does not. The
 // balance is read from ops, never from a cached number in the page.
-async function creditGate(res, schoolId = null) {
+async function creditGate(res, schoolId = null, ctx = null) {
+  // The developer account is not school staff and pays nothing, so a missing
+  // plan or an empty balance never stops the developer from starting a job.
+  if (isDeveloper(ctx)) return { ok: true, developer: true, remaining: null };
   if (!schoolId) {
     sendJson(res, 409, {
       ok: false,
@@ -629,7 +632,7 @@ async function handleText(req, res, ctx, body) {
   }
 
   if (parsed.scope === 'add_student') {
-    if (!(await creditGate(res, ctx.actor.school_id))) return;
+    if (!(await creditGate(res, ctx.actor.school_id, ctx))) return;
     const job = await createTextJob(ctx, parsed, raw, 'roster');
     if (!job) return sendJson(res, 502, { ok: false, code: 'OPS_REQUEST_FAILED' });
     const proposal = await opsRpc('ops_propose_pupil', {
@@ -647,7 +650,7 @@ async function handleText(req, res, ctx, body) {
   }
 
   if (parsed.scope === 'individual') {
-    if (!(await creditGate(res, ctx.actor.school_id))) return;
+    if (!(await creditGate(res, ctx.actor.school_id, ctx))) return;
     const job = await createTextJob(ctx, parsed, raw, 'scores');
     if (!job) return sendJson(res, 502, { ok: false, code: 'OPS_REQUEST_FAILED' });
     const staged = await opsRpc('ops_stage_individual', {
@@ -706,7 +709,7 @@ async function handleText(req, res, ctx, body) {
     });
   }
 
-  if (!(await creditGate(res, ctx.actor.school_id))) return;
+  if (!(await creditGate(res, ctx.actor.school_id, ctx))) return;
   const job = await createTextJob(ctx, parsed, raw, parsed.column_label ? 'scores' : 'documents');
   if (!job) return sendJson(res, 502, { ok: false, code: 'OPS_REQUEST_FAILED' });
   return sendJson(res, 201, { ok: true, attached: false, job, parsed, live_write: false });
@@ -1267,7 +1270,7 @@ module.exports = async (req, res) => {
         if (!UUID_RE.test(jobId)) {
           return sendJson(res, 400, { ok: false, code: 'OPS_JOB_ID_INVALID' });
         }
-        if (!(await creditGate(res, ctx.actor.school_id))) return;
+        if (!(await creditGate(res, ctx.actor.school_id, ctx))) return;
         const copied = await opsRpc('ops_copy_accepted_job', {
           p_source: jobId,
           p_actor: ctx.actor.id,
@@ -1434,7 +1437,7 @@ module.exports = async (req, res) => {
         || clean(body.class_key, 60)
         || null;
 
-      if (!(await creditGate(res, ctx.actor.school_id))) return;
+      if (!(await creditGate(res, ctx.actor.school_id, ctx))) return;
 
       const payload = await opsRpc('ops_jobs_create', {
         p_school_id: ctx.actor.school_id,

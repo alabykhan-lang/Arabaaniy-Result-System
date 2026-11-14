@@ -66,10 +66,11 @@ begin
    where p.id = p_actor;
 
   if coalesce(v_developer, false) then
+    select coalesce((ops.credit_balance(v_job.school_id)->>'remaining')::integer, 0) into v_balance;
     insert into ops.credit_ledger (
       job_id, school_id, plan_id, work_type, credits, balance_after, charged_at
     ) values (
-      p_job_id, v_job.school_id, null, v_work_type, 0, ops.credit_balance(v_job.school_id), now()
+      p_job_id, v_job.school_id, null, v_work_type, 0, v_balance, now()
     )
     on conflict (job_id) do nothing
     returning * into v_charge;
