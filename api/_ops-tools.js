@@ -523,15 +523,18 @@ async function repairAdmissionNumbers(ctx, args, context) {
       `students?archived=eq.false&class_key=eq.${encodeURIComponent(cls.key)}&select=id,name,admno,created_at&order=created_at.asc&limit=4000`,
       {}, ctx.token,
     ) || [];
-    const used = new Set(rows.map((row) => String(row.admno || '').trim().toUpperCase()).filter(Boolean));
+    const used = new Set(args.sequential ? [] : rows.map((row) => String(row.admno || '').trim().toUpperCase()).filter(Boolean));
     const seen = new Set();
     const moves = [];
     for (const row of rows) {
       const current = String(row.admno || '').trim().toUpperCase();
-      if (current && !seen.has(current)) { seen.add(current); continue; }
+      // sequential renumbers the whole class so gaps and odd high numbers go
+      // away too; otherwise the first holder of a number keeps it.
+      if (!args.sequential && current && !seen.has(current)) { seen.add(current); continue; }
       const next = nextAdmissionNumber(used);
       used.add(next);
-      moves.push({ id: row.id, name: row.name, admno: next });
+      if (next !== current) moves.push({ id: row.id, name: row.name, admno: next });
+      else seen.add(current);
     }
     for (const move of moves) {
       await supabaseRest(`students?id=eq.${encodeURIComponent(move.id)}`, {
@@ -2179,6 +2182,7 @@ const FUNCTION_DECLARATIONS = [
         new_name: { type: 'STRING' },
         new_class: { type: 'STRING' },
         keep: { type: 'ARRAY', items: { type: 'STRING' }, description: 'With archive_many all=true: names to leave on the list.' },
+        sequential: { type: 'BOOLEAN', description: 'With fix_admission_numbers: renumber the whole class from STU/0001 in join order, closing gaps and odd high numbers. Without it only the blanks and duplicates move.' },
         from: { type: 'STRING' },
         to: { type: 'STRING' },
         names: { type: 'ARRAY', items: { type: 'STRING' }, description: 'Pupils to move.' },
