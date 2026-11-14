@@ -3074,6 +3074,7 @@ function loginSuccess(user,mode){
   CURRENT_AUTH_MODE='local';
   CURRENT_PERMISSIONS=Array.isArray(user._permissions)?user._permissions:[];
   applyDeveloperAccountClass();
+  refreshDevChatGreeting();
   CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
   document.getElementById('auth-screen').style.display='none';
   // Set user info in sidebar
@@ -4455,6 +4456,7 @@ function openMainDashboard(el){
   CONTEXT_READ_ONLY=false;
   TERM=officialAcademicContext().term;
   updateContextLock();
+  refreshDevChatGreeting();
   navTo('dashboard',el||bnEl);
 }
 
@@ -8783,6 +8785,13 @@ function devChatGreeting(){
   name = String(name).split(/\s+/)[0] || 'there';
   name = name.charAt(0).toUpperCase() + name.slice(1);
   return part + ', ' + name;
+}
+
+// The welcome is built once and stays in the card, so a different account
+// signing in on the same tab kept the previous person's name. Rewrite it.
+function refreshDevChatGreeting(){
+  var head = document.querySelector('.dev-welcome h4');
+  if (head) head.textContent = devChatGreeting();
 }
 
 function devChatSuggestButton(prompt, label, sub, icon){
