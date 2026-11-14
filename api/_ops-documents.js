@@ -168,8 +168,8 @@ function header(doc, data, title, opts = {}) {
     band(doc, PAGE_WIDTH - MARGIN - 128, MARGIN + 30, 128, 22, theme.accent);
     write(doc, title, PAGE_WIDTH - MARGIN - 126, MARGIN + 36, { bold: true, size: 10.5, color: theme.primary, width: 124, align: 'center' });
     if (data.sample) {
-      write(doc, 'SAMPLE — NOT A SCHOOL RESULT', MARGIN, MARGIN + 68, {
-        bold: true, size: 6.4, color: theme.accent2, width: CONTENT_WIDTH,
+      write(doc, 'SAMPLE — NOT A SCHOOL RESULT', textX, MARGIN + 40, {
+        bold: true, size: 6.6, color: theme.accent2, width: Math.max(120, textWidth - 140),
       });
     }
   } else {
@@ -504,6 +504,24 @@ function cardPage(doc, data, pupil, index, total) {
   });
   y += 11 + 6 * 10.5 + 4;
   rule(doc, MARGIN + half, y - 70, MARGIN + half, y - 6, 0.5, theme.border);
+
+  // NEXT TERM FEES — the school's own bill lines for this class group.
+  const feeRows = Array.isArray(data.fees_next_term) ? data.fees_next_term : [];
+  if (feeRows.length) {
+    band(doc, MARGIN, y, CONTENT_WIDTH, 15, theme.accent);
+    write(doc, 'NEXT TERM FEE SCHEDULE', MARGIN + 5, y + 4, { bold: true, size: 7.4, color: theme.primary, width: CONTENT_WIDTH - 110 });
+    write(doc, 'AMOUNT', PAGE_WIDTH - MARGIN - 92, y + 4, { bold: true, size: 6.6, color: theme.primary, width: 86, align: 'right' });
+    y += 17;
+    feeRows.forEach((row, i) => {
+      if (i % 2 === 1) band(doc, MARGIN, y - 1, CONTENT_WIDTH, 11.5, theme.soft);
+      write(doc, row.label, MARGIN + 5, y, { size: 7.4, color: theme.text, width: CONTENT_WIDTH - 120 });
+      write(doc, `N${Number(row.amount).toLocaleString('en-NG')}`, PAGE_WIDTH - MARGIN - 92, y, {
+        bold: true, size: 7.4, color: theme.primary, width: 86, align: 'right',
+      });
+      y += 11.5;
+    });
+    y += 5;
+  }
 
   // REMARK
   doc.save().rect(MARGIN, y, CONTENT_WIDTH, 28).lineWidth(0.6).strokeColor(theme.border).fillAndStroke(theme.soft, theme.border).restore();

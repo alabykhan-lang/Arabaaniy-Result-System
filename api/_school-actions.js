@@ -2539,6 +2539,34 @@ function remarkFor(config, percent) {
   return hit ? clean(hit.text, 300) : '';
 }
 
+// The portal's card ends with the next-term fee schedule of the class fee
+// group. It comes from the same saved bill settings the portal uses, so the
+// download shows the school's own figures and never an invented amount.
+const FEE_CATS = {
+  kg1: 'early_childhood', kg2: 'early_childhood', nursery1: 'early_childhood', nursery2: 'early_childhood',
+  primary1: 'primary', primary2: 'primary', primary3: 'primary', primary4: 'primary', primary5: 'primary',
+  jss1: 'junior_secondary', jss2: 'junior_secondary', jss3: 'junior_secondary',
+  'ss1-general': 'senior_secondary', 'ss1-science': 'senior_secondary', 'ss1-arts': 'senior_secondary', 'ss1-business': 'senior_secondary',
+  'ss2-science': 'senior_secondary', 'ss2-arts': 'senior_secondary', 'ss2-business': 'senior_secondary',
+  'ss3-science': 'senior_secondary', 'ss3-arts': 'senior_secondary', 'ss3-business': 'senior_secondary',
+};
+const BILL_LINES = ['Tuition', 'P.T.A. Subscription', 'Sport Wear', 'Exam Fee', 'Lesson Fee'];
+
+function nextTermFees(config, classKey) {
+  const sessionCfg = config.sessionCfg || {};
+  const category = FEE_CATS[classKey] || 'primary';
+  const custom = (sessionCfg.customBillLines && sessionCfg.customBillLines[category]) || [];
+  const gone = (sessionCfg.removedBillLines && sessionCfg.removedBillLines[category]) || [];
+  const enabled = sessionCfg.billLineEnabled && sessionCfg.billLineEnabled[category];
+  const labels = [...BILL_LINES, ...(Array.isArray(custom) ? custom : [])]
+    .filter((label, i, all) => label && all.indexOf(label) === i && gone.indexOf(label) < 0);
+  const matrix = (sessionCfg.bills && sessionCfg.bills[category]) || {};
+  return labels
+    .filter((label) => !(enabled && enabled[label] === false))
+    .map((label) => ({ label, amount: Number(matrix[label] || 0) }))
+    .filter((row) => row.amount > 0);
+}
+
 async function buildDocumentData(ctx, config, active, args, options = {}) {
   const cls = classEntry(active, args.class);
   if (!cls) return { error: `There is no class called "${clean(args.class, 80)}".` };
@@ -2663,6 +2691,7 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
   });
   const school = config.school || {};
   return {
+    fees_next_term: nextTermFees(config, cls.key),
     class_key: cls.key,
     class_label: cls.label,
     term,
