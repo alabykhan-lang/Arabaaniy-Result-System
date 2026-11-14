@@ -3015,6 +3015,9 @@ function applyDeveloperAccountClass(){
   document.body.classList.toggle('developer-account',dev);
   var card=document.getElementById('dev-home-card');
   if(card)card.style.display=dev?'flex':'none';
+  // Load the chat list and reopen the last chat once the developer signs in.
+  // Without this the history drawer stayed empty until a chat was started.
+  if(dev) devChatBoot();
 }
 
 function loginSuccess(user,mode){
@@ -8093,6 +8096,8 @@ function toggleDevChatRail(force){
   var open = typeof force === 'boolean' ? force : !rail.classList.contains('is-open');
   rail.classList.toggle('is-open', open);
   if(backdrop) backdrop.classList.toggle('is-open', open);
+  // Refresh on every open, so a chat started a moment ago is already listed.
+  if(open && window.DEV_CHAT_BOOTED) loadDevChatSessions({ silent: true });
 }
 
 function toggleDevChatDeleted(){
