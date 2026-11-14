@@ -9013,7 +9013,18 @@ function devChatPrintDoc(btn){
       printReportCardDocument();
     }).catch(function(){ hideLoad(); showToast('The card could not be built.', 'error'); });
   }
-// A click downloads in place, so the portal is never left and the session is
+  if((DB_STUDENTS[clsKey] || []).length){ openCard(); return; }
+  showLoad('Preparing the card...');
+  dbGet('students?class_key=eq.' + encodeURIComponent(dbClassKey(clsKey, session)) + '&order=created_at.asc')
+    .then(function(rows){
+      DB_STUDENTS[clsKey] = rows || [];
+      if(!(DB_STUDENTS[clsKey] || []).length) throw new Error('no pupils');
+      openCard();
+    })
+    .catch(function(){ hideLoad(); showToast('The class list could not be loaded.', 'error'); });
+}
+
+// A click downloads in place, so the portal is never left, so the portal is never left and the session is
 // never lost. The link stays usable for middle-click and open-in-new-tab.
 document.addEventListener('click', function(e){
   var btn = e.target && e.target.closest ? e.target.closest('.dev-doc') : null;
