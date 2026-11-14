@@ -201,6 +201,10 @@ nav{flex:1;overflow-y:auto;padding:8px 0}
 .star{color:#d1d5db;font-size:1.2rem;cursor:pointer;transition:.1s;
   -webkit-tap-highlight-color:transparent}
 .star.on{color:var(--gold)}
+.trait-cfg-row{display:flex;align-items:center;gap:5px;padding:5px 0;border-bottom:1px solid var(--border)}
+.trait-cfg-name{flex:1;min-width:0;font-size:.8rem;overflow-wrap:anywhere}
+.trait-cfg-btn{width:28px;height:28px;padding:0;display:flex;align-items:center;justify-content:center;flex:0 0 auto;line-height:1}
+@media(max-width:640px){#trait-cfg{grid-template-columns:1fr !important}}
 .trait-row{display:flex;align-items:center;justify-content:space-between;
   padding:8px 0;border-bottom:1px solid var(--border)}
 .trait-row:last-child{border-bottom:none}
@@ -6951,11 +6955,11 @@ function renderTraitCfg(){
     var list=getTraitList(kind);
     return '<div><label style="font-size:.76rem;font-weight:700;color:var(--g1);display:block;margin-bottom:7px">'+labels[kind]+'</label>'
       +'<div id="trait-list-'+kind+'">'+list.map(function(name,i){
-        return '<div style="display:flex;align-items:center;gap:5px;padding:5px 0;border-bottom:1px solid var(--border)">'
-          +'<span style="flex:1;font-size:.8rem">'+escapeHtml(name)+'</span>'
-          +'<button class="btn btn-outline btn-sm" type="button" title="Move up"'+(i===0?' disabled':'')+' onclick="moveTrait(\''+kind+'\','+i+',-1)">↑</button>'
-          +'<button class="btn btn-outline btn-sm" type="button" title="Move down"'+(i===list.length-1?' disabled':'')+' onclick="moveTrait(\''+kind+'\','+i+',1)">↓</button>'
-          +'<button class="btn btn-outline btn-sm" type="button" title="Remove" onclick="removeTrait(\''+kind+'\','+i+')">x</button>'
+        return '<div class="trait-cfg-row">'
+          +'<span class="trait-cfg-name">'+escapeHtml(name)+'</span>'
+          +'<button class="btn btn-outline btn-sm trait-cfg-btn" type="button" aria-label="Move '+escapeHtml(name)+' up" title="Move up"'+(i===0?' disabled':'')+' onclick="moveTrait(\''+kind+'\','+i+',-1)">↑</button>'
+          +'<button class="btn btn-outline btn-sm trait-cfg-btn" type="button" aria-label="Move '+escapeHtml(name)+' down" title="Move down"'+(i===list.length-1?' disabled':'')+' onclick="moveTrait(\''+kind+'\','+i+',1)">↓</button>'
+          +'<button class="btn btn-outline btn-sm trait-cfg-btn" type="button" aria-label="Remove '+escapeHtml(name)+'" title="Remove" onclick="removeTrait(\''+kind+'\','+i+')">x</button>'
           +'</div>';
       }).join('')+'</div>'
       +'<div style="display:flex;gap:6px;margin-top:10px">'
