@@ -8401,7 +8401,8 @@ function renderDevChatSession(detail){
   if(detail.state && detail.state.open_job_id) setDevChatJob(detail.state.open_job_id);
   else setDevChatJob(null);
   devChatSyncWelcomeState();
-  devChatScrollToEnd();
+  // An opened chat is read from its newest message, not from the first one.
+  devChatScrollToEnd(4);
 }
 
 function openDevChat(id, opts){
@@ -8638,11 +8639,26 @@ function devChatIsNearBottom(){
   return thread.scrollHeight - thread.scrollTop - thread.clientHeight < 110;
 }
 
-function devChatScrollToEnd(){
+// One plain jump, with smooth scrolling switched off for that instant. The
+// CSS smooth behaviour made a jump land nowhere while the thread was still
+// laying out, which left an opened chat sitting at its first message.
+function devChatJumpToEnd(){
   var thread = document.getElementById('dev-chat-thread');
   if(!thread) return;
+  var smooth = thread.style.scrollBehavior;
+  thread.style.scrollBehavior = 'auto';
   thread.scrollTop = thread.scrollHeight;
+  thread.style.scrollBehavior = smooth || '';
   devChatScrollState();
+}
+
+function devChatScrollToEnd(retries){
+  devChatJumpToEnd();
+  // Re-pin while fonts, images and the composer settle.
+  var left = typeof retries === 'number' ? retries : 2;
+  if(left <= 0) return;
+  requestAnimationFrame(devChatJumpToEnd);
+  setTimeout(function(){ devChatScrollToEnd(left - 1); }, 120);
 }
 
 // A new answer is read downward, so it is lined up at the top of the view
