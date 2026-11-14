@@ -7976,12 +7976,13 @@ function renderDevSettings(){
         + '<span class="dev-route-state' + stateClass + '">' + escapeHtml(state) + '</span></div>'
         + '<div class="dev-route-grid">'
         + '<label>Provider<input id="dev-route-' + escapeHtml(role) + '-provider" value="' + escapeHtml(route.provider || '') + '" maxlength="40"></label>'
-        + '<label>Model<input id="dev-route-' + escapeHtml(role) + '-model" value="' + escapeHtml(route.model || '') + '" maxlength="120"></label>'
+        + '<label>Model<input id="dev-route-' + escapeHtml(role) + '-model" value="' + escapeHtml(route.model || '') + '" maxlength="120" list="dev-route-' + escapeHtml(role) + '-models" placeholder="type or list the provider names"><datalist id="dev-route-' + escapeHtml(role) + '-models"></datalist></label>'
         + '<label>Base URL (optional)<input id="dev-route-' + escapeHtml(role) + '-base" value="' + escapeHtml(route.base_url || '') + '" maxlength="300" placeholder="server default"></label>'
         + '<label>API key<input id="dev-route-' + escapeHtml(role) + '-key" type="password" autocomplete="off" placeholder="' + (route.has_key ? 'stored ····' + escapeHtml(route.key_last4 || '') : 'uses server key') + '" maxlength="300"></label>'
         + '</div>'
         + '<div class="dev-route-actions">'
         + '<button type="button" onclick="saveDevRoute(\'' + escapeHtml(role) + '\')">Save</button>'
+        + '<button type="button" onclick="listDevModels(\'' + escapeHtml(role) + '\', this)">List models</button>'
         + '<button type="button" onclick="testDevRoute(\'' + escapeHtml(role) + '\', this)">Test route</button>'
         + (isPrimary ? '' : '<button type="button" onclick="switchDevRoute(\'' + escapeHtml(role) + '\')">Use as primary</button>')
         + (route.has_key ? '<button type="button" onclick="clearDevRouteKey(\'' + escapeHtml(role) + '\')">Remove key</button>' : '')
@@ -8073,6 +8074,34 @@ function devPost(body){
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
+  });
+}
+
+// Ask the provider for its real model names. Gateways often answer a wrong
+// name with a bare 503, so guessing is the usual failure.
+function listDevModels(role, btn){
+  var provider = document.getElementById('dev-route-' + role + '-provider');
+  var base = document.getElementById('dev-route-' + role + '-base');
+  var key = document.getElementById('dev-route-' + role + '-key');
+  if(btn){ btn.disabled = true; btn.textContent = 'Listing…'; }
+  devPost({
+    action: 'model_list',
+    role: role,
+    provider: provider ? provider.value : '',
+    base_url: base ? base.value : '',
+    api_key: key ? key.value : ''
+  }).then(function(res){
+    if(!res.ok) throw new Error((res.data && res.data.message) || 'The provider did not list its models.');
+    var models = Array.isArray(res.data.models) ? res.data.models : [];
+    var list = document.getElementById('dev-route-' + role + '-models');
+    if(list) list.innerHTML = models.map(function(name){ return '<option value="' + escapeHtml(name) + '"></option>'; }).join('');
+    var modelEl = document.getElementById('dev-route-' + role + '-model');
+    if(modelEl && models.length && !modelEl.value) modelEl.placeholder = 'e.g. ' + models[0];
+    showToast(models.length + ' model name' + (models.length === 1 ? '' : 's') + ' found. Open the Model box to pick one.');
+  }).catch(function(err){
+    showToast((err && err.message) || 'The provider did not list its models.', 'error');
+  }).finally(function(){
+    if(btn){ btn.disabled = false; btn.textContent = 'List models'; }
   });
 }
 

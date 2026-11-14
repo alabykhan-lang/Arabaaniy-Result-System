@@ -1044,7 +1044,11 @@ async function riverTurn(contents, useTools, route) {
     }
     if (!response.ok || !data) {
       console.error('ops_agent_river_failed', `${modelName}: HTTP ${response.status}`);
-      return { error: `${modelName}: HTTP ${response.status}`, calls: [], text: '', parts: [] };
+      const why = data?.error?.message || data?.message || data?.error?.code || '';
+      return {
+        error: `${modelName}: HTTP ${response.status}${why ? ` ${String(why).slice(0, 200)}` : ''}`,
+        calls: [], text: '', parts: [],
+      };
     }
     const message = data?.choices?.[0]?.message || {};
     const rawCalls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
@@ -2318,6 +2322,54 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   });
 }
 
+// Model names are provider-specific and case-sensitive; a wrong one comes back
+// as a bare 503 on some gateways. The settings screen asks the provider for its
+// own list so the name can be picked instead of guessed.
+async function listProviderModels(role, typed = {}) {
+  const routes = await loadModelRoutes(true);
+  const saved = routes[role] || null;
+  const route = saved ? {
+    ...saved,
+    provider: typed.provider || saved.provider,
+    base_url: typed.base_url || saved.base_url,
+  } : null;
+  const provider = String(route?.provider || '').toLowerCase();
+  const apiKey = typed.api_key || route?.api_key || null;
+  if (!route) return { ok: false, message: 'Save the provider and key first, then list its models.' };
+  if (!apiKey) return { ok: false, message: 'Add the key for this route first, then list its models.' };
+  if (provider.includes('gemini')) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}&pageSize=200`, {
+      signal: AbortSignal.timeout(15000),
+    }).catch(() => null);
+    if (!res) return { ok: false, message: 'The provider did not answer.' };
+    const data = await res.json().catch(() => null);
+    if (!res.ok || data?.error) {
+      return { ok: false, message: String(data?.error?.message || `HTTP ${res.status}`).slice(0, 200) };
+    }
+    const models = (Array.isArray(data?.models) ? data.models : [])
+      .filter((m) => (m.supportedGenerationMethods || []).includes('generateContent'))
+      .map((m) => String(m.name || '').replace(/^models\//, ''))
+      .filter(Boolean);
+    return { ok: true, provider, models: models.slice(0, 150) };
+  }
+  const base = String(route?.base_url || RIVER_BASE_URL || '').trim().replace(/\/+$/, '');
+  if (!base) return { ok: false, message: 'Add the base URL first, then list its models.' };
+  const res = await fetch(`${base}/models`, {
+    headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+    signal: AbortSignal.timeout(15000),
+  }).catch(() => null);
+  if (!res) return { ok: false, message: 'The provider did not answer.' };
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data) {
+    const why = data?.error?.message || data?.message || `HTTP ${res.status}`;
+    return { ok: false, message: String(why).slice(0, 200) };
+  }
+  const models = (Array.isArray(data?.data) ? data.data : Array.isArray(data?.models) ? data.models : [])
+    .map((m) => (typeof m === 'string' ? m : String(m?.id || m?.name || '')))
+    .filter(Boolean);
+  return { ok: true, provider, models: models.slice(0, 150) };
+}
+
 // A small, honest check before a route may become primary. It proves a plain
 // answer and one tool call, then the caller records the result.
 async function testModelRoute(role) {
@@ -2371,6 +2423,7 @@ module.exports = {
   buildMapping,
   testModelRoute,
   testVisionRoute,
+  listProviderModels,
   loadModelRoutes,
   extractSheetPhoto,
 };

@@ -32,7 +32,7 @@ const { dispatchJob } = require('./_ops-adapters');
 const { CONTRACT_VERSION } = require('./_ops-contract');
 const { parseInstruction } = require('./_ops-instruction');
 const { renderDocuments } = require('./_ops-documents');
-const { handleAgentChat, buildJobDigest, buildMapping, testModelRoute, testVisionRoute } = require('./_ops-agent');
+const { handleAgentChat, buildJobDigest, buildMapping, testModelRoute, testVisionRoute, listProviderModels } = require('./_ops-agent');
 
 const SERVICES = new Set(['roster', 'scores', 'documents']);
 const DECISIONS = new Set(['approve', 'reject', 'hold', 'edit']);
@@ -923,6 +923,19 @@ async function modelSettingsRoute(req, res, ctx, body, action) {
       p_error: result.ok ? null : String(result.message || '').slice(0, 300),
     }).catch(() => null);
     return sendJson(res, result.ok ? 200 : 502, { ...result, role });
+  }
+
+  if (action === 'model_list') {
+    const role = clean(body.role, 20);
+    if (!['primary', 'secondary', 'vision'].includes(role)) {
+      return sendJson(res, 400, { ok: false, code: 'MODEL_ROLE_INVALID' });
+    }
+    const result = await listProviderModels(role, {
+      provider: clean(body.provider, 40),
+      base_url: clean(body.base_url, 300),
+      api_key: typeof body.api_key === 'string' ? body.api_key.slice(0, 500) : '',
+    });
+    return sendJson(res, result.ok ? 200 : 400, result);
   }
 
   if (action === 'model_vision_test') {
