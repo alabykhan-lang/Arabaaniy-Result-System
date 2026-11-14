@@ -7680,7 +7680,10 @@ function applyDevGate(gate){
     if(main) main.classList.remove('is-paused');
     return;
   }
-  var blocked = gate.allowed === false;
+  // The developer keeps the composer: their turns are not counted, so a paused
+  // school meter never blocks them.
+  var dev = isDeveloperUser();
+  var blocked = gate.allowed === false && !dev;
   banner.hidden = false;
   banner.classList.toggle('is-blocked', blocked);
   var due = '';
@@ -7690,7 +7693,8 @@ function applyDevGate(gate){
   } catch(e){}
   banner.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;flex:0 0 auto;margin-top:1px">'
     + '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.7 17a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>'
-    + '<div><b>' + (blocked ? 'Assistant paused' : 'Heads up') + '.</b> ' + escapeHtml(gate.banner || '') + escapeHtml(due) + '</div>';
+    + '<div><b>' + (blocked ? 'Assistant paused' : 'Heads up') + '.</b> ' + escapeHtml(gate.banner || '') + escapeHtml(due)
+    + (dev && gate.paused === true && gate.allowed === true ? ' School meter is paused. Your own turns are not counted.' : '') + '</div>';
   if(main) main.classList.toggle('is-paused', blocked);
 }
 

@@ -1133,7 +1133,10 @@ module.exports = async (req, res) => {
           p_school_id: ctx.actor.school_id,
           p_month: null,
         });
-        const gate = await opsRpc('ops_assistant_gate', { p_school_id: ctx.actor.school_id }).catch(() => null);
+        const gate = await opsRpc('ops_assistant_gate', {
+          p_school_id: ctx.actor.school_id,
+          p_is_developer: isDeveloper(ctx),
+        }).catch(() => null);
         return sendJson(res, 200, { ...(payload || {}), gate: gate || null });
       }
 
