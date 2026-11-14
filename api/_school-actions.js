@@ -2552,13 +2552,21 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
   if (!subjects.length) {
     return { error: `No ${options.mode === 'final' ? 'approved ' : ''}subjects have marks in ${cls.label}.`, next: options.mode === 'final' ? 'Call approve_batch for the class, then generate again.' : 'Record some marks first, then preview again.' };
   }
-  const [students, scores, remarks] = await Promise.all([
+  const [students, scores, remarks, traits] = await Promise.all([
     loadStudents(ctx, session, cls.key),
     loadScores(ctx, session, term, cls.key),
     loadRemarks(ctx, session, term, cls.key),
+    loadTraits(ctx, session, term, cls.key),
   ]);
   if (!students.length) return { error: `${cls.label} has no active pupils.`, next: 'Check the class list with get_school_snapshot.' };
   const remarkById = new Map((remarks || []).map((row) => [row.student_id, row]));
+  const traitsById = new Map();
+  for (const row of traits) {
+    if (!traitsById.has(row.student_id)) traitsById.set(row.student_id, { affective: {}, psychomotor: {} });
+    const bucket = traitsById.get(row.student_id);
+    const kind = String(row.trait_type || '').toLowerCase().startsWith('psych') ? 'psychomotor' : 'affective';
+    if (row.trait_name) bucket[kind][row.trait_name] = row.rating;
+  }
   const rowsByStudent = new Map();
   for (const row of scores) {
     if (!rowsByStudent.has(row.student_id)) rowsByStudent.set(row.student_id, []);
@@ -2603,18 +2611,24 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
       student_id: student.id,
       name: student.name,
       admno: student.admno || null,
+      gender: student.gender || null,
+      age: student.age || null,
+      photo: student.photo || null,
+      traits: traitsById.get(student.id) || null,
       marks,
       grades,
       grade_remarks: gradeRemarks,
-      total: Number(total.toFixed(2)),
+      total: counted ? Number(total.toFixed(2)) : null,
       average: average == null ? null : Number(average.toFixed(2)),
+      overall_grade: averagePercent != null ? gradeFor(config, averagePercent) : null,
       counted_subjects: counted,
-      max_total: Number((subjectMax * counted).toFixed(2)),
+      max_total: counted ? Number((subjectMax * counted).toFixed(2)) : null,
       missing_subjects: missing,
       asterisk: missing.length > 0,
       remark: teacherRemark || (averagePercent != null ? remarkFor(config, averagePercent) : null) || null,
     };
-  }).filter((pupil) => pupil.counted_subjects > 0);
+  // A named pupil still gets a card when the class has no mark for them yet.
+  }).filter((pupil) => pupil.counted_subjects > 0 || options.single);
 
   if (!pupils.length) {
     return { error: `No saved marks were found in ${cls.label} for ${term}.`, next: 'Record marks with record_scores, then generate again.' };
