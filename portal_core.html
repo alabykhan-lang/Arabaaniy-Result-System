@@ -8980,7 +8980,14 @@ function devChatPrintDoc(btn){
     TERM = term;
     SELECTED_SESSION = session;
     CONTEXT_EXPLICIT = true;
-    navTo('card');
+    // Open the page by hand: navTo renders the first pupil itself, and that
+    // late render would replace the card we build here.
+    document.querySelectorAll('.page').forEach(function(pg){ pg.classList.remove('active','print-active'); });
+    var cardPage = document.getElementById('page-card');
+    if(cardPage) cardPage.classList.add('active','print-active');
+    var tbTitle = document.getElementById('tb-title');
+    if(tbTitle) tbTitle.textContent = 'Result Cards';
+    populateCardSel();
     if(!pupil){ printAll(); return; }
     var sel = document.getElementById('rc-stu');
     var want = String(pupil).toUpperCase().replace(/\s+/g, ' ').trim();
