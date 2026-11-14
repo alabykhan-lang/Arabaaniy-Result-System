@@ -1118,6 +1118,12 @@ module.exports = async (req, res) => {
 
   try {
     if (req.method === 'GET' || req.method === 'HEAD') {
+      if (clean(req.query?.me, 5)) {
+        return sendJson(res, 200, {
+          id: ctx.actor.id, role: ctx.actor.role,
+          school_id: ctx.actor.school_id, is_developer: ctx.actor.is_developer,
+        });
+      }
       if (clean(req.query?.context, 10)) {
         const context = await opsRpc('ops_active_context', {});
         const balance = await opsRpc('ops_credit_balance', { p_school_id: ctx.actor.school_id }).catch(() => null);
