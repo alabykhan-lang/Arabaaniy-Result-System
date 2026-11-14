@@ -1952,10 +1952,10 @@ body.result-context-read-only .results-history-readable{display:flex}
 
         <!-- Composer Form -->
         <form id="dev-chat-form" class="dev-composer" onsubmit="event.preventDefault();submitDevCommandChat();">
-          <button class="dev-icon-btn" type="button" onclick="document.getElementById('dev-chat-camera').click()" title="Take a photo" aria-label="Take a photo">
+          <button class="dev-icon-btn" id="dev-chat-photo-take" type="button" onclick="document.getElementById('dev-chat-camera').click()" title="Take a photo" aria-label="Take a photo">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h3l2-2h6l2 2h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
           </button>
-          <button class="dev-icon-btn" type="button" onclick="document.getElementById('dev-chat-gallery').click()" title="Attach a photo" aria-label="Attach a photo">
+          <button class="dev-icon-btn" id="dev-chat-photo" type="button" onclick="document.getElementById('dev-chat-gallery').click()" title="Attach a photo" aria-label="Attach a photo">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
           </button>
           <div class="dev-composer-input">
@@ -7708,6 +7708,17 @@ function applyDevGate(gate){
     + '<div><b>' + (blocked ? 'Assistant paused' : 'Heads up') + '.</b> ' + escapeHtml(gate.banner || '') + escapeHtml(due)
     + (dev && gate.paused === true && gate.allowed === true ? ' School meter is paused. Your own turns are not counted.' : '') + '</div>';
   if(main) main.classList.toggle('is-paused', blocked);
+  // A paused school: the controls are shut, not only faded, so Enter and the
+  // microphone cannot slip a turn through. Old messages stay readable.
+  ['dev-chat-input','dev-chat-send-btn','dev-chat-mic','dev-chat-photo-take','dev-chat-photo'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    if(blocked) el.disabled = true;
+    else if(!(DEV_CHAT_BUSY && id === 'dev-chat-send-btn')) el.disabled = false;
+  });
+  var input = document.getElementById('dev-chat-input');
+  if(input && blocked) input.setAttribute('aria-disabled', 'true');
+  else if(input) input.removeAttribute('aria-disabled');
 }
 
 function loadDevGate(){
