@@ -7834,7 +7834,8 @@ function renderDevSettings(){
       return '<div class="dev-set-stat"><b>' + escapeHtml(String(pair[1] == null ? 0 : pair[1])) + '</b><span>' + escapeHtml(pair[0]) + '</span></div>';
     }).join('');
     html += '<div class="dev-set-stat"><b>' + escapeHtml(String(summary.status || 'active')) + '</b><span>Subscription</span></div>';
-    html += '<div class="dev-set-stat"><b>' + escapeHtml(devSettingsMoney(summary.price_naira)) + '</b><span>' + escapeHtml(String(summary.tier || 'entry')) + ' tier</span></div>';
+    // Money and tier stay behind the developer; an admin sees the work counts only.
+    if(isDeveloperUser()) html += '<div class="dev-set-stat"><b>' + escapeHtml(devSettingsMoney(summary.price_naira)) + '</b><span>' + escapeHtml(String(summary.tier || 'entry')) + ' tier</span></div>';
     if(summary.usage_band && summary.usage_band !== 'ok'){
       html += '<div class="dev-set-stat"><b>' + escapeHtml(String(summary.usage_band)) + '</b><span>This month\'s usage</span></div>';
     }
