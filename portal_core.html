@@ -3245,11 +3245,11 @@ function filterCardByClass(key){
     }
     var ck=dbClassKey(key,selectedSession);
     return Promise.all([
-      dbGet('students?class_key=eq.'+encodeURIComponent(ck)+'&order=created_at.asc'),
+      dbGet('students?class_key=eq.'+encodeURIComponent(ck)+'&order=name.asc'),
       dbGet('scores?class_key=eq.'+encodeURIComponent(ck)+'&term=eq.'+encodeURIComponent(TERM)),
       dbGet('published_subjects?class_key=eq.'+encodeURIComponent(ck)+'&term=eq.'+encodeURIComponent(TERM))
     ]).then(function(res){
-      DB_STUDENTS[key]=res[0]||[];
+      DB_STUDENTS[key]=sortStudentsByName(res[0]);
       (res[1]||[]).forEach(function(s){
         if(!DB_SCORES[s.student_id])DB_SCORES[s.student_id]={};
         DB_SCORES[s.student_id][s.subject_index]={ca1:scoreCellValue(s.ca1),ca2:scoreCellValue(s.ca2),ca3:scoreCellValue(s.ca3),exam:scoreCellValue(s.exam)};
@@ -3860,7 +3860,7 @@ function loadPromotionClassPlan(classKey,sourceSession,targetSession){
   var sourceKey=dbClassKey(classKey,sourceSession);
   var cumulative=getPromotionBasis()==='cumulative';
   return Promise.all([
-    dbGet('students?class_key=eq.'+encodeURIComponent(sourceKey)+'&order=created_at.asc'),
+    dbGet('students?class_key=eq.'+encodeURIComponent(sourceKey)+'&order=name.asc'),
     dbGet('scores?class_key=eq.'+encodeURIComponent(sourceKey)+'&term=eq.3rd%20Term'),
     dbGet('published_subjects?class_key=eq.'+encodeURIComponent(sourceKey)),
     cumulative?dbGet('scores?class_key=eq.'+encodeURIComponent(sourceKey)+'&term=eq.1st%20Term'):Promise.resolve([]),
@@ -4140,7 +4140,7 @@ function cachedRoster(key){
 function restoreRosterFromCache(key){
   var c=cachedRoster(key);
   if(!c)return false;
-  DB_STUDENTS[key]=Array.isArray(c.students)?c.students:[];
+  DB_STUDENTS[key]=sortStudentsByName(c.students);
   (DB_STUDENTS[key]||[]).forEach(function(student){
     delete DB_SCORES[student.id];delete DB_TRAITS[student.id];delete DB_FEES[student.id];delete DB_REMARKS[student.id];
   });
@@ -4207,9 +4207,9 @@ function showSaved(){
 function loadClass(key,cb,silent){
   if(!silent)showLoad('Loading '+DEPTS[key].label+'...');
   var ck=dbClassKey(key);
-  var promise=dbGet('students?class_key=eq.'+encodeURIComponent(ck)+'&order=created_at.asc')
+  var promise=dbGet('students?class_key=eq.'+encodeURIComponent(ck)+'&order=name.asc')
     .then(function(rows){
-      DB_STUDENTS[key]=Array.isArray(rows)?rows:[];
+      DB_STUDENTS[key]=sortStudentsByName(rows);
       return Promise.all([
         dbGet('scores?class_key=eq.'+encodeURIComponent(ck)+'&term=eq.'+encodeURIComponent(TERM)),
         dbGet('traits?class_key=eq.'+encodeURIComponent(ck)+'&term=eq.'+encodeURIComponent(TERM)),
@@ -4255,7 +4255,7 @@ function loadClass(key,cb,silent){
       if(restored){offlineNotice();}
       else if(!silent){showToast('Connection error - check your internet','error');}
       console.error('Class refresh failed:',error);
-      DB_STUDENTS[key]=DB_STUDENTS[key]||[];
+      DB_STUDENTS[key]=sortStudentsByName(DB_STUDENTS[key]);
       if(cb)cb();
       return restored;
     });
@@ -5044,8 +5044,16 @@ function renderDash(){
 // ============================================================
 // STUDENTS
 // ============================================================
+// Every roster, picker and print list reads the class in name order. The
+// database now returns it sorted; this keeps cached and freshly typed rows in
+// the same order until the next load.
+function sortStudentsByName(list){
+  return (Array.isArray(list)?list:[]).slice().sort(function(a,b){
+    return String((a&&a.name)||'').localeCompare(String((b&&b.name)||''), undefined, {sensitivity:'base',numeric:true});
+  });
+}
 function renderStudents(){
-  var students=DB_STUDENTS[CLS]||[];
+  var students=sortStudentsByName(DB_STUDENTS[CLS]);
   cacheRosterStudents();
   var tbody=document.getElementById('stu-tbody');
   if(!students.length){
@@ -6208,9 +6216,9 @@ function renderCardHome(){
     var keys=Object.keys(DEPTS);
     var loaded=0;
     keys.forEach(function(key){
-      dbGet('students?class_key=eq.'+encodeURIComponent(dbClassKey(key))+'&order=created_at.asc')
+      dbGet('students?class_key=eq.'+encodeURIComponent(dbClassKey(key))+'&order=name.asc')
         .then(function(rows){
-          if(rows&&rows.length)DB_STUDENTS[key]=rows;
+          if(rows&&rows.length)DB_STUDENTS[key]=sortStudentsByName(rows);
           loaded++;
           if(loaded===keys.length){hideLoad();populateCardSel();}
         }).catch(function(){loaded++;if(loaded===keys.length){hideLoad();populateCardSel();}});
@@ -6597,11 +6605,11 @@ function changeAnalyticsClass(key){
   if(!DB_STUDENTS[key]||!DB_STUDENTS[key].length){
     showLoad('Loading '+DEPTS[key].label+'...');
     Promise.all([
-      dbGet('students?class_key=eq.'+encodeURIComponent(dbClassKey(key))+'&order=created_at.asc'),
+      dbGet('students?class_key=eq.'+encodeURIComponent(dbClassKey(key))+'&order=name.asc'),
       dbGet('scores?class_key=eq.'+encodeURIComponent(dbClassKey(key))+'&term=eq.'+encodeURIComponent(TERM)),
       dbGet('published_subjects?class_key=eq.'+encodeURIComponent(dbClassKey(key))+'&term=eq.'+encodeURIComponent(TERM))
     ]).then(function(res){
-      DB_STUDENTS[key]=res[0]||[];
+      DB_STUDENTS[key]=sortStudentsByName(res[0]);
       (res[1]||[]).forEach(function(s){
         if(!DB_SCORES[s.student_id])DB_SCORES[s.student_id]={};
         DB_SCORES[s.student_id][s.subject_index]={ca1:scoreCellValue(s.ca1),ca2:scoreCellValue(s.ca2),ca3:scoreCellValue(s.ca3),exam:scoreCellValue(s.exam)};
@@ -9248,9 +9256,9 @@ function devChatPrintDoc(btn){
   }
   if((DB_STUDENTS[clsKey] || []).length){ openCard(); return; }
   showLoad('Preparing the card...');
-  dbGet('students?class_key=eq.' + encodeURIComponent(dbClassKey(clsKey, session)) + '&order=created_at.asc')
+  dbGet('students?class_key=eq.' + encodeURIComponent(dbClassKey(clsKey, session)) + '&order=name.asc')
     .then(function(rows){
-      DB_STUDENTS[clsKey] = rows || [];
+      DB_STUDENTS[clsKey] = sortStudentsByName(rows);
       if(!(DB_STUDENTS[clsKey] || []).length) throw new Error('no pupils');
       openCard();
     })
