@@ -9667,9 +9667,14 @@ function sendDevCommandChat(text, confirmAction, options){
   }
   if(DEV_CHAT_BUSY) return;
   if(!DEV_CHAT_ID){
+    // Starting the chat resets the composer, which also drops the pending
+    // photo. Hold it here so the retry still has the picture that was picked.
+    var heldPhoto = DEV_CHAT_PENDING_PHOTO;
     ensureDevChatSession().then(function(id){
-      if(id) sendDevCommandChat(text, confirmAction, options);
-      else showToast('A chat could not be started. Check the connection and try again.', 'error');
+      if(id){
+        if(heldPhoto && !DEV_CHAT_PENDING_PHOTO) restoreDevChatPhoto(heldPhoto);
+        sendDevCommandChat(text, confirmAction, options);
+      } else showToast('A chat could not be started. Check the connection and try again.', 'error');
     });
     return;
   }
