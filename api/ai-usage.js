@@ -19,12 +19,19 @@ module.exports = async function aiUsage(req, res) {
     const [wallet, usage, staff, requests] = await Promise.all([
       supabaseRest('ai_wallets?school_id=eq.' + encodeURIComponent(schoolId) + '&limit=1', {}, token).catch(() => []),
       supabaseRest('ai_usage_ledger?school_id=eq.' + encodeURIComponent(schoolId) + '&select=id,user_id,operation,status,input_tokens,output_tokens,billable_tokens,credits_charged,created_at,completed_at&order=created_at.desc&limit=100', {}, token).catch(() => []),
-      supabaseRest('staff_profiles?school_id=eq.' + encodeURIComponent(schoolId) + '&select=id,display_name,email', {}, token).catch(() => []),
+      supabaseRest('staff_profiles?school_id=eq.' + encodeURIComponent(schoolId) + '&select=id,display_name,email,role,is_developer', {}, token).catch(() => []),
       supabaseRest('ai_credit_pack_requests?school_id=eq.' + encodeURIComponent(schoolId) + '&select=id,amount_naira,credits_requested,status,created_at,reviewed_at,review_note&order=created_at.desc&limit=10', {}, token).catch(() => []),
     ]);
 
-    const rows = usage || [];
-    const names = Object.fromEntries((staff || []).map((person) => [person.id, person.display_name || person.email || 'Staff member']));
+    const people = staff || [];
+    // The developer account is not school staff, so the developer's own scans
+    // stay out of the school's usage list and counts. The wallet is untouched
+    // by developers already, so the credits line and the list now agree.
+    const developerIds = new Set(people
+      .filter((person) => person.role === 'developer' || person.is_developer === true)
+      .map((person) => person.id));
+    const rows = (usage || []).filter((row) => !developerIds.has(row.user_id));
+    const names = Object.fromEntries(people.map((person) => [person.id, person.display_name || person.email || 'Staff member']));
     const byStaff = {};
     rows.forEach((row) => {
       const key = row.user_id || 'unknown';
