@@ -6268,7 +6268,7 @@ function printAll(){
   });
 }
 
-function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
+function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet,opts){
   var students=DB_STUDENTS[CLS]||[];
   var s=students.find(function(x){return x.id===sid;});
   if(!s)return'';
@@ -6283,6 +6283,12 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
   var cardPubSet=pubSet||null;
   var n=students.length;
   var sec=getSections();
+  // A sample shows the pupil's name and every subject of the class, so the
+  // card reads like the real thing even before the school publishes anything.
+  var sample=!!(opts&&opts.sample);
+  // A printed card always names the pupil; a sample also lists every subject so
+  // the card reads like the real thing before the school publishes anything.
+  if(opts&&(opts.print||sample))sec.showBio=true;
   var school=getSchool();
   var cfg=getCfg();var sig=cfg.signature||{};
   var assessment=getAssessmentConfig();
@@ -6432,7 +6438,7 @@ function buildCard(sid,term,session,scoreMap,traitMap,feeData,remData,pubSet){
       +'</tr></thead><tbody>'
       +subjs.map(function(subj,i){
         var rb=i%2===0?WHITE:MINT;
-        if(!isPublished(CLS,i)){return'';}
+        if(!sample&&!isPublished(CLS,i)){return'';}
         var r2=sc[i]||{};var t=tots[i];var gd=getGrade(t);var ss=subjStats[i];
         return'<tr style="background:'+rb+';'+P+'">'
           +'<td style="padding:4px 6px;border:1px solid '+BORDER+';font-weight:600;color:'+NAVY+'">'+subj+'</td>'
@@ -8943,6 +8949,7 @@ function devChatDocumentsHtml(files){
         + ' data-session="' + escapeHtml(String(file.academic_session || '')) + '"'
         + ' data-template="' + escapeHtml(String(file.template || '')) + '"'
         + ' data-pupil="' + escapeHtml(String(file.pupil || '')) + '"'
+        + ' data-mode="' + escapeHtml(String(file.mode || 'sample')) + '"'
         + ' onclick="devChatPrintDoc(this)">'
         + DEV_CHAT_ICONS.print + 'Print</button>'
       : '';
@@ -9012,10 +9019,15 @@ function devChatPrintDoc(btn){
       (res[0] || []).forEach(function(row){ scoreMap[row.subject_index] = { ca1: scoreCellValue(row.ca1), ca2: scoreCellValue(row.ca2), ca3: scoreCellValue(row.ca3), exam: scoreCellValue(row.exam) }; });
       var traitMap = { affective: {}, psychomotor: {} };
       (res[1] || []).forEach(function(row){ if(row.trait_type === 'affective') traitMap.affective[row.trait_name] = row.rating; else traitMap.psychomotor[row.trait_name] = row.rating; });
+      // A sample lists every subject of the class, published or not, so a
+      // subject the school has not released yet still keeps its row and mark.
+      // A final card keeps the published set the school chose.
+      var sample = btn.getAttribute('data-mode') !== 'final';
       var pubSet = {};
-      (res[4] || []).forEach(function(row){ pubSet[row.subject_index] = true; });
+      if(sample){ subjects().forEach(function(_, i){ pubSet[i] = true; }); }
+      else { (res[4] || []).forEach(function(row){ pubSet[row.subject_index] = true; }); }
       hideLoad();
-      wrap.innerHTML = buildCard(sid, term, session, scoreMap, traitMap, (res[2] || [])[0] || {}, (res[3] || [])[0] || {}, pubSet);
+      wrap.innerHTML = buildCard(sid, term, session, scoreMap, traitMap, (res[2] || [])[0] || {}, (res[3] || [])[0] || {}, pubSet, { print: true, sample: sample });
       fitReportCardsToOnePage();
       printReportCardDocument();
     }).catch(function(){ hideLoad(); showToast('The card could not be built.', 'error'); });
