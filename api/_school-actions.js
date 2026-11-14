@@ -245,7 +245,7 @@ async function loadContextRows(ctx) {
 async function loadStudents(ctx, session, classKey = null) {
   const scope = classKey ? `&class_key=eq.${encodeURIComponent(classKey)}` : '';
   const rows = await supabaseRest(
-    `students?archived=eq.false${session ? `&academic_session=eq.${encodeURIComponent(session)}` : ''}${scope}&select=id,name,class_key,admno,gender&order=name.asc&limit=20000`,
+    `students?archived=eq.false${session ? `&academic_session=eq.${encodeURIComponent(session)}` : ''}${scope}&select=id,name,class_key,admno,gender,age,photo&order=name.asc&limit=20000`,
     {},
     ctx.token,
   );
@@ -265,7 +265,18 @@ async function loadScores(ctx, session, term, classKey = null, subjectIndex = nu
 
 async function loadRemarks(ctx, session, term, classKey) {
   const rows = await supabaseRest(
-    `remarks?academic_session=eq.${encodeURIComponent(session)}&term=eq.${encodeURIComponent(term)}&class_key=eq.${encodeURIComponent(classKey)}&select=student_id,academic,form_master,principal&limit=5000`,
+    `remarks?academic_session=eq.${encodeURIComponent(session)}&term=eq.${encodeURIComponent(term)}&class_key=eq.${encodeURIComponent(classKey)}&select=student_id,academic,form_master,principal,days_opened,days_present&limit=5000`,
+    {},
+    ctx.token,
+  ).catch(() => []);
+  return rows || [];
+}
+
+// Affective and psychomotor ratings are printed on the card exactly as the
+// school entered them, so a pupil with none just keeps blank rows.
+async function loadTraits(ctx, session, term, classKey) {
+  const rows = await supabaseRest(
+    `traits?academic_session=eq.${encodeURIComponent(session)}&term=eq.${encodeURIComponent(term)}&class_key=eq.${encodeURIComponent(classKey)}&select=student_id,trait_type,trait_name,rating&limit=5000`,
     {},
     ctx.token,
   ).catch(() => []);
@@ -2618,8 +2629,12 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
     previous = pupil.average;
   });
 
-  const classAverage = pupils.reduce((sum, pupil) => sum + pupil.average, 0) / pupils.length;
-  const totals = pupils.map((pupil) => pupil.total);
+  const withAverage = pupils.filter((pupil) => pupil.average != null);
+  const classAverage = withAverage.length
+    ? withAverage.reduce((sum, pupil) => sum + pupil.average, 0) / withAverage.length
+    : null;
+  const averageValues = withAverage.map((pupil) => pupil.average);
+  const totals = pupils.map((pupil) => pupil.total).filter((value) => value != null);
   const subjectStats = subjects.map((subject) => {
     const values = pupils.map((pupil) => pupil.marks[String(subject.index)]).filter((value) => value != null);
     return {
@@ -2639,6 +2654,9 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
     academic_session: session,
     school_name: school.name || 'FIRST CHOICE STANDARD SCHOOLS',
     school_address: school.addr || '',
+    school_phone: school.phone || '',
+    school_email: school.email || '',
+    signature_title: clean((config.signature || {}).title, 60) || 'School Proprietor',
     subject_set: subjects.map((subject) => ({ key: String(subject.index), label: subject.label })),
     pupils: pupils.sort((a, b) => String(a.admno || '').localeCompare(String(b.admno || '')) || String(a.name).localeCompare(String(b.name))),
     column_label: 'ALL SUBJECTS',
@@ -2647,9 +2665,11 @@ async function buildDocumentData(ctx, config, active, args, options = {}) {
     sample: options.mode === 'sample',
     stats: {
       class_size: pupils.length,
-      average: Number(classAverage.toFixed(2)),
+      average: classAverage == null ? null : Number(classAverage.toFixed(2)),
       highest: totals.length ? Math.max(...totals) : null,
       lowest: totals.length ? Math.min(...totals) : null,
+      highest_average: averageValues.length ? Math.max(...averageValues) : null,
+      lowest_average: averageValues.length ? Math.min(...averageValues) : null,
       subjects: subjectStats,
       order_rule: 'Ordered by admission number.',
       position_rule: 'Positions use the average of subjects with a mark. A missing mark is never filled with zero.',
@@ -2705,7 +2725,7 @@ async function generateDocuments(ctx, args, context, confirmed = false) {  const
 
   const documents = [];
   for (const template of templates) {
-    const data = await buildDocumentData(ctx, config, active, { ...args, class: cls.label, template }, { mode, approval });
+    const data = await buildDocumentData(ctx, config, active, { ...args, class: cls.label, template }, { mode, approval, single: !!onePupil });
     if (data.error) return data;
     // One learner on request: the card set becomes that pupil's single card,
     // while the class statistics behind the position line stay the whole class.

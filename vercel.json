@@ -3,7 +3,7 @@
   "functions": {
     "api/ops-jobs.js": {
       "maxDuration": 60,
-      "includeFiles": "{api/fonts/**,node_modules/sharp/**,node_modules/@img/**}"
+      "includeFiles": "{api/fonts/**,school-logo.png,proprietor-signature.png,node_modules/sharp/**,node_modules/@img/**}"
     }
   },
   "routes": [

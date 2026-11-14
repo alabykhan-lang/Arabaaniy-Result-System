@@ -10,8 +10,10 @@
 // The caller stores the finished bytes, their sha256 and the template version
 // on the job. This module never writes anything.
 
+const fs = require('node:fs');
 const path = require('node:path');
 const PDFDocument = require('pdfkit');
+const sharp = require('sharp');
 
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
@@ -115,7 +117,33 @@ function rule(doc, x1, y1, x2, y2, width = 0.6, color = RULE) {
   doc.save().lineWidth(width).strokeColor(color).moveTo(x1, y1).lineTo(x2, y2).stroke().restore();
 }
 
-function header(doc, data, title) {
+// A pupil photo and the school logo arrive as data URLs or ready buffers. A
+// bad image never stops the card; the space is simply left empty.
+function imageFrom(source) {
+  if (!source) return null;
+  if (Buffer.isBuffer(source)) return source;
+  const text = str(source);
+  const match = /^data:image\/(png|jpe?g);base64,(.+)$/i.exec(text);
+  if (!match) return null;
+  try {
+    return Buffer.from(match[2], 'base64');
+  } catch (err) {
+    return null;
+  }
+}
+
+function drawImage(doc, source, x, y, width, height) {
+  const bytes = imageFrom(source);
+  if (!bytes) return false;
+  try {
+    doc.image(bytes, x, y, { fit: [width, height], align: 'center', valign: 'center' });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+function header(doc, data, title, opts = {}) {
   const school = data.school_name || 'FIRST CHOICE STANDARD SCHOOLS';
   const style = TEMPLATE_STYLES[String(data.template || '').toLowerCase()] || TEMPLATE_STYLES.modern;
   if (data.sample) {
@@ -123,16 +151,25 @@ function header(doc, data, title) {
       bold: true, size: 7.6, color: '#8a1c1c', width: 170, align: 'right',
     });
   }
-  write(doc, school, MARGIN, MARGIN, { bold: true, size: style.schoolSize, width: CONTENT_WIDTH });
-  write(doc, data.school_address || '', MARGIN, MARGIN + 18, { size: 7.4, color: SOFT, width: CONTENT_WIDTH });
-  write(doc, title, MARGIN, MARGIN + 34, { bold: true, size: style.titleSize, width: CONTENT_WIDTH });
+  let textX = MARGIN;
+  let textWidth = CONTENT_WIDTH;
+  if (opts.logo && drawImage(doc, opts.logo, MARGIN, MARGIN - 6, 54, 54)) {
+    textX = MARGIN + 64;
+    textWidth = CONTENT_WIDTH - 64;
+  }
+  write(doc, school, textX, MARGIN, { bold: true, size: style.schoolSize, width: textWidth });
+  write(doc, data.school_address || '', textX, MARGIN + 18, { size: 7.4, color: SOFT, width: textWidth });
+  const contact = [data.school_phone ? `Phone: ${data.school_phone}` : '', data.school_email ? `Email: ${data.school_email}` : '']
+    .filter(Boolean).join('  ·  ');
+  if (contact) write(doc, contact, textX, MARGIN + 28, { size: 7, color: SOFT, width: textWidth });
+  write(doc, title, textX, MARGIN + 40, { bold: true, size: style.titleSize, width: textWidth });
   if (data.template) {
-    write(doc, `Template: ${data.template}`, PAGE_WIDTH - MARGIN - 110, MARGIN + 34, {
+    write(doc, `Template: ${data.template}`, PAGE_WIDTH - MARGIN - 110, MARGIN + 40, {
       size: 6.8, color: SOFT, width: 110, align: 'right',
     });
   }
-  rule(doc, MARGIN, MARGIN + 50, PAGE_WIDTH - MARGIN, MARGIN + 50, style.ruleWidth);
-  return MARGIN + 58;
+  rule(doc, MARGIN, MARGIN + 56, PAGE_WIDTH - MARGIN, MARGIN + 56, style.ruleWidth);
+  return MARGIN + 64;
 }
 
 const TEMPLATE_STYLES = {
@@ -302,129 +339,161 @@ function gradeOf(pupil, key) {
   return pupil.grades && pupil.grades[key] != null ? pupil.grades[key] : '—';
 }
 
+// The card follows the portal's own report card: header, bio block, class
+// summary, every subject of the class, personal development, remark and
+// signature. A subject or score the school has not entered yet stays blank;
+// nothing is invented and no missing mark is written as zero.
+const AFFECTIVE = ['Punctuality', 'Respect', 'Attentiveness', 'Reliability', 'Neatness', 'Spirit of Teamwork'];
+const PSYCHOMOTOR = ['Handwriting', 'Reading', 'Verbal Fluency/Diction', 'Musical Skills', 'Creative Arts', 'Physical Education'];
+
 function cardPage(doc, data, pupil, index, total) {
   doc.addPage();
-  watermark(doc, data);
-  let y = header(doc, data, 'REPORT CARD');
+  let y = header(doc, data, 'REPORT CARD', { logo: data.assets && data.assets.logo });
 
-  write(doc, pupil.name || '', MARGIN, y, { bold: true, size: 13, width: CONTENT_WIDTH });
-  y += 18;
-  write(doc, `Admission number ${pupil.admno || '—'}`, MARGIN, y, { size: 8.4, width: CONTENT_WIDTH });
-  y += 14;
-
-  const info = [
-    ['Class', data.class_label],
-    ['Session', data.academic_session],
-    ['Term', data.term],
-    ['Column', data.column_label],
+  // BIO — the same fields as the portal card, blank where the school has none.
+  const photoWidth = 74;
+  const hasPhoto = data.assets && drawImage(doc, pupil.photo, MARGIN + 4, y + 2, 62, 72);
+  const bioX = MARGIN + (hasPhoto ? photoWidth : 0);
+  const bioWidth = CONTENT_WIDTH - (hasPhoto ? photoWidth : 0);
+  write(doc, 'NAME OF STUDENT', bioX, y, { size: 7, color: SOFT, width: bioWidth });
+  write(doc, pupil.name || '', bioX, y + 9, { bold: true, size: 11.5, width: bioWidth });
+  const bio = [
+    ['GENDER', pupil.gender || '—'],
+    ['CLASS', data.class_label || '—'],
+    ['AGE', pupil.age || '—'],
   ];
-  const colWidth = CONTENT_WIDTH / 4;
-  info.forEach(([label, value], i) => {
-    const x = MARGIN + i * colWidth;
-    write(doc, label, x, y, { size: 6.8, color: SOFT, width: colWidth - 6 });
-    write(doc, value || '—', x, y + 9, { size: 8.6, width: colWidth - 6 });
+  let bx = bioX;
+  bio.forEach(([label, value]) => {
+    write(doc, `${label}: ${value}`, bx, y + 24, { size: 7.6, width: 96 });
+    bx += 92;
   });
-  y += 28;
-  rule(doc, MARGIN, y, PAGE_WIDTH - MARGIN, y, 0.7);
-  y += 8;
+  const rightX = PAGE_WIDTH - MARGIN - 116;
+  write(doc, 'REG. NO:', rightX, y, { bold: true, size: 7, color: SOFT, width: 116, align: 'right' });
+  write(doc, pupil.admno || '—', rightX, y + 9, { bold: true, size: 8.6, width: 116, align: 'right' });
+  write(doc, 'SESSION:', rightX, y + 20, { bold: true, size: 7, color: SOFT, width: 116, align: 'right' });
+  write(doc, data.academic_session || '—', rightX, y + 28, { bold: true, size: 8.6, width: 116, align: 'right' });
+  write(doc, `TERM: ${data.term || '—'}`, rightX, y + 40, { bold: true, size: 7.6, width: 116, align: 'right' });
+  y += hasPhoto ? 78 : 52;
+  rule(doc, MARGIN, y, PAGE_WIDTH - MARGIN, y, 0.8);
+  y += 6;
+
+  // CLASS SUMMARY — the pupil's line among the class, as the portal shows it.
+  const stats = data.stats || {};
+  const summary = [
+    ['No. of students', stats.class_size == null ? '—' : String(stats.class_size)],
+    ['Student avg', pupil.average == null ? '—' : number(pupil.average, 2)],
+    ['Class avg', stats.average == null ? '—' : number(stats.average, 2)],
+    ['Overall total', pupil.total == null ? '—' : number(pupil.total, 1)],
+    ['Lowest avg', stats.lowest_average == null ? '—' : number(stats.lowest_average, 2)],
+    ['Highest avg', stats.highest_average == null ? '—' : number(stats.highest_average, 2)],
+    ['Overall performance', pupil.overall_grade || '—'],
+    ['Subjects counted', `${pupil.counted_subjects} of ${(data.subject_set || []).length}`],
+  ];
+  const cellWidth = CONTENT_WIDTH / 4;
+  for (let row = 0; row < 2; row += 1) {
+    for (let col = 0; col < 4; col += 1) {
+      const [label, value] = summary[row * 4 + col];
+      const cx = MARGIN + col * cellWidth;
+      doc.save().rect(cx, y, cellWidth - 4, 24).lineWidth(0.5).strokeColor(RULE).stroke().restore();
+      write(doc, `${label}:`, cx + 5, y + 3, { size: 6.4, color: SOFT, width: cellWidth - 14 });
+      write(doc, value, cx + 5, y + 11, { bold: true, size: 8.4, width: cellWidth - 14 });
+    }
+    y += 27;
+  }
+  y += 4;
+
+  // SUBJECTS — always the whole class list, so the card reads like the portal's.
+  doc.save().rect(MARGIN, y, CONTENT_WIDTH, 15).fill('#eeeeee').restore();
+  write(doc, 'ACADEMIC SUBJECT RESULTS', MARGIN + 4, y + 4, { bold: true, size: 8, width: CONTENT_WIDTH });
+  y += 18;
+  const colSubject = CONTENT_WIDTH - 60 - 54 - 88;
+  const headCells = [
+    { label: 'SUBJECT', width: colSubject, align: 'left' },
+    { label: 'MARK', width: 60, align: 'right' },
+    { label: 'GRADE', width: 54, align: 'center' },
+    { label: 'REMARK', width: 88, align: 'left' },
+  ];
+  let hx = MARGIN;
+  doc.save().rect(MARGIN, y - 3, CONTENT_WIDTH, 15).fill('#f4f4f4').restore();
+  headCells.forEach((cell) => {
+    write(doc, cell.label, hx + 4, y, { bold: true, size: 6.8, width: cell.width - 8, align: cell.align });
+    hx += cell.width;
+  });
+  y += 14;
+  rule(doc, MARGIN, y, PAGE_WIDTH - MARGIN, y, 0.6);
 
   const subjects = Array.isArray(data.subject_set) ? data.subject_set : [];
-  const withMarks = subjects.filter((s) => pupil.marks && pupil.marks[s.key] != null);
-
-  const colSubject = CONTENT_WIDTH - 70 - 64 - 96;
-  const headerCells = [
-    { label: 'Subject', width: colSubject, align: 'left' },
-    { label: 'Mark', width: 70, align: 'right' },
-    { label: 'Grade', width: 64, align: 'center' },
-    { label: 'Remark', width: 96, align: 'left' },
-  ];
-  let x = MARGIN;
-  doc.save().rect(MARGIN, y - 3, CONTENT_WIDTH, 17).fill('#eeeeee').restore();
-  headerCells.forEach((cell) => {
-    write(doc, cell.label, x + 3, y + 1, { bold: true, size: 7.8, width: cell.width - 6, align: cell.align });
-    x += cell.width;
-  });
-  y += 19;
-  rule(doc, MARGIN, y - 2, PAGE_WIDTH - MARGIN, y - 2, 0.7);
-
-  for (const subject of withMarks) {
-    const mark = pupil.marks[subject.key];
-    const remark = pupil.grade_remarks && pupil.grade_remarks[subject.key]
-      ? pupil.grade_remarks[subject.key]
-      : '';
-    x = MARGIN;
-    const row = [
+  subjects.forEach((subject) => {
+    const mark = pupil.marks ? pupil.marks[subject.key] : null;
+    const has = mark != null;
+    const cells = [
       { text: subject.label, width: colSubject, align: 'left' },
-      { text: number(mark, 1), width: 70, align: 'right' },
-      { text: gradeOf(pupil, subject.key), width: 64, align: 'center' },
-      { text: remark, width: 96, align: 'left' },
+      { text: has ? number(mark, 1) : '', width: 60, align: 'right' },
+      { text: has ? gradeOf(pupil, subject.key) : '', width: 54, align: 'center' },
+      { text: has ? str(pupil.grade_remarks && pupil.grade_remarks[subject.key]) : '', width: 88, align: 'left' },
     ];
-    row.forEach((cell) => {
-      write(doc, cell.text, x + 3, y, { size: 8.2, width: cell.width - 6, align: cell.align });
-      x += cell.width;
+    let cx = MARGIN;
+    cells.forEach((cell) => {
+      write(doc, cell.text, cx + 4, y + 2, { size: 7.8, width: cell.width - 8, align: cell.align });
+      cx += cell.width;
     });
-    y += 17;
-    rule(doc, MARGIN, y - 2, PAGE_WIDTH - MARGIN, y - 2, 0.3, '#bbbbbb');
-  }
-
-  if (!withMarks.length) {
-    write(doc, 'No approved mark for this pupil.', MARGIN, y + 4, { size: 8.2, width: CONTENT_WIDTH });
-    y += 22;
-  }
-
-  if (withMarks.length) {
-    write(doc, 'Grade and remark are the school bands applied to the mark as a percentage of the subject maximum.',
-      MARGIN, y + 3, { size: 6.6, color: SOFT, width: CONTENT_WIDTH });
-    y += 14;
-  }
-
-  y += 12;
-  const totalLabel = pupil.max_total != null && Number(pupil.max_total) !== 100
-    ? `Total (of ${number(pupil.max_total, 1)})`
-    : 'Total';
-  const summary = [
-    [totalLabel, number(pupil.total, 1)],
-    ['Average', number(pupil.average, 2)],
-    ['Position', pupil.position == null ? '—' : String(pupil.position)],
-    ['Subjects counted', `${pupil.counted_subjects} of ${subjects.length}`],
-  ];
-  const boxWidth = CONTENT_WIDTH / 4;
-  summary.forEach(([label, value], i) => {
-    const bx = MARGIN + i * boxWidth;
-    doc.save().rect(bx, y, boxWidth - 8, 34).lineWidth(0.6).strokeColor(RULE).stroke().restore();
-    write(doc, label, bx + 6, y + 5, { size: 6.8, color: SOFT, width: boxWidth - 18 });
-    write(doc, value, bx + 6, y + 15, { bold: true, size: 10.5, width: boxWidth - 18 });
+    y += 13;
+    rule(doc, MARGIN, y, PAGE_WIDTH - MARGIN, y, 0.3, '#cccccc');
   });
-  y += 46;
+  y += 6;
 
-  if (pupil.asterisk) {
-    const missing = (pupil.missing_subjects || []).map((key) => {
-      const found = subjects.find((s) => s.key === key);
-      return found ? found.label : key;
-    }).join(', ');
-    doc.save().rect(MARGIN, y, CONTENT_WIDTH, 34).lineWidth(0.8).strokeColor(RULE).stroke().restore();
-    write(doc, `Ranked on ${pupil.counted_subjects} of ${subjects.length} subjects. No mark in ${missing || 'one or more subjects'}.`,
-      MARGIN + 7, y + 7, { size: 7.8, width: CONTENT_WIDTH - 14 });
-    write(doc, 'No missing mark has been filled with zero.', MARGIN + 7, y + 19, { size: 7.2, color: SOFT, width: CONTENT_WIDTH - 14 });
-    y += 44;
-  }
-
-  if (pupil.remark) {
-    doc.font('body').fontSize(8.2);
-    const remarkHeight = doc.heightOfString(pupil.remark, { width: CONTENT_WIDTH });
-    write(doc, "Teacher's remark", MARGIN, y + 4, { bold: true, size: 7.6, width: CONTENT_WIDTH });
-    write(doc, pupil.remark, MARGIN, y + 14, { size: 8.2, width: CONTENT_WIDTH, wrap: true });
-    y += 14 + Math.min(remarkHeight, 70) + 8;
-  }
-
-  write(doc, `Built from this pupil's broadsheet row. Template ${data.template_version}.`,
-    MARGIN, PAGE_HEIGHT - MARGIN - 52, { size: 6.8, color: SOFT, width: CONTENT_WIDTH });
-  write(doc, data.stats.position_rule, MARGIN, PAGE_HEIGHT - MARGIN - 42, {
-    size: 6.8, color: SOFT, width: CONTENT_WIDTH,
+  // PERSONAL DEVELOPMENT — blank ratings where nothing has been entered.
+  const traits = pupil.traits || {};
+  doc.save().rect(MARGIN, y, CONTENT_WIDTH, 15).fill('#eeeeee').restore();
+  write(doc, 'PERSONAL DEVELOPMENT ASSESSMENT', MARGIN + 4, y + 4, { bold: true, size: 7.6, width: CONTENT_WIDTH });
+  y += 18;
+  const half = CONTENT_WIDTH / 2;
+  [['AFFECTIVE TRAITS', AFFECTIVE, 'affective'], ['PSYCHOMOTOR SKILLS', PSYCHOMOTOR, 'psychomotor']].forEach(([title, list, kind], side) => {
+    const sx = MARGIN + side * half;
+    write(doc, title, sx + 4, y, { bold: true, size: 6.8, width: half - 40 });
+    write(doc, 'RTG', sx + half - 34, y, { bold: true, size: 6.8, width: 28, align: 'center' });
+    list.forEach((trait, i) => {
+      const ty = y + 11 + i * 11;
+      write(doc, trait, sx + 4, ty, { size: 7.4, width: half - 40 });
+      const value = traits[kind] && traits[kind][trait] != null ? String(traits[kind][trait]) : '';
+      write(doc, value, sx + half - 34, ty, { bold: true, size: 7.4, width: 28, align: 'center' });
+      rule(doc, sx, ty + 9, sx + half - 6, ty + 9, 0.25, '#dddddd');
+    });
   });
-  write(doc, `Card ${index + 1} of ${total}`, PAGE_WIDTH - MARGIN - 70, PAGE_HEIGHT - MARGIN - 18, {
-    size: 6.8, color: SOFT, width: 70, align: 'right',
+  y += 11 + 6 * 11 + 4;
+  rule(doc, MARGIN + half, y - 74, MARGIN + half, y - 8, 0.4);
+
+  // REMARK
+  doc.save().rect(MARGIN, y, CONTENT_WIDTH, 26).lineWidth(0.5).strokeColor(RULE).stroke().restore();
+  write(doc, 'TEACHER’S REMARK', MARGIN + 4, y + 3, { bold: true, size: 6.4, color: SOFT, width: CONTENT_WIDTH - 8 });
+  write(doc, pupil.remark || '', MARGIN + 4, y + 10, { size: 7.8, width: CONTENT_WIDTH - 8, wrap: true });
+  y += 32;
+
+  // SIGNATURE
+  const sigX = PAGE_WIDTH - MARGIN - 150;
+  const sigTop = Math.max(y + 4, PAGE_HEIGHT - MARGIN - 74);
+  if (data.assets && data.assets.signature) drawImage(doc, data.assets.signature, sigX, sigTop, 140, 44);
+  rule(doc, sigX, sigTop + 46, sigX + 140, sigTop + 46, 0.8);
+  write(doc, data.signature_title || 'School Proprietor', sigX, sigTop + 49, {
+    bold: true, size: 7, width: 140, align: 'center',
   });
+
+  write(doc, `Card ${index + 1} of ${total}`, PAGE_WIDTH - MARGIN - 70, PAGE_HEIGHT - MARGIN + 6, {
+    size: 6.6, color: SOFT, width: 70, align: 'right',
+  });
+  write(doc, data.stats && data.stats.position_rule ? data.stats.position_rule : '', MARGIN, PAGE_HEIGHT - MARGIN + 6, {
+    size: 6.6, color: SOFT, width: CONTENT_WIDTH - 80,
+  });
+}
+
+async function readAsset(name, width, height) {
+  try {
+    const raw = fs.readFileSync(path.join(__dirname, '..', name));
+    // One file is a JPEG behind a .png name, so normalise both through sharp.
+    return await sharp(raw).resize(width, height, { fit: 'inside', withoutEnlargement: true }).png().toBuffer();
+  } catch (err) {
+    return null;
+  }
 }
 
 async function renderCards(data) {
@@ -432,6 +501,13 @@ async function renderCards(data) {
     `Report cards — ${data.class_label} — ${data.term}`,
     `${data.class_label} ${data.term} ${data.academic_session}`,
   );
+
+  // The school's own logo and proprietor signature, exactly as the portal serves
+  // them. If either file is missing the card is still printed.
+  data.assets = {
+    logo: await readAsset('school-logo.png', 160, 160),
+    signature: await readAsset('proprietor-signature.png', 420, 160),
+  };
 
   const pupils = Array.isArray(data.pupils) ? data.pupils : [];
   pupils.forEach((pupil, index) => cardPage(doc, data, pupil, index, pupils.length));
