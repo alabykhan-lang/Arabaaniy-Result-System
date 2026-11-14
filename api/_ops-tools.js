@@ -2140,7 +2140,7 @@ const FUNCTION_DECLARATIONS = [
   },
   {
     name: 'generate_documents',
-    description: 'Make broadsheets or report cards from the parameters given. mode sample prints the same real card with a small corner sample mark and needs no approval; every subject is listed and anything not entered yet stays blank. mode final asks once, and may approve the whole class in the same confirmed action. Pass pupil (or pupils) to print one learner\'s report card instead of the whole class batch.',
+    description: 'Make broadsheets or report cards from the parameters given. mode sample prints the same real card with a small sample mark and needs no approval; every subject is listed and anything not entered yet stays blank. Every card document also carries a Print button that opens the portal\'s own coloured card. mode final asks once, and may approve the whole class in the same confirmed action. Pass pupil (or pupils) to print one learner\'s report card instead of the whole class batch.',
     parameters: {
       type: 'OBJECT',
       properties: {

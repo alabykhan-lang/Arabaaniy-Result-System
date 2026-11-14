@@ -2802,6 +2802,7 @@ async function generateDocuments(ctx, args, context, confirmed = false) {  const
         academic_session: session,
         template,
         mode,
+        pupil: data.single_pupil || null,
         page_count: rendered.pageCount,
         sample: mode === 'sample',
       });
@@ -2818,7 +2819,7 @@ async function generateDocuments(ctx, args, context, confirmed = false) {  const
     documents,
     approved_all: approval ? approval.approved_all === true : false,
     next: mode === 'sample'
-      ? `These are samples, clearly marked and watermarked. Show the ${documents.length} download button${documents.length === 1 ? '' : 's'}; no approval was used and the school theme did not change.`
+      ? `These are samples, clearly marked. Each has a download button and a Print button; Print opens the school's own coloured card for that pupil and sends it to the normal print sheet. No approval was used and the school theme did not change.`
       : `Final cards/broadsheets are ready. ${documents.length} document${documents.length === 1 ? '' : 's'} stored and ready to download.`,
   };
 }

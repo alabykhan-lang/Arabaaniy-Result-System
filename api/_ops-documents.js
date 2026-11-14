@@ -146,30 +146,47 @@ function drawImage(doc, source, x, y, width, height) {
 function header(doc, data, title, opts = {}) {
   const school = data.school_name || 'FIRST CHOICE STANDARD SCHOOLS';
   const style = TEMPLATE_STYLES[String(data.template || '').toLowerCase()] || TEMPLATE_STYLES.modern;
-  if (data.sample) {
-    write(doc, 'SAMPLE — NOT A SCHOOL RESULT', PAGE_WIDTH - MARGIN - 170, MARGIN - 8, {
-      bold: true, size: 7.6, color: '#8a1c1c', width: 170, align: 'right',
-    });
-  }
+  const theme = opts.theme || themeOf(data);
+  // Card headers sit in the theme's colour band; broadsheets stay plain so a
+  // full sheet of names keeps its ink light.
+  const banded = !!opts.theme;
+  if (banded) doc.save().rect(0, 0, PAGE_WIDTH, 96).fill(theme.primary).restore();
+  const ink = banded ? '#ffffff' : INK;
+  const soft = banded ? 'rgba(255,255,255,0.82)' : SOFT;
   let textX = MARGIN;
   let textWidth = CONTENT_WIDTH;
-  if (opts.logo && drawImage(doc, opts.logo, MARGIN, MARGIN - 6, 54, 54)) {
-    textX = MARGIN + 64;
-    textWidth = CONTENT_WIDTH - 64;
+  if (opts.logo && drawImage(doc, opts.logo, MARGIN, MARGIN - 6, 52, 52)) {
+    textX = MARGIN + 62;
+    textWidth = CONTENT_WIDTH - 62;
   }
-  write(doc, school, textX, MARGIN, { bold: true, size: style.schoolSize, width: textWidth });
-  write(doc, data.school_address || '', textX, MARGIN + 18, { size: 7.4, color: SOFT, width: textWidth });
+  write(doc, school, textX, MARGIN, { bold: true, size: style.schoolSize, color: banded ? theme.accent2 : INK, width: textWidth });
+  write(doc, data.school_address || '', textX, MARGIN + 18, { size: 7.2, color: soft, width: textWidth });
   const contact = [data.school_phone ? `Phone: ${data.school_phone}` : '', data.school_email ? `Email: ${data.school_email}` : '']
     .filter(Boolean).join('  ·  ');
-  if (contact) write(doc, contact, textX, MARGIN + 28, { size: 7, color: SOFT, width: textWidth });
-  write(doc, title, textX, MARGIN + 40, { bold: true, size: style.titleSize, width: textWidth });
+  if (contact) write(doc, contact, textX, MARGIN + 27, { size: 6.6, color: soft, width: textWidth });
+  if (banded) {
+    band(doc, PAGE_WIDTH - MARGIN - 128, MARGIN + 30, 128, 22, theme.accent);
+    write(doc, title, PAGE_WIDTH - MARGIN - 126, MARGIN + 36, { bold: true, size: 10.5, color: theme.primary, width: 124, align: 'center' });
+    if (data.sample) {
+      write(doc, 'SAMPLE — NOT A SCHOOL RESULT', MARGIN, MARGIN + 68, {
+        bold: true, size: 6.4, color: theme.accent2, width: CONTENT_WIDTH,
+      });
+    }
+  } else {
+    write(doc, title, textX, MARGIN + 38, { bold: true, size: style.titleSize, color: ink, width: textWidth });
+    if (data.sample) {
+      write(doc, 'SAMPLE — NOT A SCHOOL RESULT', PAGE_WIDTH - MARGIN - 170, MARGIN - 8, {
+        bold: true, size: 7.6, color: '#8a1c1c', width: 170, align: 'right',
+      });
+    }
+  }
   if (data.template) {
-    write(doc, `Template: ${data.template}`, PAGE_WIDTH - MARGIN - 110, MARGIN + 40, {
-      size: 6.8, color: SOFT, width: 110, align: 'right',
+    write(doc, `Template: ${data.template}`, PAGE_WIDTH - MARGIN - 110, banded ? MARGIN + 4 : MARGIN + 40, {
+      size: 6.2, color: banded ? soft : SOFT, width: 110, align: 'right',
     });
   }
-  rule(doc, MARGIN, MARGIN + 56, PAGE_WIDTH - MARGIN, MARGIN + 56, style.ruleWidth);
-  return MARGIN + 64;
+  if (!banded) rule(doc, MARGIN, MARGIN + 56, PAGE_WIDTH - MARGIN, MARGIN + 56, style.ruleWidth);
+  return banded ? 108 : MARGIN + 64;
 }
 
 const TEMPLATE_STYLES = {
@@ -346,17 +363,41 @@ function gradeOf(pupil, key) {
 const AFFECTIVE = ['Punctuality', 'Respect', 'Attentiveness', 'Reliability', 'Neatness', 'Spirit of Teamwork'];
 const PSYCHOMOTOR = ['Handwriting', 'Reading', 'Verbal Fluency/Diction', 'Musical Skills', 'Creative Arts', 'Physical Education'];
 
+// The three card themes the portal offers, in the same colours. The name is the
+// template name the caller passed; anything else falls back to modern.
+const THEMES = {
+  modern: { primary: '#0b2b54', accent: '#dcae2b', accent2: '#f4d477', soft: '#f5f8fc', border: '#ccd7e6', text: '#102d50' },
+  creative: { primary: '#0b6b58', accent: '#f59e0b', accent2: '#f97316', soft: '#fffaf0', border: '#e6d4a8', text: '#075744' },
+  premium: { primary: '#0b3a2e', accent: '#b18a3a', accent2: '#e2bf71', soft: '#fbf6ea', border: '#d4c39b', text: '#254437' },
+  classic: { primary: '#0b2b54', accent: '#dcae2b', accent2: '#f4d477', soft: '#f5f8fc', border: '#ccd7e6', text: '#102d50' },
+  compact: { primary: '#0b2b54', accent: '#dcae2b', accent2: '#f4d477', soft: '#f5f8fc', border: '#ccd7e6', text: '#102d50' },
+};
+
+function themeOf(data) {
+  return THEMES[String(data.template || '').toLowerCase()] || THEMES.modern;
+}
+
+function band(doc, x, y, w, h, color) {
+  doc.save().rect(x, y, w, h).fill(color).restore();
+}
+
+// The card follows the portal's own report card: themed header band, bio block,
+// class summary, every subject of the class, personal development, remark and
+// signature. A subject or score the school has not entered yet stays blank;
+// nothing is invented and no missing mark is written as zero.
 function cardPage(doc, data, pupil, index, total) {
   doc.addPage();
-  let y = header(doc, data, 'REPORT CARD', { logo: data.assets && data.assets.logo });
+  const theme = themeOf(data);
+  let y = header(doc, data, 'REPORT CARD', { logo: data.assets && data.assets.logo, theme });
 
   // BIO — the same fields as the portal card, blank where the school has none.
   const photoWidth = 74;
-  const hasPhoto = data.assets && drawImage(doc, pupil.photo, MARGIN + 4, y + 2, 62, 72);
-  const bioX = MARGIN + (hasPhoto ? photoWidth : 0);
-  const bioWidth = CONTENT_WIDTH - (hasPhoto ? photoWidth : 0);
-  write(doc, 'NAME OF STUDENT', bioX, y, { size: 7, color: SOFT, width: bioWidth });
-  write(doc, pupil.name || '', bioX, y + 9, { bold: true, size: 11.5, width: bioWidth });
+  band(doc, MARGIN, y, CONTENT_WIDTH, 78, theme.soft);
+  const hasPhoto = data.assets && drawImage(doc, pupil.photo, MARGIN + 4, y + 3, 62, 72);
+  const bioX = MARGIN + (hasPhoto ? photoWidth : 0) + 6;
+  const bioWidth = CONTENT_WIDTH - (hasPhoto ? photoWidth : 0) - 126;
+  write(doc, 'NAME OF STUDENT', bioX, y + 6, { size: 6.8, color: theme.text, width: bioWidth });
+  write(doc, pupil.name || '', bioX, y + 15, { bold: true, size: 11.5, color: theme.primary, width: bioWidth });
   const bio = [
     ['GENDER', pupil.gender || '—'],
     ['CLASS', data.class_label || '—'],
@@ -364,18 +405,19 @@ function cardPage(doc, data, pupil, index, total) {
   ];
   let bx = bioX;
   bio.forEach(([label, value]) => {
-    write(doc, `${label}: ${value}`, bx, y + 24, { size: 7.6, width: 96 });
-    bx += 92;
+    write(doc, `${label}: ${value}`, bx, y + 33, { size: 7.4, color: theme.text, width: 92 });
+    bx += 88;
   });
   const rightX = PAGE_WIDTH - MARGIN - 116;
-  write(doc, 'REG. NO:', rightX, y, { bold: true, size: 7, color: SOFT, width: 116, align: 'right' });
-  write(doc, pupil.admno || '—', rightX, y + 9, { bold: true, size: 8.6, width: 116, align: 'right' });
-  write(doc, 'SESSION:', rightX, y + 20, { bold: true, size: 7, color: SOFT, width: 116, align: 'right' });
-  write(doc, data.academic_session || '—', rightX, y + 28, { bold: true, size: 8.6, width: 116, align: 'right' });
-  write(doc, `TERM: ${data.term || '—'}`, rightX, y + 40, { bold: true, size: 7.6, width: 116, align: 'right' });
-  y += hasPhoto ? 78 : 52;
-  rule(doc, MARGIN, y, PAGE_WIDTH - MARGIN, y, 0.8);
-  y += 6;
+  write(doc, 'REG. NO:', rightX, y + 8, { bold: true, size: 6.8, color: theme.text, width: 108, align: 'right' });
+  write(doc, pupil.admno || '—', rightX, y + 16, { bold: true, size: 8.6, color: theme.primary, width: 108, align: 'right' });
+  write(doc, 'SESSION:', rightX, y + 28, { bold: true, size: 6.8, color: theme.text, width: 108, align: 'right' });
+  write(doc, data.academic_session || '—', rightX, y + 36, { bold: true, size: 8.6, color: theme.primary, width: 108, align: 'right' });
+  band(doc, rightX + 22, y + 50, 86, 15, theme.primary);
+  write(doc, `TERM: ${data.term || '—'}`, rightX + 24, y + 54, { bold: true, size: 7, color: theme.accent2, width: 82, align: 'center' });
+  y += 82;
+  doc.save().rect(MARGIN, y, CONTENT_WIDTH, 2).fill(theme.primary).restore();
+  y += 7;
 
   // CLASS SUMMARY — the pupil's line among the class, as the portal shows it.
   const stats = data.stats || {};
@@ -394,18 +436,18 @@ function cardPage(doc, data, pupil, index, total) {
     for (let col = 0; col < 4; col += 1) {
       const [label, value] = summary[row * 4 + col];
       const cx = MARGIN + col * cellWidth;
-      doc.save().rect(cx, y, cellWidth - 4, 24).lineWidth(0.5).strokeColor(RULE).stroke().restore();
-      write(doc, `${label}:`, cx + 5, y + 3, { size: 6.4, color: SOFT, width: cellWidth - 14 });
-      write(doc, value, cx + 5, y + 11, { bold: true, size: 8.4, width: cellWidth - 14 });
+      doc.save().rect(cx, y, cellWidth - 4, 24).lineWidth(0.6).strokeColor(theme.border).stroke().restore();
+      write(doc, `${label}:`, cx + 5, y + 3, { size: 6.2, color: theme.text, width: cellWidth - 14 });
+      write(doc, value, cx + 5, y + 11, { bold: true, size: 8.4, color: theme.primary, width: cellWidth - 14 });
     }
-    y += 27;
+    y += 26;
   }
-  y += 4;
+  y += 5;
 
   // SUBJECTS — always the whole class list, so the card reads like the portal's.
-  doc.save().rect(MARGIN, y, CONTENT_WIDTH, 15).fill('#eeeeee').restore();
-  write(doc, 'ACADEMIC SUBJECT RESULTS', MARGIN + 4, y + 4, { bold: true, size: 8, width: CONTENT_WIDTH });
-  y += 18;
+  band(doc, MARGIN, y, CONTENT_WIDTH, 16, theme.accent);
+  write(doc, 'ACADEMIC SUBJECT RESULTS', MARGIN + 5, y + 5, { bold: true, size: 8, color: theme.primary, width: CONTENT_WIDTH });
+  y += 19;
   const colSubject = CONTENT_WIDTH - 60 - 54 - 88;
   const headCells = [
     { label: 'SUBJECT', width: colSubject, align: 'left' },
@@ -414,75 +456,76 @@ function cardPage(doc, data, pupil, index, total) {
     { label: 'REMARK', width: 88, align: 'left' },
   ];
   let hx = MARGIN;
-  doc.save().rect(MARGIN, y - 3, CONTENT_WIDTH, 15).fill('#f4f4f4').restore();
+  band(doc, MARGIN, y - 3, CONTENT_WIDTH, 15, theme.primary);
   headCells.forEach((cell) => {
-    write(doc, cell.label, hx + 4, y, { bold: true, size: 6.8, width: cell.width - 8, align: cell.align });
+    write(doc, cell.label, hx + 4, y, { bold: true, size: 6.8, color: '#ffffff', width: cell.width - 8, align: cell.align });
     hx += cell.width;
   });
   y += 14;
-  rule(doc, MARGIN, y, PAGE_WIDTH - MARGIN, y, 0.6);
 
   const subjects = Array.isArray(data.subject_set) ? data.subject_set : [];
-  subjects.forEach((subject) => {
+  subjects.forEach((subject, i) => {
     const mark = pupil.marks ? pupil.marks[subject.key] : null;
     const has = mark != null;
+    if (i % 2 === 1) band(doc, MARGIN, y, CONTENT_WIDTH, 13, theme.soft);
     const cells = [
-      { text: subject.label, width: colSubject, align: 'left' },
-      { text: has ? number(mark, 1) : '', width: 60, align: 'right' },
-      { text: has ? gradeOf(pupil, subject.key) : '', width: 54, align: 'center' },
-      { text: has ? str(pupil.grade_remarks && pupil.grade_remarks[subject.key]) : '', width: 88, align: 'left' },
+      { text: subject.label, width: colSubject, align: 'left', bold: true, color: theme.primary },
+      { text: has ? number(mark, 1) : '', width: 60, align: 'right', bold: true, color: theme.text },
+      { text: has ? gradeOf(pupil, subject.key) : '', width: 54, align: 'center', bold: true, color: theme.text },
+      { text: has ? str(pupil.grade_remarks && pupil.grade_remarks[subject.key]) : '', width: 88, align: 'left', color: theme.text },
     ];
     let cx = MARGIN;
     cells.forEach((cell) => {
-      write(doc, cell.text, cx + 4, y + 2, { size: 7.8, width: cell.width - 8, align: cell.align });
+      write(doc, cell.text, cx + 4, y + 2, { size: 7.8, bold: cell.bold, color: cell.color, width: cell.width - 8, align: cell.align });
       cx += cell.width;
     });
     y += 13;
-    rule(doc, MARGIN, y, PAGE_WIDTH - MARGIN, y, 0.3, '#cccccc');
+    rule(doc, MARGIN, y, PAGE_WIDTH - MARGIN, y, 0.3, theme.border);
   });
-  y += 6;
+  y += 7;
 
   // PERSONAL DEVELOPMENT — blank ratings where nothing has been entered.
   const traits = pupil.traits || {};
-  doc.save().rect(MARGIN, y, CONTENT_WIDTH, 15).fill('#eeeeee').restore();
-  write(doc, 'PERSONAL DEVELOPMENT ASSESSMENT', MARGIN + 4, y + 4, { bold: true, size: 7.6, width: CONTENT_WIDTH });
+  band(doc, MARGIN, y, CONTENT_WIDTH, 15, theme.accent);
+  write(doc, 'PERSONAL DEVELOPMENT ASSESSMENT', MARGIN + 5, y + 4, { bold: true, size: 7.4, color: theme.primary, width: CONTENT_WIDTH });
   y += 18;
   const half = CONTENT_WIDTH / 2;
   [['AFFECTIVE TRAITS', AFFECTIVE, 'affective'], ['PSYCHOMOTOR SKILLS', PSYCHOMOTOR, 'psychomotor']].forEach(([title, list, kind], side) => {
     const sx = MARGIN + side * half;
-    write(doc, title, sx + 4, y, { bold: true, size: 6.8, width: half - 40 });
-    write(doc, 'RTG', sx + half - 34, y, { bold: true, size: 6.8, width: 28, align: 'center' });
+    write(doc, title, sx + 4, y, { bold: true, size: 6.6, color: theme.primary, width: half - 40 });
+    write(doc, 'RTG', sx + half - 34, y, { bold: true, size: 6.6, color: theme.primary, width: 28, align: 'center' });
     list.forEach((trait, i) => {
-      const ty = y + 11 + i * 11;
-      write(doc, trait, sx + 4, ty, { size: 7.4, width: half - 40 });
+      const ty = y + 11 + i * 10.5;
+      if (i % 2 === 1) band(doc, sx, ty - 1, half - 6, 10.5, theme.soft);
+      write(doc, trait, sx + 4, ty, { size: 7.2, color: theme.text, width: half - 40 });
       const value = traits[kind] && traits[kind][trait] != null ? String(traits[kind][trait]) : '';
-      write(doc, value, sx + half - 34, ty, { bold: true, size: 7.4, width: 28, align: 'center' });
-      rule(doc, sx, ty + 9, sx + half - 6, ty + 9, 0.25, '#dddddd');
+      write(doc, value, sx + half - 34, ty, { bold: true, size: 7.2, color: theme.primary, width: 28, align: 'center' });
     });
   });
-  y += 11 + 6 * 11 + 4;
-  rule(doc, MARGIN + half, y - 74, MARGIN + half, y - 8, 0.4);
+  y += 11 + 6 * 10.5 + 4;
+  rule(doc, MARGIN + half, y - 70, MARGIN + half, y - 6, 0.5, theme.border);
 
   // REMARK
-  doc.save().rect(MARGIN, y, CONTENT_WIDTH, 26).lineWidth(0.5).strokeColor(RULE).stroke().restore();
-  write(doc, 'TEACHER’S REMARK', MARGIN + 4, y + 3, { bold: true, size: 6.4, color: SOFT, width: CONTENT_WIDTH - 8 });
-  write(doc, pupil.remark || '', MARGIN + 4, y + 10, { size: 7.8, width: CONTENT_WIDTH - 8, wrap: true });
-  y += 32;
+  doc.save().rect(MARGIN, y, CONTENT_WIDTH, 28).lineWidth(0.6).strokeColor(theme.border).fillAndStroke(theme.soft, theme.border).restore();
+  write(doc, 'TEACHER’S REMARK', MARGIN + 5, y + 4, { bold: true, size: 6.2, color: theme.text, width: CONTENT_WIDTH - 10 });
+  write(doc, pupil.remark || '', MARGIN + 5, y + 11, { size: 7.8, color: theme.primary, width: CONTENT_WIDTH - 10, wrap: true });
+  y += 34;
 
   // SIGNATURE
   const sigX = PAGE_WIDTH - MARGIN - 150;
-  const sigTop = Math.max(y + 4, PAGE_HEIGHT - MARGIN - 74);
+  const sigTop = Math.max(y + 2, PAGE_HEIGHT - MARGIN - 76);
   if (data.assets && data.assets.signature) drawImage(doc, data.assets.signature, sigX, sigTop, 140, 44);
-  rule(doc, sigX, sigTop + 46, sigX + 140, sigTop + 46, 0.8);
-  write(doc, data.signature_title || 'School Proprietor', sigX, sigTop + 49, {
-    bold: true, size: 7, width: 140, align: 'center',
+  doc.save().rect(sigX, sigTop + 46, 140, 1.4).fill(theme.primary).restore();
+  write(doc, data.signature_title || 'School Proprietor', sigX, sigTop + 50, {
+    bold: true, size: 6.8, color: theme.primary, width: 140, align: 'center',
   });
 
-  write(doc, `Card ${index + 1} of ${total}`, PAGE_WIDTH - MARGIN - 70, PAGE_HEIGHT - MARGIN + 6, {
-    size: 6.6, color: SOFT, width: 70, align: 'right',
+  band(doc, MARGIN, PAGE_HEIGHT - MARGIN - 14, CONTENT_WIDTH, 1, theme.border);
+  write(doc, `Card ${index + 1} of ${total}`, PAGE_WIDTH - MARGIN - 70, PAGE_HEIGHT - MARGIN - 9, {
+    size: 6.4, color: SOFT, width: 70, align: 'right',
   });
-  write(doc, data.stats && data.stats.position_rule ? data.stats.position_rule : '', MARGIN, PAGE_HEIGHT - MARGIN + 6, {
-    size: 6.6, color: SOFT, width: CONTENT_WIDTH - 80,
+  write(doc, data.stats && data.stats.position_rule ? data.stats.position_rule : '', MARGIN, PAGE_HEIGHT - MARGIN - 9, {
+    size: 6.4, color: SOFT, width: CONTENT_WIDTH - 80,
   });
 }
 

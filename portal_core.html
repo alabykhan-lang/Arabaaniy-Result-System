@@ -1362,6 +1362,10 @@ body.developer-account .developer-command-center-only#dev-home-card{display:flex
 .dev-doc{display:inline-flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid var(--ws-line-strong);border-radius:10px;background:rgba(19,37,74,0.045);color:#243349;font:600 .69rem/1 'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:background .15s,border-color .15s;text-decoration:none}
 .dev-doc:hover{background:rgba(14,111,70,0.103);border-color:rgba(14,111,70,0.368)}
 .dev-doc svg{width:13px;height:13px;color:var(--ws-mint)}
+.dev-doc-wrap{display:inline-flex;align-items:stretch;gap:6px}
+.dev-doc-print{display:inline-flex;align-items:center;gap:5px;padding:8px 10px;border:1px solid rgba(14,111,70,.34);border-radius:10px;background:#ecf7f0;color:#0e6f46;font:700 .66rem/1 'Plus Jakarta Sans',sans-serif;cursor:pointer}
+.dev-doc-print:hover{background:#dff1e6}
+.dev-doc-print svg{width:12px;height:12px}
 .dev-doc small{display:block;font-weight:500;font-size:.6rem;color:#7b8698;margin-top:3px;letter-spacing:.02em}
 .dev-doc-list{display:flex;flex-direction:column;gap:8px}
 .dev-doc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fbfffc}
@@ -8540,7 +8544,8 @@ var DEV_CHAT_ICONS = {
   down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 14V4H4v10zM7 14l4 7c1.4 0 2.3-1 2.3-2.4V15h5.2c1.2 0 1.9-1 1.7-2.1l-1.2-6.2A2.4 2.4 0 0016.6 4H7"/></svg>',
   bolt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>',
   alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v5M12 17h.01"/><path d="M10.3 3.9L2.7 17a2 2 0 001.7 3h15.2a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>',
-  doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>'
+  doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>',
+  print:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 9V3h10v6"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 17h10v4H7z"/></svg>'
 };
 
 function devChatGreeting(){
@@ -8928,12 +8933,68 @@ function devChatDocumentsHtml(files){
   list.forEach(function(file){
     var url = file.url || ('/api/ops-jobs?document=' + encodeURIComponent(file.id));
     var filename = file.filename || 'document.pdf';
-    html += '<a class="dev-doc" href="' + escapeHtml(url) + '" download="' + escapeHtml(filename) + '" target="_blank" rel="noopener"'
+    var isCard = file.type === 'cards' || file.kind === 'cards';
+    // The stored PDF is a plain copy. The button beside it opens the portal's own
+    // coloured card for the same pupil and prints it through the normal route.
+    var printBtn = isCard
+      ? '<button type="button" class="dev-doc-print" title="Open the real coloured card and print it"'
+        + ' data-class-key="' + escapeHtml(String(file.class_key || '')) + '"'
+        + ' data-term="' + escapeHtml(String(file.term || '')) + '"'
+        + ' data-session="' + escapeHtml(String(file.academic_session || '')) + '"'
+        + ' data-template="' + escapeHtml(String(file.template || '')) + '"'
+        + ' data-pupil="' + escapeHtml(String(file.pupil || '')) + '"'
+        + ' onclick="devChatPrintDoc(this)">'
+        + DEV_CHAT_ICONS.print + 'Print</button>'
+      : '';
+    html += '<span class="dev-doc-wrap">'
+      + '<a class="dev-doc" href="' + escapeHtml(url) + '" download="' + escapeHtml(filename) + '" target="_blank" rel="noopener"'
       + ' data-url="' + escapeHtml(url) + '" data-filename="' + escapeHtml(filename) + '" title="' + escapeHtml(filename) + '">'
       + DEV_CHAT_ICONS.doc + '<span>' + escapeHtml(devDocLabel(file))
-      + '<small>' + escapeHtml((file.page_count ? file.page_count + ' pages · ' : '') + (file.class || file.class_key || '')) + '</small></span></a>';
+      + '<small>' + escapeHtml((file.page_count ? file.page_count + ' pages · ' : '') + (file.class || file.class_key || '')) + '</small></span></a>'
+      + printBtn + '</span>';
   });
   return html + '</div>';
+}
+
+// The stored PDF is a plain copy. This opens the portal's own coloured card for
+// that pupil, with the chosen theme, and sends it to the normal print route, so
+// a printed sample is the same card the school prints itself.
+function devChatPrintDoc(btn){
+  if(!btn) return;
+  var clsKey = btn.getAttribute('data-class-key');
+  var term = btn.getAttribute('data-term') || TERM;
+  var session = btn.getAttribute('data-session') || getActiveSession();
+  var template = btn.getAttribute('data-template');
+  var pupil = btn.getAttribute('data-pupil');
+  if(!clsKey || !DEPTS[clsKey]){showToast('That class is not in this session any more.', 'error'); return;}
+  var theme = CARD_THEMES.filter(function(t){ return t.id === template; })[0];
+  if(theme){
+    var cfg = getCfg();
+    if(cfg.cardTheme !== theme.id){ cfg.cardTheme = theme.id; saveCfg(cfg); }
+  }
+  toggleDevChatRail(false);
+  applyClassContext(clsKey, session, term, false).then(function(){
+    if(activePageId() !== 'card') navTo('card');
+    if(!pupil){ printAll(); return null; }
+    var sel = document.getElementById('rc-stu');
+    var want = String(pupil).toUpperCase().replace(/\s+/g, ' ').trim();
+    var hit = null;
+    Array.prototype.forEach.call(sel ? sel.options : [], function(opt){
+      if(hit) return;
+      if(String(opt.textContent).toUpperCase().replace(/\s+/g, ' ').trim() === want) hit = opt;
+    });
+    if(!hit){
+      showToast('That pupil is no longer on this class list.', 'error');
+      return null;
+    }
+    sel.value = hit.value;
+    return renderCard().then(function(){
+      fitReportCardsToOnePage();
+      printReportCardDocument();
+    });
+  }).catch(function(err){
+    showToast((err && err.message) || 'The card could not be opened.', 'error');
+  });
 }
 
 // A click downloads in place, so the portal is never left and the session is
