@@ -2355,7 +2355,7 @@ body.result-context-read-only .results-history-readable{display:flex}
         <div class="tbl-head"><h3>Automated General Remarks</h3></div>
         <div style="padding:16px" id="remarks-cfg" class="remarks-cfg"></div>
       </div>
-      <div class="tbl-wrap" data-settings-group="cards" style="margin-bottom:0;grid-column:1/-1;display:none">
+      <div class="tbl-wrap" id="trait-settings-card" data-settings-group="cards" style="margin-bottom:0;grid-column:1/-1;display:none">
         <div class="tbl-head"><h3>Affective Traits &amp; Psychomotor Skills</h3></div>
         <div style="padding:16px">
           <p style="font-size:.78rem;color:var(--gray);margin:0 0 12px">These are the rows every card and every pupil profile uses. Rename them, add or remove them, and move them up or down; the order here is the order they print in.</p>
@@ -6845,7 +6845,7 @@ function renderSettingsDashboard(targetTab){
   cards.forEach(function(card){
     var h=(card.querySelector('h3')||{}).textContent||'';
     // preserved settings cards
-    var g=card.id==='ai-wallet-management-card'||/AI Score|Admin Command/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment|Senior Secondary/.test(h)?'academic':/Management access|Staff access|Registration invite/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';
+    var g=card.id==='ai-wallet-management-card'||/AI Score|Admin Command/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment|Senior Secondary/.test(h)?'academic':/Management access|Staff access|Registration invite/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale|Affective|Psychomotor/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';
     card.setAttribute('data-settings-group',g);
   });
   showSettingsTab(currentActive);
