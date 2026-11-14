@@ -1127,9 +1127,9 @@ html, body {
 #page-settings .fg-row{display:block!important}
 #page-settings .fg input.inp,#page-settings .fg select.sel{width:100%!important}
 #ni-main-dashboard,#bn-main-dashboard,#developer-command-center-card,.developer-command-center-only,.admin-command-center-only,#ai-command-center-card{display:none!important}
-body.developer-account #ni-main-dashboard{display:flex!important}
-body.developer-account #bn-main-dashboard{display:flex!important}
-body.developer-account #developer-command-center-card.active-card{display:grid!important}
+body.developer-account #ni-main-dashboard,body.assistant-account #ni-main-dashboard{display:flex!important}
+body.developer-account #bn-main-dashboard,body.assistant-account #bn-main-dashboard{display:flex!important}
+body.developer-account #developer-command-center-card.active-card,body.assistant-account #developer-command-center-card.active-card{display:grid!important}
 body.developer-account .developer-command-center-only#dev-home-card{display:flex!important}
 /* ── Developer Command Center: the portal’s light, calm chat ── */
 #developer-command-center-card.dev-workspace{
@@ -1264,6 +1264,7 @@ body.developer-account .developer-command-center-only#dev-home-card{display:flex
 .dev-set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:9px}
 .dev-set-wide{display:flex;flex-direction:column;gap:3px;font-size:.6rem;font-weight:600;color:#5a6577;margin-bottom:9px}
 .dev-set-actions{display:flex;justify-content:flex-end}
+body:not(.developer-account) .dev-dev-only{display:none!important}
 .dev-ws-main.is-paused .dev-composer-wrap{opacity:.5;pointer-events:none}
 
 @media(max-width:900px){
@@ -1467,7 +1468,8 @@ body.developer-account .developer-command-center-only#dev-home-card{display:flex
   /* On a phone the conversation is the screen, not a card on a dashboard. */
   /* The chat owns the screen above the portal's bottom bar, and clears the
      phone's status bar and home indicator. */
-  body.developer-account #developer-command-center-card.dev-workspace.active-card{
+  body.developer-account #developer-command-center-card.dev-workspace.active-card,
+  body.assistant-account #developer-command-center-card.dev-workspace.active-card{
     position:fixed;top:0;left:0;right:0;
     bottom:calc(65px + env(safe-area-inset-bottom,0px));
     z-index:400;margin:0;border:0;border-radius:0;
@@ -2458,13 +2460,13 @@ body.result-context-read-only .results-history-readable{display:flex}
         <p class="dev-set-help">The school sees these work counts. Tokens and cost stay in the developer log only.</p>
       </div>
 
-      <div class="dev-set-block">
+      <div class="dev-set-block dev-dev-only">
         <div class="dev-set-title">Model routes</div>
         <p class="dev-set-help">Primary serves the assistant. Secondary takes over when primary errors, times out or the month is over its included usage. Vision reads photos and passes structured lines to the main model.</p>
         <div id="dev-set-routes"></div>
       </div>
 
-      <div class="dev-set-block">
+      <div class="dev-set-block dev-dev-only">
         <div class="dev-set-title">Subscription</div>
         <p class="dev-set-help">Suspending stops chat, voice and in-portal help only. Recording, publishing, search and export stay on.</p>
         <div class="dev-set-grid">
@@ -2508,7 +2510,7 @@ body.result-context-read-only .results-history-readable{display:flex}
         <label class="dev-set-wide">Note
           <input id="dev-sub-note" type="text" maxlength="300" placeholder="Shown to the developer only">
         </label>
-        <div class="dev-set-actions">
+        <div class="dev-set-actions dev-dev-only">
           <button class="btn btn-primary" type="button" onclick="saveDevSubscription()">Save subscription</button>
           <button class="btn btn-outline" type="button" onclick="setDevUsagePercent()">Set usage</button>
           <button class="btn btn-outline" type="button" onclick="resetDevUsage()">Reset to 100%</button>
@@ -3029,11 +3031,12 @@ function applyDeveloperAccountClass(){
   var user=CURRENT_USER;
   var dev=!!user&&(String(user.email||'').toLowerCase()==='alabykhan@gmail.com'||user._role==='developer');
   document.body.classList.toggle('developer-account',dev);
+  document.body.classList.toggle('assistant-account',canUseAssistant(user));
   var card=document.getElementById('dev-home-card');
   if(card)card.style.display=dev?'flex':'none';
   // Load the chat list and reopen the last chat once the developer signs in.
   // Without this the history drawer stayed empty until a chat was started.
-  if(dev) devChatBoot();
+  if(dev||canUseAssistant(user)) devChatBoot();
 }
 
 function loginSuccess(user,mode){
@@ -4391,9 +4394,18 @@ function isDeveloperUser(user){
   return r==='developer'||e==='alabykhan@gmail.com';
 }
 
+// The assistant is open to the developer and to school admins. Developer
+// settings, models and the reset controls stay developer-only.
+function canUseAssistant(user){
+  var u=user||CURRENT_USER;
+  if(!u)return false;
+  if(isDeveloperUser(u))return true;
+  return String(u._role||u.role||'').toLowerCase()==='admin';
+}
+
 function openMainDashboard(el){
-  if(!isDeveloperUser()){
-    showToast('Command Center is strictly restricted to the developer account.','error');
+  if(!canUseAssistant()){
+    showToast('The assistant is open to the developer and school admins.','error');
     return;
   }
   document.querySelectorAll('.bn-item').forEach(function(b){b.classList.remove('active');});
@@ -4956,7 +4968,7 @@ function renderDash(){
   // aside, so nothing reads a class that is not open.
   var mainDashboard=!CLS||!DEPTS[CLS];
   var commandCenter=document.getElementById('developer-command-center-card');
-  if(commandCenter&&isDeveloperUser())commandCenter.classList.toggle('active-card',mainDashboard);
+  if(commandCenter&&canUseAssistant())commandCenter.classList.toggle('active-card',mainDashboard);
   var classSummary=document.getElementById('dashboard-class-summary');
   var classStudents=document.getElementById('dashboard-class-students');
   if(classSummary)classSummary.style.display=mainDashboard?'none':'';
@@ -9950,8 +9962,8 @@ function devChatMapWire(root, map){
 }
 
 function sendDevCommandChat(text, confirmAction, options){
-  if(!isDeveloperUser()){
-    showToast('Command Center is strictly restricted to the developer account.', 'error');
+  if(!canUseAssistant()){
+    showToast('The assistant is open to the developer and school admins.', 'error');
     return;
   }
   if(DEV_CHAT_BUSY) return;

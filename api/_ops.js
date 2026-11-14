@@ -61,10 +61,13 @@ async function opsRpc(name, body) {
   return payload;
 }
 
+// The assistant is used by the developer and by school admins. Settings stay
+// developer-only, and each settings route checks the role again.
+const ASSISTANT_ROLES = new Set([DEVELOPER_ROLE, 'admin']);
+
 // Resolve the caller from their access token (Authorization header or the
-// existing portal session cookie), then require staff_profiles.role = developer.
-// Anonymous -> 401. Signed in but not a developer -> 403. Suspended -> 403.
-async function resolveDeveloper(req, res) {
+// existing portal session cookie). Anonymous -> 401. Suspended -> 403.
+async function resolveSession(req, res) {
   let token = bearerTokenFromRequest(req);
   if (!token) {
     return { ok: false, status: 401, code: 'OPS_SESSION_REQUIRED', message: 'Sign in with a developer account.' };
@@ -113,24 +116,52 @@ async function resolveDeveloper(req, res) {
   if (profile.suspended) {
     return { ok: false, status: 403, code: 'OPS_ACCOUNT_SUSPENDED', message: 'This account is suspended.' };
   }
-  if (profile.role !== DEVELOPER_ROLE) {
-    return { ok: false, status: 403, code: 'OPS_DEVELOPER_ONLY', message: 'This area is limited to the portal developer.' };
-  }
+  return { ok: true, token, profile, user };
+}
 
+function actorOf(session) {
+  const profile = session.profile;
   return {
     ok: true,
-    token,
+    token: session.token,
     actor: {
       id: profile.id,
-      email: profile.email || user.email || '',
+      email: profile.email || session.user.email || '',
       role: profile.role,
       school_id: profile.school_id || null,
     },
   };
 }
 
+async function resolveDeveloper(req, res) {
+  const session = await resolveSession(req, res);
+  if (!session.ok) return session;
+  if (session.profile.role !== DEVELOPER_ROLE) {
+    return { ok: false, status: 403, code: 'OPS_DEVELOPER_ONLY', message: 'This area is limited to the portal developer.' };
+  }
+  return actorOf(session);
+}
+
+async function resolveAssistant(req, res) {
+  const session = await resolveSession(req, res);
+  if (!session.ok) return session;
+  if (!ASSISTANT_ROLES.has(session.profile.role)) {
+    return { ok: false, status: 403, code: 'OPS_DEVELOPER_ONLY', message: 'The assistant is open to the developer and school admins.' };
+  }
+  return actorOf(session);
+}
+
 async function requireDeveloper(req, res) {
   const result = await resolveDeveloper(req, res);
+  if (!result.ok) {
+    deny(res, result.status, result.code, result.message);
+    return null;
+  }
+  return { token: result.token, actor: result.actor };
+}
+
+async function requireAssistant(req, res) {
+  const result = await resolveAssistant(req, res);
   if (!result.ok) {
     deny(res, result.status, result.code, result.message);
     return null;
@@ -143,6 +174,9 @@ module.exports = {
   deny,
   opsConfigured,
   opsRpc,
+  requireAssistant,
   requireDeveloper,
+  resolveAssistant,
   resolveDeveloper,
+  resolveSession,
 };

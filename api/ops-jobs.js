@@ -27,7 +27,7 @@
 const crypto = require('node:crypto');
 const sharp = require('sharp');
 const { readJsonBody, sendJson } = require('./_lib');
-const { deny, opsConfigured, opsRpc, requireDeveloper } = require('./_ops');
+const { deny, opsConfigured, opsRpc, requireAssistant } = require('./_ops');
 const { dispatchJob } = require('./_ops-adapters');
 const { CONTRACT_VERSION } = require('./_ops-contract');
 const { parseInstruction } = require('./_ops-instruction');
@@ -1079,7 +1079,7 @@ module.exports = async (req, res) => {
     return deny(res, 503, 'OPS_NOT_CONFIGURED', 'The pilot schema is not reachable from this deployment.');
   }
 
-  const ctx = await requireDeveloper(req, res);
+  const ctx = await requireAssistant(req, res);
   if (!ctx) return;
 
   try {
