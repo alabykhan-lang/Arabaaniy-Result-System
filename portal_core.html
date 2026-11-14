@@ -8973,6 +8973,8 @@ function devChatPrintDoc(btn){
     if(cfg.cardTheme !== theme.id){ cfg.cardTheme = theme.id; saveCfg(cfg); }
   }
   toggleDevChatRail(false);
+  // The card is built straight from the pupil's own rows instead of going
+  // through renderCard, so a late render from opening the page cannot replace it.
   function openCard(){
     CLS = clsKey;
     TERM = term;
@@ -8987,25 +8989,30 @@ function devChatPrintDoc(btn){
       if(hit) return;
       if(String(opt.textContent).toUpperCase().replace(/\s+/g, ' ').trim() === want) hit = opt;
     });
-    if(!hit){ hideLoad(); showToast('That pupil is no longer on this class list.', 'error'); return; }
-    sel.value = hit.value;
-    renderCard().then(function(){
+    var sid = hit ? hit.value : '';
+    if(!sid){ hideLoad(); showToast('That pupil is no longer on this class list.', 'error'); return; }
+    if(sel) sel.value = sid;
+    var wrap = document.getElementById('rc-wrap');
+    showLoad('Building card...');
+    Promise.all([
+      dbGet('scores?student_id=eq.' + sid + '&term=eq.' + encodeURIComponent(term)),
+      dbGet('traits?student_id=eq.' + sid + '&term=eq.' + encodeURIComponent(term)),
+      dbGet('fees?student_id=eq.' + sid + '&term=eq.' + encodeURIComponent(term)),
+      dbGet('remarks?student_id=eq.' + sid + '&term=eq.' + encodeURIComponent(term)),
+      dbGet('published_subjects?class_key=eq.' + encodeURIComponent(dbClassKey(clsKey, session)) + '&term=eq.' + encodeURIComponent(term))
+    ]).then(function(res){
+      var scoreMap = {};
+      (res[0] || []).forEach(function(row){ scoreMap[row.subject_index] = { ca1: scoreCellValue(row.ca1), ca2: scoreCellValue(row.ca2), ca3: scoreCellValue(row.ca3), exam: scoreCellValue(row.exam) }; });
+      var traitMap = { affective: {}, psychomotor: {} };
+      (res[1] || []).forEach(function(row){ if(row.trait_type === 'affective') traitMap.affective[row.trait_name] = row.rating; else traitMap.psychomotor[row.trait_name] = row.rating; });
+      var pubSet = {};
+      (res[4] || []).forEach(function(row){ pubSet[row.subject_index] = true; });
       hideLoad();
+      wrap.innerHTML = buildCard(sid, term, session, scoreMap, traitMap, (res[2] || [])[0] || {}, (res[3] || [])[0] || {}, pubSet);
       fitReportCardsToOnePage();
       printReportCardDocument();
-    }).catch(function(){ hideLoad(); showToast('The card could not be opened.', 'error'); });
+    }).catch(function(){ hideLoad(); showToast('The card could not be built.', 'error'); });
   }
-  if((DB_STUDENTS[clsKey] || []).length){ openCard(); return; }
-  showLoad('Preparing the card...');
-  dbGet('students?class_key=eq.' + encodeURIComponent(dbClassKey(clsKey, session)) + '&order=created_at.asc')
-    .then(function(rows){
-      DB_STUDENTS[clsKey] = rows || [];
-      if(!(DB_STUDENTS[clsKey] || []).length) throw new Error('no pupils');
-      openCard();
-    })
-    .catch(function(){ hideLoad(); showToast('The class list could not be loaded.', 'error'); });
-}
-
 // A click downloads in place, so the portal is never left and the session is
 // never lost. The link stays usable for middle-click and open-in-new-tab.
 document.addEventListener('click', function(e){
