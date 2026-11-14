@@ -1560,15 +1560,21 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
     });
   }
 
-  // Section 17: a suspended subscription stops the assistant only. Nothing in
-  // the record, print or export path calls this gate.
+  // Section 17: a suspended or used-up subscription stops the assistant only.
+  // Nothing in the record, print or export path calls this gate. The developer
+  // account is never blocked and its turns are not counted.
+  const actorIsDeveloper = ctx.actor?.role === 'developer' || ctx.actor?.is_developer === true;
   const gate = ctx.actor?.school_id
-    ? await opsRpc('ops_assistant_gate', { p_school_id: ctx.actor.school_id }).catch(() => null)
+    ? await opsRpc('ops_assistant_gate', {
+      p_school_id: ctx.actor.school_id,
+      p_is_developer: actorIsDeveloper,
+    }).catch(() => null)
     : null;
   if (gate && gate.ok && gate.allowed === false) {
-    return sendJson(res, 403, {
+    const exhausted = gate.paused === true;
+    return sendJson(res, exhausted ? 402 : 403, {
       ok: false,
-      code: 'ASSISTANT_SUSPENDED',
+      code: exhausted ? 'ASSISTANT_USAGE_EXHAUSTED' : 'ASSISTANT_SUSPENDED',
       message: gate.banner || 'The assistant is paused while the subscription is restored. Recording, search and export still work.',
       gate,
     });
@@ -2239,9 +2245,31 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
     }
   }
 
+  // Units: one for a plain answer, two when tools ran, three for a record
+  // batch, three per card, twelve for a photo page. A developer turn is written
+  // too, marked excluded, so the audit stays complete without moving the bar.
+  let units = executed.length ? 2 : 1;
+  if (photoBase64) units += 12;
+  if (executed.some((item) => !item.result?.error
+    && ['apply_sheet_answers', 'commit_sheet_review', 'apply_sheet_review'].includes(item.tool))) units += 3;
+  const cardPages = documentFiles
+    .filter((file) => file.type === 'cards' || file.kind === 'cards')
+    .reduce((sum, file) => sum + Math.max(1, Number(file.page_count) || 1), 0);
+  if (cardPages) units += cardPages * 3;
+  const usage = ctx.actor?.school_id
+    ? await opsRpc('ops_usage_charge', {
+      p_school_id: ctx.actor.school_id,
+      p_actor_id: ctx.actor.id || null,
+      p_kind: photoBase64 ? 'photo_page' : (cardPages ? 'report_card' : 'answer'),
+      p_units: units,
+      p_developer_excluded: actorIsDeveloper,
+    }).catch(() => null)
+    : null;
+
   return sendJson(res, 200, {
     ok: true,
     reply: String(finalText || '').trim(),
+    usage: usage || null,
     intent,
     chat_id: chatDetail?.ok ? chatId : null,
     chat_title: chatTitleOut,

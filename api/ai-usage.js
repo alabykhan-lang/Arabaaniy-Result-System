@@ -1,5 +1,6 @@
 'use strict';
 const { bearerTokenFromRequest, requestOriginAllowed, sendJson, supabaseAuthRequest, supabaseRest } = require('./_lib');
+const { opsRpc } = require('./_ops');
 
 module.exports = async function aiUsage(req, res) {
   if (req.method !== 'GET') return sendJson(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED' });
@@ -45,8 +46,27 @@ module.exports = async function aiUsage(req, res) {
       }
     });
 
+    // The assistant meter sits beside the scan wallet. It carries only the
+    // percentage, the pause and the per-admin split: no naira, units or cost.
+    const usageReading = await opsRpc('ops_school_usage', { p_school_id: schoolId }).catch(() => null);
+    const usageNames = Object.fromEntries(people.map((person) => [person.id, person.display_name || person.email || 'Staff member']));
+    const assistant = usageReading && usageReading.ok
+      ? {
+        percent_left: usageReading.percent_left,
+        percent_used: usageReading.percent_used,
+        paused: usageReading.paused === true,
+        paused_at: usageReading.paused_at || null,
+        admins: (usageReading.admins || []).map((row) => ({
+          user_id: row.user_id,
+          name: usageNames[row.user_id] || 'Staff member',
+          units: row.units,
+        })),
+      }
+      : null;
+
     return sendJson(res, 200, {
       ok: true,
+      assistant,
       wallet: wallet?.[0] || null,
       usage: rows,
       requests: requests || [],

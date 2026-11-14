@@ -836,6 +836,25 @@ function isDeveloper(ctx) {
   return Boolean(ctx?.actor?.role === 'developer' || ctx?.actor?.is_developer);
 }
 
+// Refuse a paid assistant action while the school's units are finished. Old
+// chats stay readable and manageable; the developer is never blocked.
+async function blockedByUsage(ctx, res) {
+  if (!ctx?.actor?.school_id) return false;
+  const gate = await opsRpc('ops_assistant_gate', {
+    p_school_id: ctx.actor.school_id,
+    p_is_developer: isDeveloper(ctx),
+  }).catch(() => null);
+  if (!gate || gate.allowed !== false) return false;
+  const exhausted = gate.paused === true;
+  sendJson(res, exhausted ? 402 : 403, {
+    ok: false,
+    code: exhausted ? 'ASSISTANT_USAGE_EXHAUSTED' : 'ASSISTANT_SUSPENDED',
+    message: gate.banner || 'The assistant is paused while the subscription is restored.',
+    gate,
+  });
+  return true;
+}
+
 async function modelSettingsRoute(req, res, ctx, body, action) {
   if (!isDeveloper(ctx)) {
     return sendJson(res, 403, {
@@ -920,7 +939,57 @@ async function modelSettingsRoute(req, res, ctx, body, action) {
       p_actor_id: ctx.actor.id,
       p_actor_email: ctx.actor.email || null,
     });
+    if (payload?.ok !== false) {
+      await opsRpc('ops_subscription_usage_set', {
+        p_school_id: ctx.actor.school_id,
+        p_included_units: Number.isFinite(Number(body.included_units)) ? Number(body.included_units) : null,
+        p_price_naira: Number.isFinite(Number(body.price_naira)) ? Number(body.price_naira) : null,
+        p_unit_price_naira: Number.isFinite(Number(body.unit_price_naira)) ? Number(body.unit_price_naira) : null,
+      }).catch(() => null);
+    }
     return sendJson(res, payload?.ok === false ? 400 : 200, payload);
+  }
+
+  // Usage percentage: 0 pauses at once, above 0 resumes at that reading.
+  if (action === 'usage_set_percent') {
+    const pct = Number(body.percent);
+    if (!Number.isFinite(pct)) {
+      return sendJson(res, 400, { ok: false, code: 'USAGE_PERCENT_REQUIRED', message: 'Give a percentage between 0 and 100.' });
+    }
+    const usage = await opsRpc('ops_usage_set_percent', {
+      p_school_id: ctx.actor.school_id,
+      p_pct: Math.max(0, Math.min(100, pct)),
+      p_actor_id: ctx.actor.id,
+    });
+    await opsRpc('ops_audit_append', {
+      p_actor_id: ctx.actor.id,
+      p_actor_email: ctx.actor.email || null,
+      p_action: 'usage_set_percent',
+      p_entity: 'school_subscriptions',
+      p_entity_id: ctx.actor.school_id,
+      p_detail: { percent: pct },
+    }).catch(() => null);
+    return sendJson(res, 200, { ok: true, usage, gate: await opsRpc('ops_assistant_gate', {
+      p_school_id: ctx.actor.school_id, p_is_developer: true,
+    }).catch(() => null) });
+  }
+
+  if (action === 'usage_reset') {
+    const usage = await opsRpc('ops_usage_reset', {
+      p_school_id: ctx.actor.school_id,
+      p_actor_id: ctx.actor.id,
+    });
+    await opsRpc('ops_audit_append', {
+      p_actor_id: ctx.actor.id,
+      p_actor_email: ctx.actor.email || null,
+      p_action: 'usage_reset',
+      p_entity: 'school_subscriptions',
+      p_entity_id: ctx.actor.school_id,
+      p_detail: {},
+    }).catch(() => null);
+    return sendJson(res, 200, { ok: true, usage, gate: await opsRpc('ops_assistant_gate', {
+      p_school_id: ctx.actor.school_id, p_is_developer: true,
+    }).catch(() => null) });
   }
 
   return sendJson(res, 400, { ok: false, code: 'MODEL_ACTION_UNKNOWN' });
@@ -937,6 +1006,7 @@ async function chatRoute(req, res, ctx, body, action) {
   }
 
   if (action === 'chat_new') {
+    if (await blockedByUsage(ctx, res)) return;
     const payload = await opsRpc('ops_chat_session_create', {
       ...scope,
       p_title: clean(body.title, 120) || null,
@@ -982,7 +1052,21 @@ async function chatRoute(req, res, ctx, body, action) {
 
   if (action === 'chat_usage') {
     const payload = await opsRpc('ops_chat_usage', { p_school_id: scope.p_school_id });
-    return sendJson(res, 200, payload);
+    const usage = await opsRpc('ops_school_usage', { p_school_id: scope.p_school_id }).catch(() => null);
+    return sendJson(res, 200, { ...payload, usage: usage || null });
+  }
+
+  // A printed page is charged once the browser has actually printed it.
+  if (action === 'printed') {
+    const pages = Math.max(1, Math.min(200, Number(body.pages) || 1));
+    const usage = await opsRpc('ops_usage_charge', {
+      p_school_id: scope.p_school_id,
+      p_actor_id: ctx.actor.id || null,
+      p_kind: 'print_page',
+      p_units: 12 * pages,
+      p_developer_excluded: isDeveloper(ctx),
+    }).catch(() => null);
+    return sendJson(res, 200, { ok: true, pages, usage: usage || null });
   }
 
   return sendJson(res, 400, { ok: false, code: 'CHAT_ACTION_UNKNOWN' });
@@ -1004,6 +1088,19 @@ module.exports = async (req, res) => {
         const context = await opsRpc('ops_active_context', {});
         const balance = await opsRpc('ops_credit_balance', { p_school_id: ctx.actor.school_id }).catch(() => null);
         return sendJson(res, 200, { ...(context || {}), balance: balance || null });
+      }
+
+      // The light gate reading. It answers while paused, so the page can show
+      // the pause and re-enable itself once the developer resets.
+      if (clean(req.query?.gate, 5)) {
+        if (!ctx.actor?.school_id) return sendJson(res, 409, { ok: false, code: 'GATE_SCHOOL_REQUIRED' });
+        const gate = await opsRpc('ops_assistant_gate', {
+          p_school_id: ctx.actor.school_id,
+          p_is_developer: isDeveloper(ctx),
+        });
+        return sendJson(res, 200, { ...gate, usage: await opsRpc('ops_school_usage', {
+          p_school_id: ctx.actor.school_id,
+        }).catch(() => null) });
       }
 
       // Developer settings: model routes and the school's monthly summary.
@@ -1154,6 +1251,7 @@ module.exports = async (req, res) => {
             message: 'That photo is too big to send. I can only take one up to about 3 MB.',
           }, uploadDiagnostic('receive', error, { bytes: error?.bytes || null }));
         }
+        if (await blockedByUsage(ctx, res)) return;
         return await uploadPhoto(req, res, ctx, {
           action: 'upload',
           job_id: query.get('job_id') || '',
@@ -1201,8 +1299,9 @@ module.exports = async (req, res) => {
         });
       }
 
-      if (action === 'upload') {
-        return await uploadPhoto(req, res, ctx, body);
+      if (action === 'upload' || action === 'prepare_page') {
+        if (await blockedByUsage(ctx, res)) return;
+        if (action === 'upload') return await uploadPhoto(req, res, ctx, body);
       }
 
       if (action.startsWith('chat_')) {
