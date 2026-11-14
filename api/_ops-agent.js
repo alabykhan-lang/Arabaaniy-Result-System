@@ -736,6 +736,7 @@ HOW YOU WORK
 - You decide. Read the message, the photo and the whole conversation yourself, then act with the tools. Nobody parses the sentence for you.
 - Start a session by reading the school snapshot. It gives the real session, term, classes, subject indexes, what is missing and recent batches.
 - Act first, talk second. For reading and previewing, act immediately. For a change, prepare it, show one short review, and finish once the user answers.
+- The newest message sets the job. Answer what it asks, in its own words. A tool call is how you get there, never a substitute for the answer.
 - Chain tools freely. Most jobs need several calls: snapshot, resolve names, resolve the subject, preview, write, read back, report.
 - One chat can cover many classes, subjects, terms and jobs. Use the class, subject and term in the newest message; the open screen is only context. Never tell the user to start a new chat for a different class or subject.
 - When a tool has already settled something, it is settled. Do not describe your own doubt about a name, class or subject the portal has matched. Act on it.
@@ -755,9 +756,15 @@ The server reads the photo and prepares the review before you speak. SHEET_READ_
 7. "Record", "write", "save", "yes" or "do it" writes every ready line in one audited batch per component. Existing marks are skipped, never overwritten silently. Report recorded, already there, held and blank counts, name the batch id and offer undo. Answering the review never writes by itself; wait for the record word. Use the numbers in SHEET_ACTION_RESULT and the review summary exactly; never count them yourself.
 8. One photo can hold two subjects in two columns (English and Mathematics, say). The same name appearing once per subject is not a duplicate. A duplicate is the same name twice for the same subject and component. When a whole sheet comes back held only because of that, say so in one line instead of asking about each name.
 8. A column the reader could not read is reported as a failed column and never blocks the other columns. Say which column failed and offer to redo that column from a new photo.
-9. If the page is blank with no marks, call start_page instead.
+9. If a record-book page is blank with no marks, call start_page instead. A picture that is not a page at all is covered below.
 10. The photo stays with the chat. On a later turn, "the photo" means SHEET_ATTACHMENT or get_attachment, never a lost image. Never tell the user the photo is no longer attached when it is stored.
 Never invent a pupil, a mark or a match. Held is held: do not write it. But a matched name is not held.
+
+WHEN THE PHOTO IS NOT A SCORE SHEET
+- A screenshot, a dashboard, an error message, a list of names, a report card or any other picture is not a sheet. SHEET_READ_FROM_PHOTO.sheet_type says "other" and no lines come back.
+- The picture is in the message, so look at it. Answer the newest message about what you can actually see, and say what the screen shows in plain words.
+- Do not start a page, do not record, and do not ask for marks. A page that is already open is context, not the subject of the turn.
+- If the picture shows something wrong, name it and offer the smallest fix. If it asks nothing, say what you see and what you would check next.
 
 CORRECTIONS
 A correction names the learner, subject and new value. Read the old value with get_scores, then call correct_score. Report the old value, the new value, the verified count and the undo id.
@@ -1622,6 +1629,11 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // user's turn is saved, because the transcript keeps a text description in
   // place of the image.
   const sheetRead = photoBase64 ? await sheetReadPromise : null;
+  // A screenshot, a dashboard or a list of names is a photo, not a score
+  // sheet. The reader marks it "other"; those turns answer the question in the
+  // user's own words instead of running the sheet script.
+  const photoNotSheet = Boolean(photoBase64)
+    && (!sheetRead?.ok || sheetRead?.sheet_type === 'other');
 
   // The photo is stored once, before the model reasons, so a refresh or a
   // second device can read the same page again. The chat keeps the file id and
@@ -1881,7 +1893,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   if (chatSaved) {
     const userEntry = confirm
       ? `Confirm ${cleanStr(confirm.tool, 60)}`
-      : (userText || (photoBase64 ? 'Score sheet photo attached.' : 'Continue.'));
+      : (userText || (photoBase64 ? (photoNotSheet ? 'Photo attached.' : 'Score sheet photo attached.') : 'Continue.'));
     const savedUser = await opsRpc('ops_chat_message_add', {
       p_session_id: chatId,
       p_school_id: ctx.actor.school_id,
@@ -1994,18 +2006,25 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
       : null,
     SHEET_ACTION_RESULT: sheetActionResult,
     SHEET_ERROR: sheetError,
-    LATEST_USER_MESSAGE: mode === 'post_upload'
-      ? '(System event: the reader just finished this photo. Brief the user on what was read from CURRENT_UPLOADED_PAGE, then offer the next step.)'
+    PHOTO_TURN_NOTE: mode === 'post_upload'
+      ? 'The reader just finished this photo. Brief the user on what was read from CURRENT_UPLOADED_PAGE, then offer the next step.'
       : mode === 'prepare_page'
-        ? '(System event: a photo is attached. Read SHEET_READ_FROM_PHOTO and OPEN_SHEET_REVIEW first. If SHEET_ACTION_RESULT shows a prepared review, show that one review and stop; never call start_page or record_scores when a review exists. Only call start_page when the page is blank with no marks. If class or subject truly cannot be told, ask one short question.)'
-        : userText,
+        ? (photoNotSheet
+          ? 'This photo is not a score sheet (SHEET_READ_FROM_PHOTO.sheet_type is other). The photo itself is in this message, so answer the newest message about what you can actually see. Do not start a page, do not record, and do not ask for marks.'
+          : 'A photo is attached. Read SHEET_READ_FROM_PHOTO and OPEN_SHEET_REVIEW first. If SHEET_ACTION_RESULT shows a prepared review, show that one review and stop; never call start_page or record_scores when a review exists. Only call start_page when a record-book page is blank with no marks. If class or subject truly cannot be told, ask one short question.')
+        : null,
+    LATEST_USER_MESSAGE: userText || (mode === 'post_upload'
+      ? 'Continue.'
+      : mode === 'prepare_page'
+        ? (photoNotSheet ? 'Photo attached.' : 'Score sheet photo attached.')
+        : ''),
   }, null, 2);
 
   const userParts = [{ text: promptEnvelope }];
   // The structured read is already in the envelope. Sending the same photo to
   // the main model again costs time without adding a line. It goes inline only
   // when the reader could not read the page at all.
-  if (photoBase64 && !(sheetRead && sheetRead.ok)) {
+  if (photoBase64 && (photoNotSheet || !(sheetRead && sheetRead.ok))) {
     userParts.push({ inlineData: { mimeType: photoMime, data: photoBase64 } });
   }
   const contents = [...history, { role: 'user', parts: userParts }];
