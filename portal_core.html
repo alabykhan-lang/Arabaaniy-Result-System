@@ -6214,7 +6214,7 @@ function renderCard(){
   });
   return request;
 }
-function printAll(){
+function printAll(opts){
   if(!hasResultPermission('report_cards.generate')){showToast('Report-card printing is available to school administrators only.','error');return;}
   var students=DB_STUDENTS[CLS]||[];
   if(!students.length){showToast('No students to print','error');return;}
@@ -6234,9 +6234,10 @@ function printAll(){
     dbGet('remarks?class_key=eq.'+encodeURIComponent(dbClassKey(CLS))+'&term=eq.'+encodeURIComponent(cardTerm)),
     dbGet('published_subjects?class_key=eq.'+encodeURIComponent(dbClassKey(CLS))+'&term=eq.'+encodeURIComponent(cardTerm))
   ]);}).then(function(res){
-    // Build pubSet
+    // Build pubSet. A sample lists every subject of the class, published or not.
     var pubSet={};
-    (res[4]||[]).forEach(function(r){pubSet[r.subject_index]=true;});
+    if(opts&&opts.sample){subjects().forEach(function(_,i){pubSet[i]=true;});}
+    else{(res[4]||[]).forEach(function(r){pubSet[r.subject_index]=true;});}
     // Build per-student maps
     var allScores={};var allTraits={};var allFees={};var allRemarks={};
     (res[0]||[]).forEach(function(s){
@@ -6258,7 +6259,8 @@ function printAll(){
         allTraits[s.id]||{affective:{},psychomotor:{}},
         allFees[s.id]||{},
         allRemarks[s.id]||{},
-        pubSet
+        pubSet,
+        opts
       );
     }).join('');
     setTimeout(function(){fitReportCardsToOnePage();printReportCardDocument();},400);
@@ -8973,6 +8975,7 @@ function devChatPrintDoc(btn){
   var session = btn.getAttribute('data-session') || getActiveSession();
   var template = btn.getAttribute('data-template');
   var pupil = btn.getAttribute('data-pupil');
+  var sample = btn.getAttribute('data-mode') !== 'final';
   if(!clsKey || !DEPTS[clsKey]){showToast('That class is not in this session any more.', 'error'); return;}
   var theme = CARD_THEMES.filter(function(t){ return t.id === template; })[0];
   if(theme){
@@ -8995,7 +8998,7 @@ function devChatPrintDoc(btn){
     var tbTitle = document.getElementById('tb-title');
     if(tbTitle) tbTitle.textContent = 'Result Cards';
     populateCardSel();
-    if(!pupil){ printAll(); return; }
+    if(!pupil){ printAll({ print: true, sample: sample }); return; }
     var sel = document.getElementById('rc-stu');
     var want = String(pupil).toUpperCase().replace(/\s+/g, ' ').trim();
     var hit = null;
@@ -9022,7 +9025,6 @@ function devChatPrintDoc(btn){
       // A sample lists every subject of the class, published or not, so a
       // subject the school has not released yet still keeps its row and mark.
       // A final card keeps the published set the school chose.
-      var sample = btn.getAttribute('data-mode') !== 'final';
       var pubSet = {};
       if(sample){ subjects().forEach(function(_, i){ pubSet[i] = true; }); }
       else { (res[4] || []).forEach(function(row){ pubSet[row.subject_index] = true; }); }
