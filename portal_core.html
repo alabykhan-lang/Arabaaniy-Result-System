@@ -7892,12 +7892,11 @@ function renderDevSettings(){
   var stateEl = document.getElementById('dev-sub-usage-state');
   if(stateEl){
     var g = summary.gate || {};
-    if(CURRENT_USER && CURRENT_USER._role === 'developer' && g.paused){
-      stateEl.innerHTML = '<span style="color:#8f1f18">School meter is paused. Your own turns are not counted.</span>';
-    } else if(g.paused){
-      stateEl.innerHTML = '<span style="color:#8f1f18">Paused at 0%.</span>';
+    if(g.paused){
+      stateEl.innerHTML = '<span style="color:#8f1f18">Paused at 0% \u00b7 Set usage to restore</span>'
+        + (CURRENT_USER && CURRENT_USER._role === 'developer' ? ' <span style="color:#5a6577">\u00b7 your own turns are not counted</span>' : '');
     } else {
-      stateEl.textContent = 'Meter at ' + String(Math.round(Number(g.percent_left == null ? 100 : g.percent_left))) + '% left. Set 0 to pause.';
+      stateEl.innerHTML = 'Pauses at 0% <span style="color:#5a6577">\u00b7 ' + String(Math.round(Number(g.percent_left == null ? 100 : g.percent_left))) + '% left now</span>';
     }
   }
 }
