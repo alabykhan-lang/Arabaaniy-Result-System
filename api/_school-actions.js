@@ -1648,6 +1648,19 @@ async function prepareSheetReview(ctx, args, context, sheetRead, fileId) {
     }
     const component = column.component || defaultKey;
     const max = componentMax(config, component);
+    // A teacher's book often carries a whole column out of 30 while the
+    // portal's column is out of 15. When most of the column is over the
+    // portal maximum, the column is read as being out of its own top mark and
+    // each mark is converted, so the sheet records instead of holding every
+    // line. One stray high mark does not trigger it.
+    const columnValues = column.lines
+      .map((raw) => (raw?.score == null || raw?.score === ''
+        ? parseSheetScore(raw?.score_text)
+        : Number(raw.score)))
+      .filter((num) => Number.isFinite(num));
+    const columnTop = columnValues.length ? Math.max(...columnValues) : 0;
+    const overCount = columnValues.filter((num) => num > max).length;
+    const columnScale = columnTop > max && overCount > columnValues.length / 2 ? max / columnTop : 1;
     for (let index = 0; index < column.lines.length; index += 1) {
       const raw = column.lines[index] || {};
       const sheetLine = Number(raw.line) || index + 1;
@@ -1655,7 +1668,10 @@ async function prepareSheetReview(ctx, args, context, sheetRead, fileId) {
       const flags = Array.isArray(raw.flags) ? raw.flags.map((flag) => clean(flag, 30)).filter(Boolean) : [];
       const directScore = raw.score == null || raw.score === '' ? NaN : Number(raw.score);
       const readScore = Number.isFinite(directScore) ? directScore : parseSheetScore(raw.score_text ?? raw.score);
-      const value = Number.isFinite(readScore) ? readScore : null;
+      let value = Number.isFinite(readScore) ? readScore : null;
+      const readValue = value;
+      const scaledFrom = value != null && columnScale < 1 ? columnTop : null;
+      if (value != null && columnScale < 1) value = Math.max(0, Math.min(max, Math.round(value * columnScale)));
       const hit = rawName ? resolveOneName(roster, scopedAliases, rawName) : null;
       let status = hit && hit.band === 'accept' && hit.student ? 'auto' : (hit && hit.band === 'ask' ? 'held' : 'unmatched');
       let studentId = status === 'auto' ? hit.student.student_id : null;
@@ -1674,6 +1690,8 @@ async function prepareSheetReview(ctx, args, context, sheetRead, fileId) {
       if (value != null && (value < 0 || value > max)) {
         status = 'held';
         note = `outside 0 to ${max} for ${COMPONENT_LABEL[component] || component}`;
+      } else if (scaledFrom != null && value != null) {
+        note = `read ${readValue} of ${scaledFrom}; scaled to ${value} of ${max}`;
       }
       // A mark the sheet itself calls crossed out or unclear is never written
       // until the user says what it should be.
