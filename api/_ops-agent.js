@@ -22,7 +22,7 @@ const {
   sheetReviewText,
   parseSheetAnswers,
 } = require('./_school-actions');
-const { opsRpc } = require('./_ops');
+const { jobInScope, jobVisibleTo, opsRpc } = require('./_ops');
 const {
   COLUMN_LABELS,
   findClass,
@@ -1509,7 +1509,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   const { sendJson, contextForJob } = helpers;
   const mode = cleanStr(body.mode, 30) || 'chat';
   const userText = cleanStr(body.text || body.message, 4000);
-  const jobId = cleanStr(body.job_id, 40);
+  let jobId = cleanStr(body.job_id, 40);
   const chatId = cleanStr(body.chat_id, 40);
   // Tools that work on the open review need the chat they belong to.
   if (ctx && chatId && UUID_RE.test(chatId)) ctx.chat_id = chatId;
@@ -1558,6 +1558,22 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
       code: 'CHAT_NOT_FOUND',
       message: 'That chat is not in this account. Start a new chat.',
     });
+  }
+
+  // A page the browser names must be in this school. The model then never gets
+  // the chance to act on another school's page.
+  const callerIsDeveloper = ctx.actor?.role === 'developer' || ctx.actor?.is_developer === true;
+  if (jobDetail?.job && !jobVisibleTo(ctx.actor, jobDetail.job)) {
+    if (!callerIsDeveloper) {
+      return sendJson(res, 404, {
+        ok: false,
+        code: 'OPS_JOB_NOT_FOUND',
+        message: 'That page is not in this school.',
+      });
+    }
+  }
+  if (jobDetail?.job && !jobVisibleTo(ctx.actor, jobDetail.job)) {
+    jobId = '';
   }
 
   // Section 17: a suspended or used-up subscription stops the assistant only.
@@ -2190,6 +2206,12 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
       .find((value) => UUID_RE.test(value)) || null;
     const openJob = page?.job_id || (jobId && UUID_RE.test(jobId) ? jobId : null);
     const working = chatWorkingContext(body, draft, context, page, chatDetail?.state?.working_context);
+    // A saved open page can outlive a role or school move. Drop it when this
+    // caller can no longer see it, so the next turn does not chase a stranger.
+    if (working.open_page && UUID_RE.test(working.open_page) && !callerIsDeveloper
+      && !(await jobInScope(ctx.actor, working.open_page))) {
+      working.open_page = null;
+    }
     const finished = await opsRpc('ops_chat_turn_finish', {
       p_session_id: chatId,
       p_school_id: ctx.actor.school_id,

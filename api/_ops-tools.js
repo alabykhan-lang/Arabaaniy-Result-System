@@ -10,7 +10,7 @@
 
 const crypto = require('node:crypto');
 const { supabaseRest } = require('./_lib');
-const { opsRpc } = require('./_ops');
+const { jobInScope, jobVisibleTo, opsRpc } = require('./_ops');
 const { renderDocuments } = require('./_ops-documents');
 const { handleAction } = require('./result-data');
 const { findSubject, findClass, findColumn, findTerm, normalise } = require('./_ops-instruction');
@@ -1091,7 +1091,9 @@ async function clearTraits(ctx, args, context) {
 
 async function listPages(ctx, args, context) {
   const listed = await opsRpc('ops_jobs_list', {}).catch(() => ({}));
-  const jobs = Array.isArray(listed?.jobs) ? listed.jobs : [];
+  const all = Array.isArray(listed?.jobs) ? listed.jobs : [];
+  const dev = ctx.actor?.role === 'developer' || ctx.actor?.is_developer === true;
+  const jobs = dev ? all : all.filter((job) => jobVisibleTo(ctx.actor, job));
   const limit = Math.max(1, Math.min(60, Number(args.limit || 25)));
   return {
     count: jobs.length,
@@ -2376,6 +2378,21 @@ async function executeTool(name, args, ctx, context, jobId, confirmed) {
     };
   }
   const safeArgs = args && typeof args === 'object' ? args : {};
+  // A page named by the tool, or left open in this chat, must belong to the
+  // caller's school before any handler reads or writes through it. The unknown
+  // answer is "not found", never a hint that it exists elsewhere.
+  const namedPage = clean(safeArgs.job_id || safeArgs.page_id, 40)
+    || (jobId && PAGE_UUID_RE.test(jobId) ? jobId : '');
+  const devCaller = ctx.actor?.role === 'developer' || ctx.actor?.is_developer === true;
+  if (namedPage && PAGE_UUID_RE.test(namedPage) && !devCaller) {
+    const allowed = await jobInScope(ctx.actor, namedPage);
+    if (!allowed) {
+      return {
+        error: 'That page was not found in this school.',
+        next: 'List the open pages with review_page and no page id, or attach the page photo.',
+      };
+    }
+  }
   if (!confirmed && requiresConfirmation(name, safeArgs)) {
     return {
       needs_confirmation: true,

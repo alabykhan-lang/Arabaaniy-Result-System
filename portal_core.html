@@ -1150,6 +1150,9 @@ body.developer-account #ni-main-dashboard,body.assistant-account #ni-main-dashbo
 body.developer-account #bn-main-dashboard,body.assistant-account #bn-main-dashboard{display:flex!important}
 body.developer-account #developer-command-center-card.active-card,body.assistant-account #developer-command-center-card.active-card{display:grid!important}
 body.developer-account .developer-command-center-only#dev-home-card,body.assistant-account .developer-command-center-only#dev-home-card{display:flex!important}
+/* Model, subscription and usage reset stay with the developer. Admins keep
+   the generated-documents control beside it. */
+body:not(.developer-account) #dev-ws-settings-gear{display:none!important}
 /* ── Developer Command Center: the portal’s light, calm chat ── */
 #developer-command-center-card.dev-workspace{
   --ws-bg:#f8fafc;--ws-bg-soft:#eef3f9;--ws-panel:#ffffff;--ws-panel-2:#e6edf5;
@@ -1914,7 +1917,7 @@ body.result-context-read-only .results-history-readable{display:flex}
           <button class="dev-ws-gear" type="button" onclick="openDevDocuments()" title="Generated documents" aria-label="Generated documents" data-doc-count="0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
           </button>
-          <button class="dev-ws-gear" type="button" onclick="openDevSettings()" title="Model and subscription settings" aria-label="Model and subscription settings">
+          <button class="dev-ws-gear" type="button" id="dev-ws-settings-gear" onclick="openDevSettings()" title="Model and subscription settings" aria-label="Model and subscription settings">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.56V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1.11-1.56 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.56-1H3a2 2 0 110-4h.09a1.7 1.7 0 001.56-1.11 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.56V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.56 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V9a1.7 1.7 0 001.56 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg>
           </button>
           <button class="dev-ws-new" type="button" onclick="startNewDevChat()" title="Start a new chat. The chat you are in stays exactly as it is.">

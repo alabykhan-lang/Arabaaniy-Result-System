@@ -134,6 +134,24 @@ function actorOf(session) {
   };
 }
 
+// A job belongs to a school. Legacy jobs with no school belong to the account
+// that submitted them. The developer can open any job. The caller sees
+// "not found" for anything else, never a permission hint.
+function jobVisibleTo(actor, job) {
+  if (!job) return false;
+  if (!actor) return false;
+  if (actor.role === DEVELOPER_ROLE || actor.is_developer === true) return true;
+  if (job.school_id) return Boolean(actor.school_id) && job.school_id === actor.school_id;
+  return Boolean(job.submitted_by && actor.id) && job.submitted_by === actor.id;
+}
+
+async function jobInScope(actor, jobId) {
+  if (!jobId) return null;
+  const payload = await opsRpc('ops_jobs_get', { p_id: jobId }).catch(() => null);
+  if (!payload?.job) return null;
+  return jobVisibleTo(actor, payload.job) ? payload.job : null;
+}
+
 async function resolveDeveloper(req, res) {
   const session = await resolveSession(req, res);
   if (!session.ok) return session;
@@ -173,6 +191,8 @@ async function requireAssistant(req, res) {
 module.exports = {
   OPS_HEADERS,
   deny,
+  jobInScope,
+  jobVisibleTo,
   opsConfigured,
   opsRpc,
   requireAssistant,

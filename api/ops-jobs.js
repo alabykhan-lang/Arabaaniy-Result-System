@@ -27,7 +27,7 @@
 const crypto = require('node:crypto');
 const sharp = require('sharp');
 const { readJsonBody, sendJson } = require('./_lib');
-const { deny, opsConfigured, opsRpc, requireAssistant } = require('./_ops');
+const { deny, jobInScope, jobVisibleTo, opsConfigured, opsRpc, requireAssistant } = require('./_ops');
 const { dispatchJob } = require('./_ops-adapters');
 const { CONTRACT_VERSION } = require('./_ops-contract');
 const { parseInstruction } = require('./_ops-instruction');
@@ -190,9 +190,39 @@ function uploadDiagnostic(step, error, extra = {}) {
   };
 }
 
+// Every id that reaches a service-role read is checked against the caller's
+// school first. A foreign id answers "not found"; the developer skips it.
+async function jobScopeGate(ctx, res, jobId) {
+  const job = await jobInScope(ctx.actor, jobId);
+  if (!job) {
+    sendJson(res, 404, {
+      ok: false,
+      code: 'OPS_JOB_NOT_FOUND',
+      message: 'That page is not in this school.',
+    });
+    return null;
+  }
+  return job;
+}
+
+function visibleJobs(ctx, jobs) {
+  const list = Array.isArray(jobs) ? jobs : [];
+  if (isDeveloper(ctx)) return list;
+  return list.filter((job) => jobVisibleTo(ctx.actor, job));
+}
+
 async function serveFile(req, res, ctx, fileId) {
   if (!UUID_RE.test(fileId)) {
     return sendJson(res, 400, { ok: false, code: 'OPS_FILE_ID_INVALID' });
+  }
+  if (!isDeveloper(ctx)) {
+    const scope = await opsRpc('ops_file_job', { p_file_id: fileId }).catch(() => null);
+    if (!scope?.ok || !jobVisibleTo(ctx.actor, {
+      school_id: scope.school_id,
+      submitted_by: scope.submitted_by,
+    })) {
+      return sendJson(res, 404, { ok: false, code: 'OPS_FILE_NOT_FOUND', message: 'That photo is not in this school.' });
+    }
   }
   const payload = await opsRpc('ops_read_file', { p_file_id: fileId });
   if (!payload || payload.ok !== true || !payload.content_b64) {
@@ -229,10 +259,12 @@ async function serveDocument(req, res, ctx, documentId) {
   }
   const payload = documentId === 'latest'
     ? await opsRpc('school_latest_document', { p_school_id: ctx.actor.school_id }).catch(() => null)
-    : await opsRpc('school_get_document_for_school', {
-      p_id: documentId,
-      p_school_id: ctx.actor.school_id,
-    }).catch(() => null);
+    : (isDeveloper(ctx)
+      ? await opsRpc('school_get_document', { p_id: documentId }).catch(() => null)
+      : await opsRpc('school_get_document_for_school', {
+        p_id: documentId,
+        p_school_id: ctx.actor.school_id,
+      }).catch(() => null));
   if (!payload || payload.ok !== true || !payload.content_b64) {
     return sendJson(res, 404, { ok: false, code: 'OPS_DOCUMENT_NOT_FOUND', message: 'That document is no longer available. Make it again.' });
   }
@@ -277,6 +309,7 @@ async function uploadPhoto(req, res, ctx, body, rawBuffer = null) {
   if (!UUID_RE.test(jobId)) {
     return sendJson(res, 400, { ok: false, code: 'OPS_JOB_ID_INVALID' });
   }
+  if (!(await jobScopeGate(ctx, res, jobId))) return;
 
   const declaredMime = clean(body.mime, 60).toLowerCase() || 'application/octet-stream';
   const filenameIn = clean(body.filename, 200);
@@ -528,7 +561,7 @@ async function handleCorrect(req, res, ctx, body) {
   }
 
   const listed = await opsRpc('ops_jobs_list', {});
-  const jobs = Array.isArray(listed?.jobs) ? listed.jobs : [];
+  const jobs = visibleJobs(ctx, listed?.jobs);
   const job = jobs.find((item) => item.id === jobId) || null;
   if (!job) {
     return sendJson(res, 404, { ok: false, code: 'OPS_JOB_NOT_FOUND' });
@@ -606,8 +639,9 @@ async function handleText(req, res, ctx, body) {
   }
 
   const listed = await opsRpc('ops_jobs_list', {});
-  const jobs = Array.isArray(listed?.jobs) ? listed.jobs : [];
+  const jobs = visibleJobs(ctx, listed?.jobs);
   const requestedJobId = clean(body.job_id, 40);
+  if (requestedJobId && UUID_RE.test(requestedJobId) && !(await jobScopeGate(ctx, res, requestedJobId))) return;
   const requested = requestedJobId ? jobs.find((job) => job.id === requestedJobId) : null;
   const target = body.new_job === true || body.new_job === 'true'
     ? null
@@ -1224,14 +1258,15 @@ module.exports = async (req, res) => {
           return sendJson(res, 400, { ok: false, code: 'OPS_JOB_ID_INVALID' });
         }
         const payload = await opsRpc('ops_jobs_get', { p_id: id });
-        if (!payload) {
-          return sendJson(res, 404, { ok: false, code: 'OPS_JOB_NOT_FOUND' });
+        if (!payload?.job || !jobVisibleTo(ctx.actor, payload.job)) {
+          return sendJson(res, 404, { ok: false, code: 'OPS_JOB_NOT_FOUND', message: 'That page is not in this school.' });
         }
         return sendJson(res, 200, payload);
       }
 
-      const payload = await opsRpc('ops_jobs_list', {});
-      return sendJson(res, 200, payload || { ok: true, jobs: [] });
+      const listed = await opsRpc('ops_jobs_list', {});
+      const jobs = visibleJobs(ctx, listed?.jobs);
+      return sendJson(res, 200, { ...(listed || {}), ok: true, jobs });
     }
 
     if (req.method === 'POST') {
@@ -1272,6 +1307,16 @@ module.exports = async (req, res) => {
 
       const action = clean(body.action, 20) || 'create';
 
+      // Every action that works on an existing page is checked against the
+      // caller's school once here, before any service-role write.
+      const JOB_SCOPED_ACTIONS = new Set([
+        'mapping', 'documents_readiness', 'generate_documents', 'copy_accepted',
+        'delete_job', 'decide_mark', 'set_mark', 'decide', 'attach', 'confirm',
+        'retry', 'correct', 'text', 'upload', 'prepare_page',
+      ]);
+      if (JOB_SCOPED_ACTIONS.has(action) && UUID_RE.test(clean(body.job_id, 40))
+        && !(await jobScopeGate(ctx, res, clean(body.job_id, 40)))) return;
+
       // Browser-side failures come here so the next one is named. No photo
       // bytes are involved and nothing is written to the school's data.
       if (action === 'client_error') {
@@ -1291,6 +1336,15 @@ module.exports = async (req, res) => {
         // plan's function limit. One call reads at most one waiting page.
         const { runOnePass } = require('./_ops-worker-core');
         const pass = await runOnePass({ worker: 'ops-portal' });
+        // The shared reader can pick up another school's page. An admin gets
+        // only that it ran, so no foreign id, adapter or result leaks out.
+        if (!isDeveloper(ctx)) {
+          return sendJson(res, 200, {
+            ok: true,
+            claimed: pass.claimed,
+            duration_ms: pass.duration_ms || null,
+          });
+        }
         return sendJson(res, 200, {
           ok: true,
           claimed: pass.claimed,
