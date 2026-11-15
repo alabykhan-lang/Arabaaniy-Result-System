@@ -1593,7 +1593,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // model reasons. If the main model cannot take a picture, the lines still
   // arrive, so a score sheet is never lost.
   const sheetReadPromise = photoBase64
-    ? extractSheetPhoto(photoBase64, photoMime, 25000, {
+    ? extractSheetPhoto(photoBase64, photoMime, 20000, {
       schoolId: ctx.actor?.school_id || null,
       userId: ctx.actor?.id || null,
       sessionId: cleanStr(body.chat_id, 40) || null,
@@ -1674,10 +1674,20 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
     contextTokens: 0,
   };
 
-  // The photo read runs while the context loads. It must finish before the
-  // user's turn is saved, because the transcript keeps a text description in
-  // place of the image.
-  const sheetRead = photoBase64 ? await sheetReadPromise : null;
+  // The photo read runs while the context loads. A finished read is kept with
+  // the chat as the text description in place of the image.
+  // The reader is quick on a good day and slow on a bad one. The answer must
+  // not wait a whole half minute for it: nine seconds is enough to prefer the
+  // structured read, and after that the picture goes with the message instead
+  // and the model reads it while it answers.
+  let readTimer = null;
+  const sheetRead = photoBase64
+    ? await Promise.race([
+      sheetReadPromise,
+      new Promise((resolve) => { readTimer = setTimeout(() => resolve(null), 9000); }),
+    ])
+    : null;
+  if (readTimer) clearTimeout(readTimer);
   // A screenshot, a dashboard or a list of names is a photo, not a score
   // sheet. The reader marks it "other"; those turns answer the question in the
   // user's own words instead of running the sheet script.
