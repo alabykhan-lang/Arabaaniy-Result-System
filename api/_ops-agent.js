@@ -1711,6 +1711,10 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // The reader did not come back in time. The picture still travels with the
   // message, so the answer is read by the model itself rather than lost.
   const photoUnread = Boolean(photoBase64) && !sheetRead && !singlePass;
+  // With one model for both jobs, a later answer that names the class and
+  // subject is served the stored photo again rather than a read-out, so the
+  // same model reads and writes in one go.
+  let storedPhoto = null;
 
   // The photo is stored once, before the model reasons, so a refresh or a
   // second device can read the same page again. The chat keeps the file id and
@@ -1829,7 +1833,9 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
         p_file_id: stored.id,
       }).catch(() => null);
       const bytes = fetched?.attachment?.content_base64;
-      if (bytes) {
+      if (bytes && singlePass) {
+        storedPhoto = { base64: bytes, mime: stored.mime || 'image/jpeg' };
+      } else if (bytes) {
         const again = await extractSheetPhoto(bytes, stored.mime || 'image/jpeg', 14000, {
           schoolId: ctx.actor?.school_id || null,
           userId: ctx.actor?.id || null,
@@ -2110,6 +2116,9 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
             ? 'This photo is not a score sheet (SHEET_READ_FROM_PHOTO.sheet_type is other). The photo itself is in this message, so answer the newest message about what you can actually see. Do not start a page, do not record, and do not ask for marks.'
           : 'A photo is attached. Read SHEET_READ_FROM_PHOTO and OPEN_SHEET_REVIEW first. If SHEET_ACTION_RESULT shows a prepared review, show that one review and stop; never call start_page or record_scores when a review exists. Only call start_page when a record-book page is blank with no marks. If class or subject truly cannot be told, ask one short question.')
         : null,
+    STORED_PHOTO_NOTE: storedPhoto
+      ? 'The photo stored with this chat is in this message. Read it again and use the class and subject named above. If it is a score sheet, call start_page for that class and subject (it reuses an open page) and then call record_scores with every line you read. Do not mention readers or read-outs.'
+      : null,
     LATEST_USER_MESSAGE: userText || (mode === 'post_upload'
       ? 'Continue.'
       : mode === 'prepare_page'
@@ -2123,12 +2132,14 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // when the reader could not read the page at all.
   if (photoBase64 && (photoNotSheet || !(sheetRead && sheetRead.ok))) {
     userParts.push({ inlineData: { mimeType: photoMime, data: photoBase64 } });
+  } else if (storedPhoto) {
+    userParts.push({ inlineData: { mimeType: storedPhoto.mime, data: storedPhoto.base64 } });
   }
   const contents = [...history, { role: 'user', parts: userParts }];
   // The model gets a real working session: enough rounds for a multi-step job,
   // with reads run together and writes kept in order. The deadline leaves room
   // for the final sentence inside the function's 60 seconds.
-  const turnBudget = photoBase64
+  const turnBudget = (photoBase64 || storedPhoto)
     ? Math.max(14000, Math.min(34000, 52000 - (Date.now() - requestStartedAt)))
     : 44000;
   const deadline = Date.now() + turnBudget;
