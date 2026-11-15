@@ -2144,9 +2144,13 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // The model gets a real working session: enough rounds for a multi-step job,
   // with reads run together and writes kept in order. The deadline leaves room
   // for the final sentence inside the function's 60 seconds.
-  const turnBudget = (photoBase64 || storedPhoto)
+  // A stored picture or a one-model turn has no separate read to pay for, so it
+  // can use more of the minute; a turn that just waited on a read cannot.
+  const turnBudget = photoBase64 && !singlePass
     ? Math.max(14000, Math.min(34000, 52000 - (Date.now() - requestStartedAt)))
-    : 44000;
+    : (photoBase64 || storedPhoto)
+      ? Math.max(18000, Math.min(44000, 55000 - (Date.now() - requestStartedAt)))
+      : 44000;
   const deadline = Date.now() + turnBudget;
   const executed = [];
   if (sheetActionResult) {
