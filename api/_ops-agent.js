@@ -640,9 +640,11 @@ async function riverSheetRead(base64, mime, route, deadline) {
   let lastError = `${model}: no answer`;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const room = deadline - Date.now();
-    if (room < 3000) break;
+    // A retry only starts when it still has a real slice, otherwise the second
+    // attempt would be aborted almost at once.
+    if (room < (attempt ? 6000 : 2500)) break;
     const controller = new AbortController();
-    const wait = Math.max(2500, Math.min(15000, room - 500));
+    const wait = Math.max(2500, Math.min(16000, room - 500));
     const startedAt = Date.now();
     const timer = setTimeout(() => controller.abort(), wait);
     try {
@@ -1575,7 +1577,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // model reasons. If the main model cannot take a picture, the lines still
   // arrive, so a score sheet is never lost.
   const sheetReadPromise = photoBase64
-    ? extractSheetPhoto(photoBase64, photoMime, 18000, {
+    ? extractSheetPhoto(photoBase64, photoMime, 23000, {
       schoolId: ctx.actor?.school_id || null,
       userId: ctx.actor?.id || null,
       sessionId: cleanStr(body.chat_id, 40) || null,
@@ -2063,7 +2065,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // with reads run together and writes kept in order. The deadline leaves room
   // for the final sentence inside the function's 60 seconds.
   const turnBudget = photoBase64
-    ? Math.max(12000, Math.min(34000, 48000 - (Date.now() - requestStartedAt)))
+    ? Math.max(14000, Math.min(34000, 52000 - (Date.now() - requestStartedAt)))
     : 44000;
   const deadline = Date.now() + turnBudget;
   const executed = [];
