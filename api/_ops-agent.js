@@ -2114,7 +2114,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
       ? 'The reader just finished this photo. Brief the user on what was read from CURRENT_UPLOADED_PAGE, then offer the next step.'
       : mode === 'prepare_page'
         ? (singlePass
-          ? 'The photo is in this message and there is no separate read-out. Read the photo yourself now. If it is a score sheet with marks: take the class and subject from the picture or the sentence, call start_page for it when no page is open, then call record_scores with every line you read, and show the result. If it is not a sheet, answer what you see in plain words. Do not mention readers or read-outs.'
+          ? 'The photo is in this message and there is no separate read-out. Read the photo yourself now. If it is a score sheet with marks: take the class and subject from the picture or the sentence, call start_page for it when no page is open, then call record_scores with every line you read and show the review numbers. Record without commit and let the user say yes before anything is written. If it is not a sheet, answer what you see in plain words. Do not mention readers or read-outs.'
           : photoUnread
           ? 'The photo itself is in this message instead of a read-out. Read the photo yourself and answer in plain words without mentioning how it was read. If it is a score sheet, list the names and scores briefly and say the page can be prepared again; do not call start_page or record_scores.'
           : photoNotSheet
@@ -2122,7 +2122,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
           : 'A photo is attached. Read SHEET_READ_FROM_PHOTO and OPEN_SHEET_REVIEW first. If SHEET_ACTION_RESULT shows a prepared review, show that one review and stop; never call start_page or record_scores when a review exists. Only call start_page when a record-book page is blank with no marks. If class or subject truly cannot be told, ask one short question.')
         : null,
     STORED_PHOTO_NOTE: storedPhoto
-      ? 'The photo stored with this chat is in this message. Read it again and use the class and subject named above. If it is a score sheet, call start_page for that class and subject (it reuses an open page) and then call record_scores with every line you read. Do not mention readers or read-outs.'
+      ? 'The photo stored with this chat is in this message. Read it again and use the class and subject named above. If it is a score sheet, call start_page for that class and subject (it reuses an open page) and then call record_scores with every line you read, without commit, and show the review numbers. Do not mention readers or read-outs.'
       : null,
     LATEST_USER_MESSAGE: userText || (mode === 'post_upload'
       ? 'Continue.'
