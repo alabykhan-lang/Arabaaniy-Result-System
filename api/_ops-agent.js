@@ -614,11 +614,11 @@ async function riverSheetRead(base64, mime, route, deadline) {
   const body = {
     model,
     temperature: 0.1,
-    // Reading a page is transcription, not deep reasoning. A long thinking
-    // spree can eat the whole allowance and return no text at all, so the
-    // fast setting is the default unless the developer saved a higher one.
+    // Reading a page is transcription, not deep reasoning. The thinking level
+    // is fixed at the fast setting whatever the chat route uses: on a slow day
+    // the high level spends the whole answer time thinking and returns nothing.
     max_tokens: 5000,
-    reasoning_effort: routeEffort(route) || 'low',
+    reasoning_effort: 'low',
     messages: [
       { role: 'system', content: SHEET_VISION_PROMPT },
       {
@@ -642,7 +642,9 @@ async function riverSheetRead(base64, mime, route, deadline) {
     const room = deadline - Date.now();
     if (room < 3000) break;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), Math.max(2500, Math.min(13000, room - 500)));
+    const wait = Math.max(2500, Math.min(15000, room - 500));
+    const startedAt = Date.now();
+    const timer = setTimeout(() => controller.abort(), wait);
     try {
       const res = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
@@ -683,7 +685,8 @@ async function riverSheetRead(base64, mime, route, deadline) {
         },
       };
     } catch (error) {
-      lastError = `${model}: ${error?.name === 'AbortError' ? 'timed out' : (error?.message || 'failed')}`;
+      lastError = `${model}: ${error?.name === 'AbortError' ? `timed out after ${Date.now() - startedAt}ms of ${wait}ms` : (error?.message || 'failed')}`;
+      console.error('ops_agent_sheet_read_retry', `attempt ${attempt + 1}: ${lastError}`);
     } finally {
       clearTimeout(timer);
     }
