@@ -1684,7 +1684,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   const sheetRead = photoBase64
     ? await Promise.race([
       sheetReadPromise,
-      new Promise((resolve) => { readTimer = setTimeout(() => resolve(null), 9000); }),
+      new Promise((resolve) => { readTimer = setTimeout(() => resolve(null), 7000); }),
     ])
     : null;
   if (readTimer) clearTimeout(readTimer);
@@ -2072,7 +2072,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
       ? 'The reader just finished this photo. Brief the user on what was read from CURRENT_UPLOADED_PAGE, then offer the next step.'
       : mode === 'prepare_page'
         ? (photoUnread
-          ? 'The page reader did not finish in time, so the photo itself is in this message. Read it yourself and answer in plain words. If it is a score sheet, list the names and scores briefly and say the page can be prepared again; do not call start_page or record_scores.'
+          ? 'The photo itself is in this message instead of a read-out. Read the photo yourself and answer in plain words without mentioning how it was read. If it is a score sheet, list the names and scores briefly and say the page can be prepared again; do not call start_page or record_scores.'
           : photoNotSheet
             ? 'This photo is not a score sheet (SHEET_READ_FROM_PHOTO.sheet_type is other). The photo itself is in this message, so answer the newest message about what you can actually see. Do not start a page, do not record, and do not ask for marks.'
           : 'A photo is attached. Read SHEET_READ_FROM_PHOTO and OPEN_SHEET_REVIEW first. If SHEET_ACTION_RESULT shows a prepared review, show that one review and stop; never call start_page or record_scores when a review exists. Only call start_page when a record-book page is blank with no marks. If class or subject truly cannot be told, ask one short question.')
