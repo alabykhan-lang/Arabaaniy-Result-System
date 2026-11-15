@@ -2212,14 +2212,52 @@ body.result-context-read-only .results-history-readable{display:flex}
       <button type="button" data-settings-tab="billing" onclick="showSettingsTab('billing')">Bills &amp; payments</button>
       <button type="button" data-settings-tab="academic" onclick="showSettingsTab('academic')">Academic rules</button>
       <button type="button" data-settings-tab="cards" onclick="showSettingsTab('cards')">Report cards</button>
-      <button type="button" data-settings-tab="ai" onclick="showSettingsTab('ai')">AI usage</button>
+      <button type="button" data-settings-tab="ai" onclick="showSettingsTab('ai')">Assistant &amp; AI usage</button>
       <button type="button" data-settings-tab="subjects" onclick="showSettingsTab('subjects')">Subjects</button>
       <button type="button" data-settings-tab="management" onclick="showSettingsTab('management')">Management access</button>
     </aside>
     <div class="settings-grid">
+      <div class="tbl-wrap" id="ai-assistant-settings-card" data-settings-group="ai" style="margin-bottom:14px;display:none">
+        <div class="tbl-head"><h3>Chat Assistant</h3><button class="btn btn-outline btn-sm" type="button" onclick="refreshAIUsage()">Refresh</button></div>
+        <div style="padding:16px">
+          <p style="font-size:.82rem;color:var(--gray);margin:0">Chat answers use this month&rsquo;s assistant allowance. It is separate from the scan credits below.</p>
+          <div id="ai-assistant-usage" style="margin-top:12px;padding:12px;border:1px solid #dbe7de;border-radius:10px;background:#f7fbf8">
+            <div style="display:flex;justify-content:space-between;gap:8px;font-size:.74rem;font-weight:800;color:var(--g1)"><span>Assistant usage left</span><strong id="ai-assistant-percent">100%</strong></div>
+            <div style="height:12px;background:#e9f1eb;border-radius:999px;overflow:hidden;margin-top:6px;border:1px solid #d7e6da"><div id="ai-assistant-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#087f5b,#55c98b);border-radius:999px;transition:width .35s ease"></div></div>
+            <div id="ai-assistant-note" style="font-size:.72rem;color:var(--gray);margin-top:5px">The assistant is available this month.</div>
+            <div id="ai-assistant-staff" style="margin-top:10px"></div>
+          </div>
+        </div>
+      </div>
       <div class="tbl-wrap" id="ai-usage-settings-card" data-settings-group="ai" style="margin-bottom:0;display:none">
         <div class="tbl-head"><h3>AI Score Scanner &amp; Usage</h3><button class="btn btn-outline btn-sm" type="button" onclick="refreshAIUsage()">Refresh</button></div>
-        <div style="padding:16px"><p id="ai-usage-summary" style="font-size:.82rem;color:var(--gray);margin:0">AI usage is shared by this school account across all authorised staff.</p><div id="ai-assistant-usage" style="margin-top:14px;padding:12px;border:1px solid #dbe7de;border-radius:10px;background:#f7fbf8"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.74rem;font-weight:800;color:var(--g1)"><span>Assistant usage left</span><strong id="ai-assistant-percent">100%</strong></div><div style="height:12px;background:#e9f1eb;border-radius:999px;overflow:hidden;margin-top:6px;border:1px solid #d7e6da"><div id="ai-assistant-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#087f5b,#55c98b);border-radius:999px;transition:width .35s ease"></div></div><div id="ai-assistant-note" style="font-size:.72rem;color:var(--gray);margin-top:5px">The assistant is available this month.</div><div id="ai-assistant-staff" style="margin-top:10px"></div></div><div id="ai-usage-progress" style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:.74rem;font-weight:800;color:var(--g1)"><span>AI credits remaining</span><strong id="ai-usage-percent">0%</strong></div><div style="height:14px;background:#e9f1eb;border-radius:999px;overflow:hidden;margin-top:6px;border:1px solid #d7e6da"><div id="ai-usage-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#087f5b,#55c98b);border-radius:999px;transition:width .35s ease"></div></div><div id="ai-usage-remaining" style="font-size:.72rem;color:var(--gray);margin-top:5px">0 credits remaining</div></div><div style="margin-top:14px;padding:12px;border:1px solid #d7e6da;border-radius:10px;background:#faf7f0"><h4 style="font-size:.82rem;color:var(--g1);margin:0 0 5px">AI credit plans</h4><p style="font-size:.72rem;color:var(--gray);margin:0 0 10px">Plans are shown for reference only. To request a top-up, contact the developer on WhatsApp.</p><div id="ai-credit-pack-options" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div></div><div id="ai-usage-staff" style="margin-top:14px"></div><p style="font-size:.72rem;color:var(--gray);margin:12px 0 0">Only a successfully applied OCR job uses 2 AI credits. Failed, cancelled, or unapplied scans use none.</p><button class="btn btn-outline btn-sm" type="button" onclick="contactDeveloperForAI()" style="margin-top:10px">Contact developer on WhatsApp</button><div id="ai-wallet-management-card" hidden aria-hidden="true" style="display:none;margin-top:14px;border:1px solid #f0d36a;border-radius:12px;overflow:hidden;background:#fffdf2"><div class="tbl-head"><h3>AI Wallet Management</h3></div><div style="padding:16px"><p style="font-size:.78rem;color:var(--gray);margin:0 0 10px">Developer-only control. Reset the school allowance directly; this clears the used counters but preserves the audit ledger.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label style="font-size:.7rem;color:var(--gray)">Free allowance<input class="inp" id="ai-reset-free" type="number" min="0" max="1000000" value="50" style="margin-top:4px"/></label><label style="font-size:.7rem;color:var(--gray)">Paid allowance<input class="inp" id="ai-reset-paid" type="number" min="0" max="1000000" value="0" style="margin-top:4px"/></label></div><button class="btn btn-gold btn-sm" type="button" onclick="resetAIWallet()" style="margin-top:10px">Reset wallet counters</button></div></div></div>
+        <div style="padding:16px">
+          <p id="ai-usage-summary" style="font-size:.82rem;color:var(--gray);margin:0">School AI credit balance, shared by this school account across all authorised staff.</p>
+          <div id="ai-usage-progress" style="margin-top:12px">
+            <div style="display:flex;justify-content:space-between;gap:8px;font-size:.74rem;font-weight:800;color:var(--g1)"><span>AI credits remaining</span><strong id="ai-usage-percent">0%</strong></div>
+            <div style="height:14px;background:#e9f1eb;border-radius:999px;overflow:hidden;margin-top:6px;border:1px solid #d7e6da"><div id="ai-usage-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#087f5b,#55c98b);border-radius:999px;transition:width .35s ease"></div></div>
+            <div id="ai-usage-remaining" style="font-size:.72rem;color:var(--gray);margin-top:5px">0 credits remaining</div>
+          </div>
+          <div style="margin-top:14px;padding:12px;border:1px solid #d7e6da;border-radius:10px;background:#faf7f0">
+            <h4 style="font-size:.82rem;color:var(--g1);margin:0 0 5px">AI credit plans</h4>
+            <p style="font-size:.72rem;color:var(--gray);margin:0 0 10px">Plans are shown for reference only. To request a top-up, contact the developer on WhatsApp.</p>
+            <div id="ai-credit-pack-options" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div>
+          </div>
+          <div id="ai-usage-staff" style="margin-top:14px"></div>
+          <p style="font-size:.72rem;color:var(--gray);margin:12px 0 0">Only a successfully applied OCR job uses 2 AI credits. Failed, cancelled, or unapplied scans use none.</p>
+          <button class="btn btn-outline btn-sm" type="button" onclick="contactDeveloperForAI()" style="margin-top:10px">Contact developer on WhatsApp</button>
+          <div id="ai-wallet-management-card" hidden aria-hidden="true" style="display:none;margin-top:14px;border:1px solid #f0d36a;border-radius:12px;overflow:hidden;background:#fffdf2">
+            <div class="tbl-head"><h3>AI Wallet Management</h3></div>
+            <div style="padding:16px">
+              <p style="font-size:.78rem;color:var(--gray);margin:0 0 10px">Developer-only control. Reset the school allowance directly; this clears the used counters but preserves the audit ledger.</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <label style="font-size:.7rem;color:var(--gray)">Free allowance<input class="inp" id="ai-reset-free" type="number" min="0" max="1000000" value="50" style="margin-top:4px"/></label>
+                <label style="font-size:.7rem;color:var(--gray)">Paid allowance<input class="inp" id="ai-reset-paid" type="number" min="0" max="1000000" value="0" style="margin-top:4px"/></label>
+              </div>
+              <button class="btn btn-gold btn-sm" type="button" onclick="resetAIWallet()" style="margin-top:10px">Reset wallet counters</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="tbl-wrap" data-settings-group="identity" style="margin-bottom:0">
         <div class="tbl-head"><h3>School Information</h3></div>
@@ -6871,13 +6909,13 @@ function saveSecondaryDepartments(){
 function renderSettingsDashboard(targetTab){
   var root=document.getElementById('settings-dashboard-tabs');if(!root)return;
   var currentActive = targetTab || (document.querySelector('[data-settings-tab].active') || {}).getAttribute('data-settings-tab') || 'identity';
-  var tabs=[['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['ai','AI usage'],['subjects','Subjects'],['management','Management access']];
+  var tabs=[['identity','School identity'],['billing','Bills & payments'],['academic','Academic rules'],['cards','Report cards'],['ai','Assistant &amp; AI usage'],['subjects','Subjects'],['management','Management access']];
   root.innerHTML=tabs.map(function(t){return '<button type="button" data-settings-tab="'+t[0]+'" onclick="showSettingsTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
   var cards=document.querySelectorAll('#page-settings .settings-grid > .tbl-wrap');
   cards.forEach(function(card){
     var h=(card.querySelector('h3')||{}).textContent||'';
     // preserved settings cards
-    var g=card.id==='ai-wallet-management-card'||/AI Score|Admin Command/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment|Senior Secondary/.test(h)?'academic':/Management access|Staff access|Registration invite/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale|Affective|Psychomotor/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';
+    var g=card.id==='ai-wallet-management-card'||/AI Score|Admin Command|Chat Assistant/.test(h)?'ai':/School Information/.test(h)?'identity':/Session Configuration/.test(h)?'billing':/Promotion thresholds|Continuous assessment|Senior Secondary/.test(h)?'academic':/Management access|Staff access|Registration invite/.test(h)?'management':/Signature|Card Section|Card Colour|Report Card Templates|Remarks|Grade Scale|Affective|Psychomotor/.test(h)?'cards':/Subject/.test(h)?'subjects':'identity';
     card.setAttribute('data-settings-group',g);
   });
   showSettingsTab(currentActive);
