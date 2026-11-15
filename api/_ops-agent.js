@@ -483,6 +483,7 @@ Shape:
 
 Rules:
 - Read each score column separately. Put every column in "columns" with its own heading and lines.
+- A list with printed NAME and SCORE headings is ONE column, not two: every line carries the name and its score together. Do not use NAME as a column heading. Use two or more columns only when two or more score columns sit side by side (such as CA1, CA2 or EXAM).
 - "lines" repeats the first or main column, so a single-column page is still simple.
 - If one column is cut off, blurry, folded or crossed out, set that column readable false and put the reason in error. Still return every other column in full. Never fail the whole page because one column failed.
 - A column heading you can see is always listed, even when none of its marks can be read. Keep its heading as the title, set readable false and say why in error.
@@ -1607,6 +1608,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // model reasons. If the main model cannot take a picture, the lines still
   // arrive, so a score sheet is never lost.
   const singlePass = photoBase64 ? await readerIsAnswerer() : false;
+  console.error('ops_agent_route_mode', singlePass ? 'one-model' : 'reader-then-answer');
   const sheetReadPromise = photoBase64 && !singlePass
     ? extractSheetPhoto(photoBase64, photoMime, 20000, {
       schoolId: ctx.actor?.school_id || null,
