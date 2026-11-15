@@ -10416,7 +10416,12 @@ function sendDevCommandChat(text, confirmAction, options){
     });
   }).then(function(res){
     if(!res) return null;
-    return res.json().then(function(data){
+    var slowStatus = res.status === 502 || res.status === 503 || res.status === 504;
+    return res.json().catch(function(){ return {}; }).then(function(data){
+      data = data || {};
+      if(slowStatus || (res.status >= 500 && !data.message)){
+        throw { code: 'ASSISTANT_TIMEOUT', message: 'The assistant took too long. Your photo is saved with this chat - send "continue" and I will pick it up.' };
+      }
       if(!res.ok || data.ok === false) throw data;
       return data;
     });
@@ -10456,7 +10461,12 @@ function sendDevCommandChat(text, confirmAction, options){
       applyDevGate(err.gate);
     }
     var errMsg = (err && err.message) || 'The assistant could not reach the server.';
-    if(isNetworkError(err)){
+    if(err && err.code === 'ASSISTANT_TIMEOUT'){
+      errMsg = photoSent
+        ? 'The assistant took too long to answer. The photo is saved with this chat - send "continue" and I will pick it up.'
+        : 'The assistant took too long to answer. Press Send again.';
+    }
+    if(isNetworkError(err) && !(err && err.code === 'ASSISTANT_TIMEOUT')){
       if(photoLanded) errMsg = 'The connection dropped before I could answer. The photo is saved - ask me to check the page.';
       else if(photoSent) errMsg = 'The photo reached the server and is saved with this chat. Send your next message to continue.';
       else errMsg = 'The photo did not finish uploading. Check your connection, then press Send again - it is still attached.';

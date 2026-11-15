@@ -611,61 +611,84 @@ async function riverSheetRead(base64, mime, route, deadline) {
   const baseUrl = String(route?.base_url || RIVER_BASE_URL || '').trim().replace(/\/+$/, '');
   const model = route?.model || ASSISTANT_MODEL;
   if (!apiKey || !baseUrl) return { ok: false, error: `${model}: the route has no key or address` };
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), Math.max(2500, deadline - Date.now()));
-  try {
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model,
-        temperature: 0.1,
-        max_tokens: 3000,
-        ...(routeEffort(route) ? { reasoning_effort: routeEffort(route) } : {}),
-        messages: [
-          { role: 'system', content: SHEET_VISION_PROMPT },
+  const body = {
+    model,
+    temperature: 0.1,
+    // Reading a page is transcription, not deep reasoning. A long thinking
+    // spree can eat the whole allowance and return no text at all, so the
+    // fast setting is the default unless the developer saved a higher one.
+    max_tokens: 5000,
+    reasoning_effort: routeEffort(route) || 'low',
+    messages: [
+      { role: 'system', content: SHEET_VISION_PROMPT },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Read this sheet and return the JSON.' },
           {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'Read this sheet and return the JSON.' },
-              {
-                type: 'image_url',
-                image_url: { url: `data:${mime || 'image/jpeg'};base64,${base64}`, detail: 'high' },
-              },
-            ],
+            type: 'image_url',
+            image_url: { url: `data:${mime || 'image/jpeg'};base64,${base64}`, detail: 'high' },
           },
         ],
-      }),
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok || !data) {
-      const detail = data?.error?.message ? ` ${String(data.error.message).slice(0, 160)}` : '';
-      return { ok: false, error: `${model}: HTTP ${res.status}${detail}` };
-    }
-    const text = String(data.choices?.[0]?.message?.content || '').trim();
-    const parsed = extractJsonObject(text);
-    if (!parsed || typeof parsed !== 'object') return { ok: false, error: `${model}: no JSON` };
-    const usage = data.usage || {};
-    return {
-      ok: true,
-      model,
-      parsed: sheetParsed(parsed),
-      usage: {
-        tokens_in: Number(usage.prompt_tokens) || 0,
-        tokens_out: Number(usage.completion_tokens) || 0,
-        cached_tokens: Number(usage.prompt_tokens_details?.cached_tokens) || 0,
       },
-    };
-  } catch (error) {
-    return { ok: false, error: `${model}: ${error?.name === 'AbortError' ? 'timed out' : (error?.message || 'failed')}` };
-  } finally {
-    clearTimeout(timer);
+    ],
+  };
+  // An empty answer is the known gateway failure: the model spends its whole
+  // allowance thinking and sends no text. One short retry costs less than
+  // losing the page, so both an empty body and a dropped connection are tried
+  // again while time remains.
+  let lastError = `${model}: no answer`;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const room = deadline - Date.now();
+    if (room < 3000) break;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), Math.max(2500, Math.min(13000, room - 500)));
+    try {
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        signal: controller.signal,
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        const detail = data?.error?.message ? ` ${String(data.error.message).slice(0, 160)}` : '';
+        lastError = `${model}: HTTP ${res.status}${detail}`;
+        if (res.status === 429 || res.status >= 500) continue;
+        return { ok: false, error: lastError };
+      }
+      const text = String(data.choices?.[0]?.message?.content || '').trim();
+      if (!text) {
+        lastError = `${model}: empty answer (${data.choices?.[0]?.finish_reason || 'no reason'})`;
+        continue;
+      }
+      const parsed = extractJsonObject(text);
+      if (!parsed || typeof parsed !== 'object') {
+        lastError = `${model}: no JSON`;
+        continue;
+      }
+      const usage = data.usage || {};
+      return {
+        ok: true,
+        model,
+        parsed: sheetParsed(parsed),
+        usage: {
+          tokens_in: Number(usage.prompt_tokens) || 0,
+          tokens_out: Number(usage.completion_tokens) || 0,
+          cached_tokens: Number(usage.prompt_tokens_details?.cached_tokens) || 0,
+        },
+      };
+    } catch (error) {
+      lastError = `${model}: ${error?.name === 'AbortError' ? 'timed out' : (error?.message || 'failed')}`;
+    } finally {
+      clearTimeout(timer);
+    }
   }
+  return { ok: false, error: lastError };
 }
 
 async function extractSheetPhoto(base64, mime, budgetMs = 20000, meter = null) {
@@ -1016,7 +1039,7 @@ function toOpenAiMessages(contents, options = {}) {
   return messages;
 }
 
-async function riverTurn(contents, useTools, route) {
+async function riverTurn(contents, useTools, route, maxMs = 44000) {
   const apiKey = route?.api_key || RIVER_API_KEY;
   const baseUrl = String(route?.base_url || RIVER_BASE_URL || '').trim().replace(/\/+$/, '');
   const modelName = route?.model || ASSISTANT_MODEL;
@@ -1034,6 +1057,8 @@ async function riverTurn(contents, useTools, route) {
     body.tool_choice = 'auto';
   }
   const hasPhoto = contents.some((item) => (item.parts || []).some((part) => part.inlineData?.data));
+  const started = Date.now();
+  const room = () => Math.max(4000, Math.min(maxMs - (Date.now() - started), maxMs));
   const send = async (payload, timeout) => {
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -1049,7 +1074,7 @@ async function riverTurn(contents, useTools, route) {
     return { response, data };
   };
   try {
-    let { response, data } = await send(body, hasPhoto ? 34000 : 18000);
+    let { response, data } = await send(body, Math.min(hasPhoto ? 34000 : 18000, room()));
     // If this model cannot take a picture, ask it again with the words alone so
     // the same brain still decides, instead of dropping to the backup model.
     if ((!response.ok || !data) && hasPhoto) {
@@ -1057,7 +1082,7 @@ async function riverTurn(contents, useTools, route) {
         ...body,
         messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...toOpenAiMessages(contents, { images: false })],
       };
-      ({ response, data } = await send(textOnly, 18000));
+      ({ response, data } = await send(textOnly, Math.min(18000, room())));
     }
     if (!response.ok || !data) {
       console.error('ops_agent_river_failed', `${modelName}: HTTP ${response.status}`);
@@ -1099,7 +1124,7 @@ async function riverTurn(contents, useTools, route) {
 // Primary, then secondary, then the free-tier fallback. Each attempt is logged
 // with the route that served it, and a failure is never allowed to change what
 // the assistant may do.
-async function assistantTurn(contents, useTools, meter) {
+async function assistantTurn(contents, useTools, meter, budgetMs = 44000) {
   const started = Date.now();
   if (meter) meter.contextTokens = estimateTokens({ system: SYSTEM_PROMPT, contents });
   const routes = await loadModelRoutes();
@@ -1119,7 +1144,7 @@ async function assistantTurn(contents, useTools, meter) {
 
   const errors = [];
   for (const candidate of candidates) {
-    const left = 44000 - (Date.now() - started);
+    const left = budgetMs - (Date.now() - started);
     if (left < 5000) break;
     const route = candidate.route;
     const provider = String(route?.provider || '').toLowerCase();
@@ -1127,9 +1152,9 @@ async function assistantTurn(contents, useTools, meter) {
     if (route && provider.includes('gemini')) {
       turn = await geminiTurn(contents, useTools, Math.min(20000, left), route);
     } else if (route) {
-      turn = await riverTurn(contents, useTools, route);
+      turn = await riverTurn(contents, useTools, route, Math.min(34000, left));
     } else {
-      turn = await riverTurn(contents, useTools, null);
+      turn = await riverTurn(contents, useTools, null, Math.min(20000, left));
       if (!turn || turn.error) turn = await geminiTurn(contents, useTools, Math.min(22000, left), null);
     }
 
@@ -1528,6 +1553,9 @@ function chatWorkingContext(body, draft, context, page, savedState) {
 
 async function handleAgentChat(req, res, ctx, body, helpers) {
   const { sendJson, contextForJob } = helpers;
+  // The function has 60 seconds in total. Reading the photo spends part of
+  // that, so the answer turn is given what is left rather than a fixed budget.
+  const requestStartedAt = Date.now();
   const mode = cleanStr(body.mode, 30) || 'chat';
   const userText = cleanStr(body.text || body.message, 4000);
   let jobId = cleanStr(body.job_id, 40);
@@ -1544,7 +1572,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // model reasons. If the main model cannot take a picture, the lines still
   // arrive, so a score sheet is never lost.
   const sheetReadPromise = photoBase64
-    ? extractSheetPhoto(photoBase64, photoMime, 25000, {
+    ? extractSheetPhoto(photoBase64, photoMime, 18000, {
       schoolId: ctx.actor?.school_id || null,
       userId: ctx.actor?.id || null,
       sessionId: cleanStr(body.chat_id, 40) || null,
@@ -1737,7 +1765,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
       }).catch(() => null);
       const bytes = fetched?.attachment?.content_base64;
       if (bytes) {
-        const again = await extractSheetPhoto(bytes, stored.mime || 'image/jpeg', 20000, {
+        const again = await extractSheetPhoto(bytes, stored.mime || 'image/jpeg', 14000, {
           schoolId: ctx.actor?.school_id || null,
           userId: ctx.actor?.id || null,
           sessionId: sheetChatId,
@@ -2031,7 +2059,10 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // The model gets a real working session: enough rounds for a multi-step job,
   // with reads run together and writes kept in order. The deadline leaves room
   // for the final sentence inside the function's 60 seconds.
-  const deadline = Date.now() + 46000;
+  const turnBudget = photoBase64
+    ? Math.max(12000, Math.min(34000, 48000 - (Date.now() - requestStartedAt)))
+    : 44000;
+  const deadline = Date.now() + turnBudget;
   const executed = [];
   if (sheetActionResult) {
     const counted = sheetActionResult.action === 'committed'
@@ -2067,13 +2098,13 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
       role: 'user',
       parts: [{ text: `The user tapped Confirm for ${toolName}. Result:\n${JSON.stringify(result).slice(0, 4000)}\nWrite the short outcome now.` }],
     });
-    const turn = await assistantTurn(contents, false, meter);
+    const turn = await assistantTurn(contents, false, meter, turnBudget);
     if (turn && turn.text) { finalText = turn.text; model = turn.model; modelRoute = turn.route || null; }
     else finalText = result.error ? `Not saved: ${result.error}` : 'Saved.';
     if (turn && turn.error) modelError = turn.error;
     else if (turn && turn.skipped) modelError = turn.skipped;
   } else {
-    let turn = await assistantTurn(contents, true, meter);
+    let turn = await assistantTurn(contents, true, meter, turnBudget);
     if (turn && turn.error) modelError = turn.error;
     if ((!turn || turn.error) && !confirm) {
       const guess = guessIntent(userText, context);
@@ -2130,7 +2161,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
         }
       }
       contents.push({ role: 'user', parts: results });
-      turn = await assistantTurn(contents, true, meter);
+      turn = await assistantTurn(contents, true, meter, turnBudget);
     }
     if (turn && turn.text) { finalText = turn.text; model = turn.model; modelRoute = turn.route || null; }
     if (turn && turn.error) modelError = turn.error;
