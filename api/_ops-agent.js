@@ -1693,6 +1693,9 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // user's own words instead of running the sheet script.
   const photoNotSheet = Boolean(photoBase64)
     && (!sheetRead?.ok || sheetRead?.sheet_type === 'other');
+  // The reader did not come back in time. The picture still travels with the
+  // message, so the answer is read by the model itself rather than lost.
+  const photoUnread = Boolean(photoBase64) && !sheetRead;
 
   // The photo is stored once, before the model reasons, so a refresh or a
   // second device can read the same page again. The chat keeps the file id and
@@ -2068,14 +2071,16 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
     PHOTO_TURN_NOTE: mode === 'post_upload'
       ? 'The reader just finished this photo. Brief the user on what was read from CURRENT_UPLOADED_PAGE, then offer the next step.'
       : mode === 'prepare_page'
-        ? (photoNotSheet
-          ? 'This photo is not a score sheet (SHEET_READ_FROM_PHOTO.sheet_type is other). The photo itself is in this message, so answer the newest message about what you can actually see. Do not start a page, do not record, and do not ask for marks.'
+        ? (photoUnread
+          ? 'The page reader did not finish in time, so the photo itself is in this message. Read it yourself and answer in plain words. If it is a score sheet, list the names and scores briefly and say the page can be prepared again; do not call start_page or record_scores.'
+          : photoNotSheet
+            ? 'This photo is not a score sheet (SHEET_READ_FROM_PHOTO.sheet_type is other). The photo itself is in this message, so answer the newest message about what you can actually see. Do not start a page, do not record, and do not ask for marks.'
           : 'A photo is attached. Read SHEET_READ_FROM_PHOTO and OPEN_SHEET_REVIEW first. If SHEET_ACTION_RESULT shows a prepared review, show that one review and stop; never call start_page or record_scores when a review exists. Only call start_page when a record-book page is blank with no marks. If class or subject truly cannot be told, ask one short question.')
         : null,
     LATEST_USER_MESSAGE: userText || (mode === 'post_upload'
       ? 'Continue.'
       : mode === 'prepare_page'
-        ? (photoNotSheet ? 'Photo attached.' : 'Score sheet photo attached.')
+        ? (photoUnread || photoNotSheet ? 'Photo attached.' : 'Score sheet photo attached.')
         : ''),
   }, null, 2);
 
