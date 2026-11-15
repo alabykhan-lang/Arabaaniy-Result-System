@@ -752,6 +752,20 @@ async function extractSheetPhoto(base64, mime, budgetMs = 20000, meter = null) {
   return { ok: false, error: failures.join(' | ').slice(0, 300) || 'The sheet could not be read.' };
 }
 
+// When the picture reader is the very same model that answers, a separate
+// read is a second queue for the same brain. One call then carries the photo
+// and answers from it, so the reply comes at once.
+async function readerIsAnswerer() {
+  const routes = await loadModelRoutes().catch(() => ({}));
+  const vision = routes.vision || routes.primary || null;
+  const primary = routes.primary || null;
+  if (!vision || !primary || visionKind(vision) !== 'river') return false;
+  const same = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
+  return same(vision.provider, primary.provider)
+    && same(vision.model, primary.model)
+    && same(vision.base_url || RIVER_BASE_URL, primary.base_url || RIVER_BASE_URL);
+}
+
 // The developer console checks the picture route with a real tiny image, so a
 // model that only takes text cannot be mistaken for a working reader.
 async function testVisionRoute() {
@@ -1592,7 +1606,8 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // Read the sheet through a vision model as structured lines before the main
   // model reasons. If the main model cannot take a picture, the lines still
   // arrive, so a score sheet is never lost.
-  const sheetReadPromise = photoBase64
+  const singlePass = photoBase64 ? await readerIsAnswerer() : false;
+  const sheetReadPromise = photoBase64 && !singlePass
     ? extractSheetPhoto(photoBase64, photoMime, 20000, {
       schoolId: ctx.actor?.school_id || null,
       userId: ctx.actor?.id || null,
@@ -1681,7 +1696,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // structured read, and after that the picture goes with the message instead
   // and the model reads it while it answers.
   let readTimer = null;
-  const sheetRead = photoBase64
+  const sheetRead = photoBase64 && !singlePass
     ? await Promise.race([
       sheetReadPromise,
       new Promise((resolve) => { readTimer = setTimeout(() => resolve(null), 7000); }),
@@ -1695,7 +1710,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
     && (!sheetRead?.ok || sheetRead?.sheet_type === 'other');
   // The reader did not come back in time. The picture still travels with the
   // message, so the answer is read by the model itself rather than lost.
-  const photoUnread = Boolean(photoBase64) && !sheetRead;
+  const photoUnread = Boolean(photoBase64) && !sheetRead && !singlePass;
 
   // The photo is stored once, before the model reasons, so a refresh or a
   // second device can read the same page again. The chat keeps the file id and
@@ -1770,6 +1785,22 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
         sheetActionResult = { action: 'prepare', ok: false, error: sheetError, needs: prepared?.needs || null };
       }
     }
+  }
+  if (singlePass && attachmentId) {
+    // No read-out to describe it, but a later turn still needs to know a photo
+    // is sitting in this chat.
+    await opsRpc('ops_sheet_attachment_describe', {
+      p_session_id: sheetChatId,
+      p_school_id: ctx.actor.school_id,
+      p_owner_user_id: ctx.actor.id,
+      p_file_id: attachmentId,
+      p_description: 'Photo attached.',
+      p_sheet_type: null,
+      p_class_key: null,
+      p_subject_label: null,
+      p_term: null,
+      p_sheet_read: null,
+    }).catch(() => null);
   }
   if (!sheetReview && sheetChatId) {
     sheetState = await loadSheetState(ctx, sheetChatId).catch(() => null);
@@ -2071,7 +2102,9 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
     PHOTO_TURN_NOTE: mode === 'post_upload'
       ? 'The reader just finished this photo. Brief the user on what was read from CURRENT_UPLOADED_PAGE, then offer the next step.'
       : mode === 'prepare_page'
-        ? (photoUnread
+        ? (singlePass
+          ? 'The photo is in this message and there is no separate read-out. Read the photo yourself now. If it is a score sheet with marks: take the class and subject from the picture or the sentence, call start_page for it when no page is open, then call record_scores with every line you read, and show the result. If it is not a sheet, answer what you see in plain words. Do not mention readers or read-outs.'
+          : photoUnread
           ? 'The photo itself is in this message instead of a read-out. Read the photo yourself and answer in plain words without mentioning how it was read. If it is a score sheet, list the names and scores briefly and say the page can be prepared again; do not call start_page or record_scores.'
           : photoNotSheet
             ? 'This photo is not a score sheet (SHEET_READ_FROM_PHOTO.sheet_type is other). The photo itself is in this message, so answer the newest message about what you can actually see. Do not start a page, do not record, and do not ask for marks.'
@@ -2080,7 +2113,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
     LATEST_USER_MESSAGE: userText || (mode === 'post_upload'
       ? 'Continue.'
       : mode === 'prepare_page'
-        ? (photoUnread || photoNotSheet ? 'Photo attached.' : 'Score sheet photo attached.')
+        ? (photoUnread || photoNotSheet || singlePass ? 'Photo attached.' : 'Score sheet photo attached.')
         : ''),
   }, null, 2);
 
