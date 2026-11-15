@@ -1086,13 +1086,16 @@ async function riverTurn(contents, useTools, route, maxMs = 44000) {
     max_tokens: MAX_REPLY_TOKENS,
     messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...toOpenAiMessages(contents)],
   };
-  const effort = routeEffort(route);
+  const hasPhoto = contents.some((item) => (item.parts || []).some((part) => part.inlineData?.data));
+  // A call that carries a picture is mostly transcription, and the high level
+  // can spend the whole allowance thinking and send no words at all. The saved
+  // effort still applies to ordinary text turns.
+  const effort = hasPhoto ? 'low' : routeEffort(route);
   if (effort) body.reasoning_effort = effort;
   if (useTools) {
     body.tools = toOpenAiTools();
     body.tool_choice = 'auto';
   }
-  const hasPhoto = contents.some((item) => (item.parts || []).some((part) => part.inlineData?.data));
   const started = Date.now();
   const room = () => Math.max(4000, Math.min(maxMs - (Date.now() - started), maxMs));
   const send = async (payload, timeout) => {
@@ -1607,7 +1610,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // Read the sheet through a vision model as structured lines before the main
   // model reasons. If the main model cannot take a picture, the lines still
   // arrive, so a score sheet is never lost.
-  const singlePass = photoBase64 ? await readerIsAnswerer() : false;
+  const singlePass = await readerIsAnswerer();
   console.error('ops_agent_route_mode', singlePass ? 'one-model' : 'reader-then-answer');
   const sheetReadPromise = photoBase64 && !singlePass
     ? extractSheetPhoto(photoBase64, photoMime, 20000, {
