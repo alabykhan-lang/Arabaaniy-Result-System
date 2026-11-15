@@ -7,6 +7,7 @@
 
 const { supabaseRest } = require('./_lib');
 const crypto = require('node:crypto');
+const sharp = require('sharp');
 const {
   FUNCTION_DECLARATIONS,
   executeTool,
@@ -644,7 +645,7 @@ async function riverSheetRead(base64, mime, route, deadline) {
     // attempt would be aborted almost at once.
     if (room < (attempt ? 6000 : 2500)) break;
     const controller = new AbortController();
-    const wait = Math.max(2500, Math.min(16000, room - 500));
+    const wait = Math.max(2500, Math.min(21000, room - 500));
     const startedAt = Date.now();
     const timer = setTimeout(() => controller.abort(), wait);
     try {
@@ -713,13 +714,28 @@ async function extractSheetPhoto(base64, mime, budgetMs = 20000, meter = null) {
     models.forEach((model) => candidates.push({ kind, model, route, apiKey }));
   }
   if (!candidates.length) return null;
+  // Phone photos arrive larger than the reader needs. A narrower copy uploads
+  // faster from the data centre and still keeps handwriting legible, which
+  // matters because the whole turn shares one minute.
+  let picture = base64;
+  let pictureMime = mime || 'image/jpeg';
+  try {
+    const raw = Buffer.from(base64, 'base64');
+    const smaller = await sharp(raw).rotate().resize({ width: 1100, withoutEnlargement: true }).jpeg({ quality: 72 }).toBuffer();
+    if (smaller && smaller.length < raw.length) {
+      picture = smaller.toString('base64');
+      pictureMime = 'image/jpeg';
+    }
+  } catch {
+    // A picture sharp cannot read is still sent as it arrived.
+  }
   const deadline = Date.now() + Math.max(6000, budgetMs);
   const failures = [];
   for (const candidate of candidates) {
     if (Date.now() > deadline - 1000) break;
     const read = candidate.kind === 'gemini'
-      ? await geminiSheetRead(base64, mime, candidate.model, candidate.apiKey, deadline, candidate.route)
-      : await riverSheetRead(base64, mime, candidate.route, deadline);
+      ? await geminiSheetRead(picture, pictureMime, candidate.model, candidate.apiKey, deadline, candidate.route)
+      : await riverSheetRead(picture, pictureMime, candidate.route, deadline);
     if (!read.ok) {
       failures.push(read.error);
       continue;
@@ -1577,7 +1593,7 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
   // model reasons. If the main model cannot take a picture, the lines still
   // arrive, so a score sheet is never lost.
   const sheetReadPromise = photoBase64
-    ? extractSheetPhoto(photoBase64, photoMime, 23000, {
+    ? extractSheetPhoto(photoBase64, photoMime, 25000, {
       schoolId: ctx.actor?.school_id || null,
       userId: ctx.actor?.id || null,
       sessionId: cleanStr(body.chat_id, 40) || null,
