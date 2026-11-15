@@ -2248,6 +2248,17 @@ async function handleAgentChat(req, res, ctx, body, helpers) {
       contents.push({ role: 'user', parts: results });
       turn = await assistantTurn(contents, true, meter, turnBudget);
     }
+    // A turn that used its time on tools still owes the user a sentence, so it
+    // gets one last call with the tools taken away.
+    if (turn?.calls?.length && !turn.text && Date.now() < deadline - 4000) {
+      contents.push({ role: 'model', parts: turn.parts });
+      contents.push({
+        role: 'user',
+        parts: [{ text: 'Write the short answer now from the results above. No tool calls. Plain words, and the numbers only where they matter.' }],
+      });
+      const closing = await assistantTurn(contents, false, meter, Math.max(5000, deadline - Date.now() - 1000));
+      if (closing && !closing.error && closing.text) turn = closing;
+    }
     if (turn && turn.text) { finalText = turn.text; model = turn.model; modelRoute = turn.route || null; }
     if (turn && turn.error) modelError = turn.error;
     else if (turn && turn.skipped) modelError = turn.skipped;
