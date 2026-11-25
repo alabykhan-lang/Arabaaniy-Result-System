@@ -11,7 +11,6 @@ const {
   supabaseAuthRequest,
   supabaseRest,
   tokenExpiry,
-  tokenExpiresSoon,
 } = require('./_lib');
 const crypto = require('node:crypto');
 
@@ -105,10 +104,10 @@ module.exports = async function resultAuth(req, res) {
     let token = bearerTokenFromRequest(req);
     const refreshToken = refreshTokenFromRequest(req);
     let refreshRejected = false;
-    // The cookies are the source of truth. Refresh silently while the refresh
-    // cookie is alive, so a reader stays signed in across app restarts and long
-    // gaps instead of being sent back to the sign-in screen.
-    if (refreshToken && (!token || tokenExpiresSoon(token))) {
+    // The cookies are the source of truth. Refresh silently on every check while
+    // the refresh cookie is alive, so the token rolls forward and a reader stays
+    // signed in across app restarts and long gaps.
+    if (refreshToken) {
       try {
         const refreshed = await supabaseAuthRequest('token?grant_type=refresh_token', { refresh_token: refreshToken });
         if (refreshed.access_token) {
