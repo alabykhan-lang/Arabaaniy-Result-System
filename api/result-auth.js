@@ -10,6 +10,8 @@ const {
   setSessionCookie,
   supabaseAuthRequest,
   supabaseRest,
+  tokenExpiry,
+  tokenExpiresSoon,
 } = require('./_lib');
 const crypto = require('node:crypto');
 
@@ -101,13 +103,35 @@ module.exports = async function resultAuth(req, res) {
 
   if (req.method === 'GET') {
     let token = bearerTokenFromRequest(req);
+    const refreshToken = refreshTokenFromRequest(req);
+    let refreshRejected = false;
+    // The cookies are the source of truth. Refresh silently while the refresh
+    // cookie is alive, so a reader stays signed in across app restarts and long
+    // gaps instead of being sent back to the sign-in screen.
+    if (refreshToken && (!token || tokenExpiresSoon(token))) {
+      try {
+        const refreshed = await supabaseAuthRequest('token?grant_type=refresh_token', { refresh_token: refreshToken });
+        if (refreshed.access_token) {
+          token = refreshed.access_token;
+          setSessionCookie(res, token, refreshed.refresh_token || refreshToken);
+        }
+      } catch (error) {
+        // A rejected refresh token means the sign-in really is over; a network
+        // wobble keeps the cookies for the next attempt.
+        const status = Number(error?.status) || 0;
+        if (status === 400 || status === 401 || status === 403) { token = null; refreshRejected = true; }
+      }
+    }
+    if (!token && refreshRejected) {
+      clearSessionCookie(res);
+      return sendJson(res, 401, { ok: false, code: 'RESULT_SESSION_EXPIRED', message: 'Your session has ended. Sign in again to continue.' });
+    }
     if (!token) return sendJson(res, 200, { ok: true, auth_mode: 'local', configured: true });
     try {
       let user;
       try {
         user = await supabaseAuthRequest('user', undefined, token);
       } catch (error) {
-        const refreshToken = refreshTokenFromRequest(req);
         if (!refreshToken) throw error;
         const refreshed = await supabaseAuthRequest('token?grant_type=refresh_token', { refresh_token: refreshToken });
         token = refreshed.access_token;
@@ -116,9 +140,17 @@ module.exports = async function resultAuth(req, res) {
         user = refreshed.user || await supabaseAuthRequest('user', undefined, token);
       }
       const enriched = await enrichUser(user, token);
-      return sendJson(res, 200, { ok: true, auth_mode: 'local', user, staff_profile: enriched.profile });
+      return sendJson(res, 200, { ok: true, auth_mode: 'local', user, staff_profile: enriched.profile, expires_at: tokenExpiry(token) });
     } catch (error) {
-      clearSessionCookie(res);
+      const status = Number(error?.status) || 0;
+      // A server or network problem is not a dead session: keep the cookies so
+      // the next try can still use them.
+      if (status && status !== 400 && status !== 401 && status !== 403) {
+        return sendJson(res, 503, { ok: false, code: 'RESULT_AUTH_UNAVAILABLE', message: 'Sign-in service is busy. Try again.' });
+      }
+      // Staff suspended or removed also keeps the cookies; the account is real.
+      const code = String(error?.payload?.code || '');
+      if (code !== 'STAFF_SUSPENDED' && code !== 'STAFF_REMOVED') clearSessionCookie(res);
       return authError(res, error);
     }
   }
@@ -140,7 +172,7 @@ module.exports = async function resultAuth(req, res) {
       const payload = await supabaseAuthRequest('token?grant_type=password', { email: body.email, password: body.password });
       const enriched = await enrichUser(payload.user, payload.access_token);
       setSessionCookie(res, payload.access_token, payload.refresh_token);
-      return sendJson(res, 200, { ok: true, auth_mode: 'local', session_created: true, user: payload.user, staff_profile: enriched.profile });
+      return sendJson(res, 200, { ok: true, auth_mode: 'local', session_created: true, user: payload.user, staff_profile: enriched.profile, expires_at: tokenExpiry(payload.access_token) });
     }
     if (body.action === 'register') {
       if (!(await inviteIsValid(body.invite_code))) return sendJson(res, 403, { ok: false, code: 'INVITE_CODE_INVALID' });

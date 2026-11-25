@@ -19,7 +19,11 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
   || '';
 const COOKIE_NAME = 'school_result_session';
 const REFRESH_COOKIE_NAME = 'school_result_refresh';
-const SESSION_MAX_AGE = 8 * 60 * 60;
+const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
+const REFRESH_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
+// Refresh a little before the access token dies so a read never lands on an
+// expired token and kicks the reader out.
+const REFRESH_AHEAD_SECONDS = 15 * 60;
 const DEFAULT_ALLOWED_ORIGINS = new Set([
   'http://localhost:3000',
   'http://127.0.0.1:3000',
@@ -78,7 +82,7 @@ function sessionFromRequest(req) {
 function setSessionCookie(res, sessionId, sessionSecret) {
   const accessValue = encodeURIComponent(sessionId);
   const cookies = [`${COOKIE_NAME}=${accessValue}; Path=/; Max-Age=${SESSION_MAX_AGE}; HttpOnly; Secure; SameSite=Lax`];
-  if (sessionSecret) cookies.push(`${REFRESH_COOKIE_NAME}=${encodeURIComponent(sessionSecret)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`);
+  if (sessionSecret) cookies.push(`${REFRESH_COOKIE_NAME}=${encodeURIComponent(sessionSecret)}; Path=/; Max-Age=${REFRESH_COOKIE_MAX_AGE}; HttpOnly; Secure; SameSite=Lax`);
   res.setHeader('Set-Cookie', cookies);
 }
 
@@ -91,6 +95,25 @@ function clearSessionCookie(res) {
 
 function refreshTokenFromRequest(req) {
   return parseCookies(req)[REFRESH_COOKIE_NAME] || null;
+}
+
+// Read the expiry from a JWT without verifying it. A malformed token counts as
+// expired so the caller refreshes it instead of trusting it.
+function tokenExpiry(token) {
+  const part = String(token || '').split('.')[1];
+  if (!part) return 0;
+  try {
+    const payload = JSON.parse(Buffer.from(part, 'base64url').toString('utf8'));
+    return Number(payload?.exp) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function tokenExpiresSoon(token, withinSeconds = REFRESH_AHEAD_SECONDS) {
+  const exp = tokenExpiry(token);
+  if (!exp) return true;
+  return exp - Math.floor(Date.now() / 1000) <= withinSeconds;
 }
 
 async function readJsonBody(req) {
@@ -287,6 +310,8 @@ module.exports = {
   setSecurityHeaders,
   setSessionCookie,
   refreshTokenFromRequest,
+  tokenExpiry,
+  tokenExpiresSoon,
   bearerTokenFromRequest,
   supabaseAuthRequest,
   supabaseAdminRest,

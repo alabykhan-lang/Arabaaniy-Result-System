@@ -2972,6 +2972,53 @@ var SESSION_STORE='arq_session_v1';
 function rememberUser(user){try{localStorage.setItem(SESSION_STORE,JSON.stringify(user));}catch(e){}}
 function forgetUser(){try{localStorage.removeItem(SESSION_STORE);}catch(e){}}
 function recalledUser(){try{return JSON.parse(localStorage.getItem(SESSION_STORE)||'null');}catch(e){return null;}}
+// The phone remembers when the sign-in token dies, so it can be renewed before
+// any read lands on a dead one.
+var SESSION_EXPIRY_STORE='arq_session_exp';
+function rememberExpiry(exp){try{if(exp)localStorage.setItem(SESSION_EXPIRY_STORE,String(exp));else localStorage.removeItem(SESSION_EXPIRY_STORE);}catch(e){}}
+function recalledExpiry(){try{return Number(localStorage.getItem(SESSION_EXPIRY_STORE))||0;}catch(e){return 0;}}
+var AUTH_REFRESH=null;
+var AUTH_REFRESH_TIMER=null;
+var AUTH_LAST_REFRESH=0;
+// One shared renewal: many reads can hit an expired token at once, and a second
+// refresh with the same old refresh token used to kill the session.
+function authRefreshRequest(){
+  if(AUTH_REFRESH)return AUTH_REFRESH;
+  AUTH_REFRESH=resultAuthRequest('GET').then(function(payload){
+    if(!payload||!payload.user)throw {code:'AUTH_SESSION_INVALID'};
+    var refreshed=localUserFromPayload(payload);
+    CURRENT_USER=refreshed;
+    CURRENT_AUTH_MODE='local';
+    rememberUser(refreshed);
+    rememberExpiry(payload.expires_at);
+    AUTH_LAST_REFRESH=Date.now();
+    scheduleAuthRefresh(payload.expires_at);
+    return payload;
+  });
+  AUTH_REFRESH.then(function(){AUTH_REFRESH=null;},function(){AUTH_REFRESH=null;});
+  return AUTH_REFRESH;
+}
+function scheduleAuthRefresh(expiresAt){
+  if(AUTH_REFRESH_TIMER)clearTimeout(AUTH_REFRESH_TIMER);
+  AUTH_REFRESH_TIMER=null;
+  var exp=Number(expiresAt)||recalledExpiry();
+  if(!exp)return;
+  var wait=Math.max(60000,Math.min(20*60*1000,(exp*1000-Date.now())-5*60*1000));
+  AUTH_REFRESH_TIMER=setTimeout(function(){
+    if(!CURRENT_USER)return;
+    authRefreshRequest().catch(function(error){
+      if(isHardAuthFailure(error))sessionExpired();
+    });
+  },wait);
+}
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState!=='visible'||!CURRENT_USER||AUTH_REFRESH)return;
+  if(Date.now()-AUTH_LAST_REFRESH<5*60*1000)return;
+  authRefreshRequest().catch(function(error){
+    if(isHardAuthFailure(error))sessionExpired();
+  });
+});
+
 function authMessage(payload){
   var code=payload&&payload.code;
   if(code==='INVITE_CODE_INVALID')return 'That invite code is not valid.';
@@ -2997,12 +3044,26 @@ function resultAuthRequest(method,body){
 }
 
 var SESSION_EXPIRED_SHOWN=false;
+// Only a real "the account is gone" answer ends the session. A busy server or a
+// dropped mobile signal keeps the cookies and tries again.
+function isHardAuthFailure(error){
+  if(!error)return false;
+  var code=String(error.code||'');
+  // The sign-in service being busy or unreachable is not a dead session.
+  if(code==='RESULT_AUTH_UNAVAILABLE')return false;
+  if(Number(error.http_status)>=500)return false;
+  if(code==='AUTH_SESSION_INVALID'||code==='RESULT_SESSION_EXPIRED')return true;
+  // Any other coded auth answer (bad credentials, suspended, removed).
+  return Boolean(code);
+}
 // A dead session used to dump a red bar over a cached home screen with no way back;
 // this sends the reader to the sign-in screen, email filled, copy still behind it.
 function sessionExpired(){
   if(SESSION_EXPIRED_SHOWN)return;
   SESSION_EXPIRED_SHOWN=true;
-  clearAuthSession();
+  if(AUTH_REFRESH_TIMER)clearTimeout(AUTH_REFRESH_TIMER);
+  AUTH_REFRESH_TIMER=null;AUTH_REFRESH=null;
+  clearAuthSession();rememberExpiry(0);
   CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;applyDeveloperAccountClass();
   showAuthScreen();
   setAuthMode('login');
@@ -3033,16 +3094,13 @@ function resultDataRequest(action,payload){
     var code=String(error&&error.code||'');
     var message=String(error&&error.message||'');
     if(error&&error.http_status===401&&(code==='RESULT_SESSION_NOT_ACTIVE'||code==='RESULT_SESSION_REQUIRED'||/jwt expired|token.*expired/i.test(message))){
-      return resultAuthRequest('GET').then(function(session){
-        if(!session||!session.user){sessionExpired();throw error;}
-        var refreshed=localUserFromPayload(session);
-        CURRENT_USER=refreshed;
-        CURRENT_AUTH_MODE='local';
-        applyDeveloperAccountClass();
-        CURRENT_PERMISSIONS=Array.isArray(refreshed._permissions)?refreshed._permissions:CURRENT_PERMISSIONS;
+      return authRefreshRequest().then(function(){
+        var payload=CURRENT_USER;
+        if(!payload)throw error;
         return requestData();
-      },function(){
-        sessionExpired();
+      },function(refreshError){
+        // A busy server or a dropped signal is not a dead session.
+        if(isHardAuthFailure(refreshError))sessionExpired();
         throw error;
       });
     }
@@ -3111,6 +3169,9 @@ function loginSuccess(user,mode){
   if(user)rememberUser(user);
   CURRENT_AUTH_MODE='local';
   CURRENT_PERMISSIONS=Array.isArray(user._permissions)?user._permissions:[];
+  rememberExpiry(user&&user._expires_at);
+  AUTH_LAST_REFRESH=Date.now();
+  scheduleAuthRefresh(user&&user._expires_at);
   applyDeveloperAccountClass();
   refreshDevChatGreeting();
   CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;
@@ -3187,7 +3248,9 @@ function restorePortalPageAfterLogin(){
 
 function doLogout(){
   resultAuthRequest('POST',{action:'logout'}).catch(function(){}).then(function(){
-    clearAuthSession();forgetUser();
+    if(AUTH_REFRESH_TIMER)clearTimeout(AUTH_REFRESH_TIMER);
+    AUTH_REFRESH_TIMER=null;AUTH_REFRESH=null;
+    clearAuthSession();forgetUser();rememberExpiry(0);
     CURRENT_USER=null;CURRENT_AUTH_MODE=null;CURRENT_PERMISSIONS=[];CURRENT_CENTRAL_MANAGEMENT_ALLOWED=false;applyDeveloperAccountClass();
     showAuthScreen();
     navTo('home',document.getElementById('ni-home'));
@@ -3195,18 +3258,16 @@ function doLogout(){
 }
 
 function checkSession(){
-  var session=getStoredAuthSession();
   // The server HttpOnly cookie is the source of truth. Do not require an
   // in-memory token, otherwise every browser refresh returns to sign-in.
-  resultAuthRequest('GET').then(function(payload){
-    if(!payload||!payload.user)throw {code:'AUTH_SESSION_INVALID'};
-    loginSuccess(localUserFromPayload(payload),'local');
+  authRefreshRequest().then(function(){
+    loginSuccess(CURRENT_USER,'local');
   }).catch(function(error){
     var known=recalledUser();
     // No network: keep the offline entry that opens the phone's saved copy.
     // Server answered but the session is gone: go to sign-in instead of a home
     // screen where every read fails.
-    var unreachable=!navigator.onLine||!error||!error.code;
+    var unreachable=!navigator.onLine||!isHardAuthFailure(error);
     if(known&&known.id&&unreachable){
       showToast('No network — signed in from this phone.', 'error');
       loginSuccess(known,'local');
@@ -3218,7 +3279,7 @@ function checkSession(){
       var mail=document.getElementById('auth-email');
       if(mail&&!mail.value)mail.value=known.email;
       setAuthMode('login');
-      authErr('auth-err','Your session has ended. Sign in again to continue.');
+      authErr('auth-err',isHardAuthFailure(error)?'Your session has ended. Sign in again to continue.':'Could not reach the server. Try again.');
     }
   });
 }
